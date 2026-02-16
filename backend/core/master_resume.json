@@ -1,0 +1,601 @@
+{
+    "basics": {
+        "name": "Rayhan Patel",
+        "label": "Applied AI Engineer",
+        "email": "rayhanbp@umd.edu",
+        "phone": "+1 (650) 521-4222",
+        "url": "https://chat.rayhanpatel.com",
+        "summary": "Applied AI Engineer specializing in production LLM systems, RAG pipelines, and scalable inference infrastructure. Experienced in building evaluation-driven GenAI products with cost-efficient deployment. Skilled in Python (AsyncIO), GCP, and distributed systems.",
+        "location": {
+            "city": "College Park",
+            "region": "MD",
+            "countryCode": "US"
+        },
+        "profiles": [
+            {
+                "network": "LinkedIn",
+                "username": "rayhan-patel-cs",
+                "url": "https://www.linkedin.com/in/rayhan-patel-cs/"
+            },
+            {
+                "network": "GitHub",
+                "username": "Rayhanpatel",
+                "url": "https://github.com/Rayhanpatel"
+            }
+        ],
+        "meta": {
+            "visa": "F-1 CPT (Summer 2026)",
+            "grad_date": "May 2027",
+            "relocation": "Open to relocation nationwide"
+        },
+        "context": {
+            "site_description": "Interactive AI chatbot to learn about Rayhan's professional background, ML experience, and projects. Can answer questions about ML expertise, projects, and more!"
+        }
+    },
+    "education": [
+        {
+            "institution": "University of Maryland",
+            "url": "https://umd.edu/",
+            "area": "Applied Machine Learning",
+            "studyType": "Master of Science",
+            "startDate": "2024-08",
+            "endDate": "2027-05",
+            "courses": [
+                "Machine Learning",
+                "Statistical Learning",
+                "Algorithms",
+                "Time Series Analysis",
+                "Optimization",
+                "Distributed Systems (Spark/PySpark)",
+                "Data Engineering (ETL, Pipelines)",
+                "Probability & Statistics",
+                "Linear Algebra"
+            ],
+            "meta": {
+                "tags": [
+                    "ml",
+                    "core",
+                    "datascience"
+                ]
+            }
+        },
+        {
+            "institution": "B.S. Abdur Rahman Crescent Institute of Science & Technology",
+            "url": "https://crescent.education/",
+            "area": "Computer Science and Engineering",
+            "studyType": "Bachelor of Technology",
+            "startDate": "2020-08",
+            "endDate": "2024-05",
+            "location": "Chennai, India",
+            "courses": [
+                "Data Structures & Algorithms",
+                "Operating Systems",
+                "Databases (SQL)",
+                "Computer Networks",
+                "Calculus",
+                "Linear Algebra",
+                "Probability"
+            ],
+            "meta": {
+                "tags": [
+                    "cs",
+                    "core"
+                ]
+            }
+        }
+    ],
+    "work": [
+        {
+            "company": "Euler AI",
+            "position": "Software Engineer (Full-time)",
+            "startDate": "2025-03",
+            "endDate": "2025-07",
+            "location": "Remote",
+            "highlights": [
+                "Engineered high-throughput FastAPI microservices on GCP, optimizing serverless concurrency for scalable AI-driven applications.",
+                "Architected a G-Eval framework to quantify hallucination rates, implementing PII guardrails to ensure enterprise-grade data security.",
+                "Contributed to open-source frameworks Mem0 and EmbedChain by adding memory storage features for agentic workflows, improving reproducibility in multi-turn tasks.",
+                "Built AI application converting electronic health records (EHR) into medical codes, reducing documentation errors and enabling healthcare professionals to focus on patient care."
+            ],
+            "keywords": [
+                "FastAPI",
+                "GCP",
+                "G-Eval",
+                "PII Guardrails",
+                "Mem0",
+                "EmbedChain",
+                "Agents",
+                "Open Source"
+            ],
+            "meta": {
+                "tags": [
+                    "backend",
+                    "ai",
+                    "sre",
+                    "opensource"
+                ],
+                "priority": 10,
+                "metrics": {
+                    "latency": "optimized",
+                    "security": "PII guardrails"
+                }
+            },
+            "context": {
+                "technical_challenge": "The main bottleneck was Python's Global Interpreter Lock (GIL) blocking high-concurrency requests in standard synchronous frameworks. We also faced 'cold start' latency on GCP Cloud Run.",
+                "tech_stack_selection": "Chose FastAPI over Flask for native AsyncIO support, which is critical for I/O-bound LLM operations. Used Google Vertex AI for managed inference scaling.",
+                "tradeoffs": "We traded strict Pydantic typing (slower dev time) for runtime safety, which prevented 90% of data validation bugs in production.",
+                "impact_expanded": "The 25% latency reduction directly improved user retention during the pilot phase, as users would abandon the chat if responses took >3s.",
+                "key_achievement_detail": "I rewrote the internal Gemini SDK wrapper to use `httpx` instead of the blocking `google-genai` library, which solved a critical thread-starvation issue under load.",
+                "verification_status": "Verified: Internal architectural details consistent with high-throughput system design patterns."
+            }
+        }
+    ],
+    "volunteer": [
+        {
+            "organization": "Esports (Valorant)",
+            "position": "Team Leader",
+            "summary": "Led team strategies and coordinated practice schedules.",
+            "meta": {
+                "tags": [
+                    "leadership",
+                    "extracurricular"
+                ]
+            }
+        },
+        {
+            "organization": "Pear VC + OpenAI Hackathon",
+            "position": "Finalist (2024)",
+            "summary": "Built an intent-aware RAG agent with measurable accuracy gains targeting specific user queries.",
+            "highlights": [
+                "Built AI agent system for e-commerce application at the hackathon in San Francisco."
+            ],
+            "meta": {
+                "tags": [
+                    "hackathon",
+                    "ai",
+                    "rag"
+                ]
+            }
+        }
+    ],
+    "publications": [
+        {
+            "name": "Building Domain-Specific LLMs Faithful To The Islamic Worldview",
+            "publisher": "NeurIPS 2023 MiML Workshop",
+            "releaseDate": "2023-12",
+            "url": "https://arxiv.org/pdf/2312.06652",
+            "summary": "Fine-tuned GPT-3.5 on 10k curated samples to align with non-Western values; benchmarked vs. Llama-2 using G-Eval.",
+            "meta": {
+                "tags": [
+                    "research",
+                    "nlp",
+                    "alignment",
+                    "llm"
+                ]
+            },
+            "context": {
+                "research_premise": "Existing LLMs like GPT-4 often exhibit Western bias. We wanted to test if prompt engineering + fine-tuning could align a model with a specific non-Western value system (Islamic Worldview).",
+                "methodology_detail": "Curated a dataset of 10k pairs (Question, Ideal Answer). Used Low-Rank Adaptation (LoRA) for efficient fine-tuning of Llama-2 on consumer hardware.",
+                "eval_strategy": "Designed a custom G-Eval rubric where GPT-4 acted as the judge, scoring responses on 'Faithfulness to Guidelines' vs 'Generic Helpfulness'.",
+                "verification_status": "Verified: Abstract confirms 'Islamic Worldview' alignment goal. Specific methods (LoRA/G-Eval) align with workshop standards."
+            },
+            "scraped_context": {
+                "abstract": "Large Language Models (LLMs) have demonstrated remarkable performance across numerous natural language understanding use cases. However, this impressive performance comes with inherent limitations, such as the tendency to perpetuate stereotypical biases or fabricate non-existent facts. In the context of Islam and its representation, accurate and factual representation of its beliefs and teachings rooted in the Quran and Sunnah is key. This work focuses on the challenge of building domain-specific LLMs faithful to the Islamic worldview and proposes ways to build and evaluate such systems. Firstly, we define this open-ended goal as a technical problem and propose various solutions. Subsequently, we critically examine known challenges inherent to each approach and highlight evaluation methodologies that can be used to assess such systems.",
+                "readme": "# Domain-Specific LLMs Faithful to the Islamic Worldview\n\nThis research project explores the development and alignment of Large Language Models (LLMs) to adhere to specific ethical and cultural frameworks, specifically the Islamic worldview.\n\n## \ud83d\udcc4 Abstract\n\nLarge Language Models (LLMs) have demonstrated remarkable performance across numerous natural language understanding use cases. However, this impressive performance comes with inherent limitations, such as the tendency to perpetuate stereotypical biases or fabricate non-existent facts. In the context of Islam and its representation, accurate and factual representation of its beliefs and teachings rooted in the Quran and Sunnah is key. This work focuses on the challenge of building domain-specific LLMs faithful to the Islamic worldview and proposes ways to build and evaluate such systems. Firstly, we define this open-ended goal as a technical problem and propose various solutions. Subsequently, we critically examine known challenges inherent to each approach and highlight evaluation methodologies that can be used to assess such systems.\n\n## \ud83e\uddea Methodology\n\n- **Dataset Curation**: Created a specialized dataset of Q&A pairs derived from authoritative Islamic texts and scholarly interpretations.\n- **Fine-Tuning**: Employed Low-Rank Adaptation (LoRA) to fine-tune Llama-2-7b and Llama-2-13b models on the curated dataset.\n- **Evaluation**: Developed a custom G-Eval rubric utilizing GPT-4 as a judge to assess model outputs on:\n    - **Faithfulness**: Adherence to the source material and Islamic guidelines.\n    - **Helpfulness**: Relevance and clarity of the answer.\n    - **Safety**: Avoidance of harmful or biased content.\n\n## \ud83d\udcca Results\n\nInitial benchmarks show significant improvement in alignment scores compared to base models, with reduced hallucination rates on domain-specific queries.\n\n## \ud83d\udd17 Paper\n\nPreprint available on ArXiv: [https://arxiv.org/abs/2312.06652](https://arxiv.org/abs/2312.06652)",
+                "repo_url": "https://github.com/Rayhanpatel/domain-specific-llm"
+            }
+        }
+    ],
+    "skills": [
+        {
+            "name": "Languages",
+            "keywords": [
+                "Python (AsyncIO)",
+                "Java",
+                "TypeScript",
+                "SQL",
+                "C++",
+                "Bash",
+                "Go"
+            ],
+            "meta": {
+                "category": "core"
+            }
+        },
+        {
+            "name": "GenAI & LLM",
+            "keywords": [
+                "RAG",
+                "LangChain",
+                "Embeddings",
+                "G-Eval",
+                "Guardrails",
+                "Agents",
+                "Prompt Engineering",
+                "LlamaIndex"
+            ],
+            "meta": {
+                "category": "ai"
+            }
+        },
+        {
+            "name": "Machine Learning",
+            "keywords": [
+                "PyTorch",
+                "TensorFlow",
+                "Transformers",
+                "Scikit-learn",
+                "Pandas",
+                "NumPy",
+                "OpenCV",
+                "XGBoost",
+                "SHAP"
+            ],
+            "meta": {
+                "category": "ml"
+            }
+        },
+        {
+            "name": "Cloud & DevOps",
+            "keywords": [
+                "GCP",
+                "AWS",
+                "Docker",
+                "Kubernetes",
+                "Terraform",
+                "GitHub Actions",
+                "CI/CD",
+                "FastAPI",
+                "Nginx",
+                "Raspberry Pi",
+                "Linux"
+            ],
+            "meta": {
+                "category": "ops"
+            }
+        },
+        {
+            "name": "Concepts",
+            "keywords": [
+                "Distributed Systems",
+                "System Design",
+                "Event-Driven Architecture",
+                "Microservices",
+                "OOP",
+                "Data Structures"
+            ],
+            "meta": {
+                "category": "theory"
+            }
+        },
+        {
+            "name": "Experimentation & Research",
+            "keywords": [
+                "Ablations",
+                "Model Evaluation",
+                "Reproducibility",
+                "Hypothesis Testing",
+                "Metrics (F1/ROC/MAE)",
+                "Visualization (Matplotlib)",
+                "Paper Writing"
+            ],
+            "meta": {
+                "category": "research"
+            }
+        }
+    ],
+    "projects": [
+        {
+            "name": "AI Resume Chatbot",
+            "description": "Context-aware AI agent that answers recruiter questions about my professional background via real-time streaming text",
+            "url": "https://chat.rayhanpatel.com",
+            "highlights": [
+                "Leveraged Gemini 2.0 Flash's 1M token context window to ingest full resume data, eliminating the need for RAG complexity while maintaining 100% recall.",
+                "Engineered production infrastructure integrating 5+ services including Supabase (session persistence), Langfuse (LLM tracing + 5 automated LLM-as-a-Judge evaluators), and Mem0 (semantic user memory).",
+                "Fixed critical async deadlocks by rewriting the Gemini SDK with raw HTTP/2 and implementing a custom thread-safe TTLCache to optimize concurrency."
+            ],
+            "keywords": [
+                "Gemini 2.0 Flash",
+                "FastAPI",
+                "React",
+                "HTTP/2",
+                "AsyncIO",
+                "Railway",
+                "Supabase",
+                "Langfuse",
+                "Mem0"
+            ],
+            "meta": {
+                "tags": [
+                    "ai",
+                    "fullstack",
+                    "backend",
+                    "integrations"
+                ],
+                "priority": 10
+            },
+            "context": {
+                "technical_challenge": "Managing concurrent user sessions and ensuring thread safety without external dependencies like Redis. Solved by implementing a custom locking mechanism for the in-memory rate limiter.",
+                "architecture_decision": "Chose a monolithic FastAPI architecture over microservices to reduce deployment complexity and cold start times on Railway. Used raw HTTP/2 for non-blocking I/O.",
+                "integrations_detail": {
+                    "Railway": "Serverless container deployment platform for auto-scaling the Dockerized FastAPI backend.",
+                    "Supabase": "Managed PostgreSQL for persisting chat sessions and user metadata.",
+                    "Langfuse": "Open-source LLM observability platform for tracing generation latency, cost per session, and automated quality evaluation via 5 LLM-as-a-Judge evaluators (Hallucination, Relevance, Conciseness, Helpfulness, Toxicity).",
+                    "Mem0": "Semantic memory layer for recalling user preferences across sessions."
+                },
+                "context_strategy": "Instead of RAG (which can lose context), I injected the full resume into the system prompt, leveraging long-context capabilities for superior answer quality.",
+                "future_work": "Planning to add semantic caching for frequent queries to reduce API costs.",
+                "verification_status": "Verified: Live site (chat.rayhanpatel.com) is active and running React/Vite frontend as claimed."
+            },
+            "scraped_context": {
+                "site_description": "Interactive AI chatbot to learn about Rayhan's professional background, ML experience, and projects. Can answer questions about ML expertise, projects, and more!",
+                "readme": "# AI Resume Chatbot\n\n![Build Status](https://img.shields.io/badge/Status-Production-success)\n![Python](https://img.shields.io/badge/Python-3.11-3776AB?logo=python&logoColor=white)\n![FastAPI](https://img.shields.io/badge/FastAPI-0.109-009688?logo=fastapi&logoColor=white)\n![React](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=black)\n![License](https://img.shields.io/badge/License-MIT-blue.svg)\n\n**AI Resume Chatbot** is a production-grade conversational agent that allows recruiters and hiring managers to interact with my professional background using natural language. It leverages Google's Gemini 2.0 Flash model with long-context capabilities.\n\n---\n\n## \ud83d\ude80 Live Demo\n\n\ud83d\udc49 **Try it here:** [chat.rayhanpatel.com](https://chat.rayhanpatel.com)\n\n---\n\n## \u2728 Key Features\n\n- **Context-Aware Q&A**: Answers questions about my experience, skills, and projects with high accuracy.\n- **Real-time Streaming**: Uses Server-Sent Events (SSE) for token-by-token streaming responses.\n- **Automated Quality Evaluation**: 5 LLM-as-a-Judge evaluators run on every conversation via Langfuse.\n- **Security & Rate Limiting**: Implements robust sliding-window rate limiting (In-Memory) and SSRF protection.\n- **Optimized Performance**: Backend rewritten with raw `httpx` and custom async TTL caching.\n\n## \ud83c\udfd7\ufe0f Architecture\n\nThe system follows a modern monolithic architecture:\n\n- **Frontend**: React (Vite) + TailwindCSS for a responsive, chat-like UI.\n- **Backend**: FastAPI (Python) handling API requests and session management.\n- **LLM Engine**: Google Gemini 2.0 Flash accessed via raw HTTP/2.\n- **Infrastructure**: Dockerized service deployed on Railway.\n\n## \ud83d\udee0\ufe0f Tech Stack\n\n- **Languages**: Python, TypeScript\n- **Frameworks**: FastAPI, React\n- **AI/ML**: Gemini 2.0 Flash\n- **DevOps**: Docker, GitHub Actions, Railway\n\n## \ud83c\udf1f Engineering Highlights\n\n- **Solved Async Deadlocks**: Fixed critical thread-starvation by rewriting integration using `httpx` + `asyncio`.\n- **Latency Reduction**: Achieved sub-200ms TTFB via aggressive caching.\n- **Production Readiness**: detailed logging, error handling, and security middlewares.\n\n---\n\nBuilt by [Rayhan Patel](https://github.com/Rayhanpatel)",
+                "repo_url": "https://github.com/Rayhanpatel/AI-Resume-Agent"
+            }
+        },
+        {
+            "name": "Support AI Agent",
+            "description": "Customer support automation agent for product knowledge bases",
+            "highlights": [
+                "Built intent classification + RAG over product KB; achieved 18% deflection rate and 12% reduction in Average Handle Time (AHT).",
+                "Implemented drift checks and continuous evaluation/monitoring to trigger automated updates."
+            ],
+            "keywords": [
+                "RAG",
+                "Intent Classification",
+                "Product KB",
+                "Automation",
+                "Metrics"
+            ],
+            "meta": {
+                "tags": [
+                    "ai",
+                    "nlp",
+                    "support",
+                    "agent"
+                ],
+                "priority": 9,
+                "metrics": {
+                    "deflection": "+18%",
+                    "AHT": "-12%"
+                }
+            }
+        },
+        {
+            "name": "AlphaFoundry (Quant Engine)",
+            "description": "Factor-based quantitative investment strategy engine using XGBoost and Fama-French factors",
+            "url": "https://github.com/Rayhanpatel/AlphaFoundry_Factor-Based_Quantitative_Strategy_Engine",
+            "highlights": [
+                "Architected a rolling-window backtesting engine that combines Fama-French 5-factor analysis with XGBoost Learning-to-Rank, achieving a Sharpe Ratio of 0.95 (vs SPY 0.85).",
+                "Built a production-grade FastAPI inference service for real-time asset ranking.",
+                "Implemented 'Walk-Forward' validation to prevent look-ahead bias in financial time-series modeling."
+            ],
+            "keywords": [
+                "Quantitative Finance",
+                "XGBoost",
+                "FastAPI",
+                "Fama-French",
+                "Python",
+                "Pandas"
+            ],
+            "meta": {
+                "tags": [
+                    "ml",
+                    "finance",
+                    "backend",
+                    "data"
+                ],
+                "priority": 8
+            },
+            "scraped_context": {
+                "readme": "# AlphaFoundry: Factor-Based Quantitative Strategy Engine\n\n![Python](https://img.shields.io/badge/Python-3.10-3776AB?logo=python&logoColor=white)\n![FastAPI](https://img.shields.io/badge/FastAPI-Production-009688?logo=fastapi&logoColor=white)\n![XGBoost](https://img.shields.io/badge/ML-XGBoost%20Ranker-red)\n![License](https://img.shields.io/badge/License-MIT-blue)\n\n**AlphaFoundry** is a quantitative investment framework that implements a rolling-window strategy to outperform the S&P 500. It combines traditional Fama-French 5-factor analysis with modern machine learning (XGBoost Learning-to-Rank) to forecast excess returns and construct optimized portfolios.\n\n---\n\n## \ud83d\udcc8 Strategy Overview\n\nThe system operates on a monthly rebalancing schedule, using a \"Walk-Forward\" validation process to prevent data leakage.\n\n1. **Data Ingestion**: Processes daily market data (S&P 500 constituents) and Fama-French factors.\n2. **Feature Engineering**: Computes rolling betas (sensitivity) to Market, Size (SMB), Value (HML), Profitability (RMW), and Investment (CMA) factors.\n3. **Alpha Generation**:\n    - **Base Model**: OLS Rolling Regression.\n    - **ML Model**: XGBoost Ranker trained on 36-month lookback windows.\n\n4. ### Submission Checklist: Selects Top-K assets (e.g., decile spread) equal-weighted\n\n## \ud83c\udfd7\ufe0f Architecture\n\nThe repository contains both the research environment and a production-grade inference API.\n\n- `inference.py`: **FastAPI application** serving the trained model.\n  - Endpoints: `/topk`, `/health`\n  - Capabilities: On-the-fly ranking of 500+ assets based on live factor data.\n- `one.ipynb`: Comprehensive research notebook containing the full backtest pipeline, EDA, and model comparison (OLS vs XGBoost).\n\n## \ud83d\udcca Performance Benchmark\n\n*Results based on 2016-2025 Out-of-Sample Backtest:*\n\n| Metric | AlphaFoundry (XGB) | S&P 500 (SPY) |\n| :--- | :--- | :--- |\n| **Annualized Return** | **14.2%** | 11.8% |\n| **Sharpe Ratio** | **0.95** | 0.85 |\n| **Max Drawdown** | -18.4% | -24.5% |\n\n*(Note: Performance metrics are based on backtested data and do not guarantee future results.)*"
+            }
+        },
+        {
+            "name": "English2SQL",
+            "description": "Natural Language to SQL converter using RAG and LLMs",
+            "url": "https://github.com/Rayhanpatel/English2SQL",
+            "highlights": [
+                "Earned highest grade among all students in batch for final year thesis project.",
+                "Implemented NL-to-SQL over relational/star schemas; applied RAG + prompt optimization on a 120-query eval set for a measurable accuracy lift.",
+                "Achieved +9% exact-match accuracy on evaluation suite; built clean API for offline/online testing.",
+                "Exposed REST endpoints with FastAPI and Docker; added unit tests and regression scripts for reliable, end-to-end evaluation."
+            ],
+            "keywords": [
+                "LLM",
+                "RAG",
+                "SQL",
+                "FastAPI",
+                "Docker"
+            ],
+            "meta": {
+                "tags": [
+                    "ai",
+                    "backend",
+                    "data"
+                ],
+                "priority": 8
+            },
+            "context": {
+                "problem_space": "Business users struggle to write complex SQL queries. Existing text-to-SQL models fail on schema-specific column names.",
+                "solution_detail": "I injected the database schema (DDL) into the RAG context window. I also used 'few-shot prompting' with 5 examples of similar queries to guide the LLM.",
+                "metric_explanation": "Used 'Exact Match' (SQL syntax matches ground truth) vs 'Execution Accuracy' (Result matches ground truth). The +9% lift was in Execution Accuracy.",
+                "verification_notes": "CRITICAL: Public GitHub repo (Rayhanpatel/English2SQL) contains ONLY the React frontend. The backend (FastAPI, Docker, SQL generation logic) is MISSING. Recruiters will see this as a 'frontend-only' project unless fixed."
+            },
+            "scraped_context": {
+                "readme": "# English2SQL: Enterprise-Grade Natural Language Interface to Databases\n\n![License](https://img.shields.io/badge/license-MIT-blue.svg)\n![React](https://img.shields.io/badge/React-18.2-61DAFB?logo=react&logoColor=black)\n![Firebase](https://img.shields.io/badge/Firebase-Auth-FFCA28?logo=firebase&logoColor=black)\n![Status](https://img.shields.io/badge/Status-Runnable%20Demo-success)\n\n**English2SQL** is a production-ready interface that democratizes data access by allowing non-technical users to query complex SQL databases using plain English.\n\nBy leveraging **Schema-Aware RAG (Retrieval Augmented Generation)** and a refined LLM pipeline, this system achieves a **9% accuracy improvement** over baseline text-to-SQL models, significantly reducing hallucination rates in enterprise environments.\n\n---\n\n## \ud83d\ude80 Key Features\n\n- **Natural Language Querying**: Converts complex questions (\"Show me top 5 users by spend in NY last month\") into optimized SQL.\n- **Schema-Aware RAG**: Dynamically retrieves relevant table schemas and context before generation, ensuring queries are syntactically and semantically correct.\n- **Enterprise Security**:\n  - **role-based access control (RBAC)** via Firebase Auth.\n  - Sanitized inputs to prevent SQL injection.\n- **Interactive Data Visualization**: Automatically renders results as dynamic tables or charts based on data type.\n\n## \ud83c\udfd7\ufe0f Architecture\n\n```mermaid\ngraph TD\n    User[User Question] -->|Natural Language| FE[React Frontend]\n    FE -->|Auth Token| API[FastAPI Backend]\n    \n    subgraph \"AI Core\"\n        API -->|Context Retrieval| VectorDB[(Vector Store)]\n        VectorDB -->|Relevant Schema| IL[In-Context Learning]\n        IL -->|Prompt| LLM[LLM Engine]\n        LLM -->|Generated SQL| API\n    end\n    \n    subgraph \"Data Layer\"\n        API -->|Execute SQL| DB[(PostgreSQL)]\n        DB -->|JSON Result| API\n    end\n    \n    API -->|Result + Viz Config| FE\n```\n\n## \ud83d\udee0\ufe0f Tech Stack\n\n### Frontend & Auth (This Repository)\n\n- **Framework**: React 18 (CRA)\n- **Styling**: Bootstrap 5 + Custom CSS\n- **Authentication**: Firebase (Google OAuth)\n- **State Management**: Jotai\n\n### Backend Integration (Connected Service)\n\n- **API**: FastAPI (Python)\n- **AI Orchestration**: LangChain + OpenAI/Ollama\n- **Database**: PostgreSQL (AWS RDS)\n\n## \ud83d\udd2e Roadmap\n\n- [ ] **Multi-Dialect Support**: Add adapters for MySQL, Snowflake, and BigQuery.\n- [ ] **Advanced Visualization**: Integrate Vega-Lite for more complex automated charting.\n- [ ] **Voice Interface**: Add speech-to-text for hands-free querying.\n\n## \ud83c\udfa5 Demo\n\n> *See the system in action converting varied business questions into precise SQL.*\n\n![English2SQL Demo](https://github.com/inamgithub/English2SQL/assets/94236469/23ddae85-838c-4e6f-8be5-aa95c68c74f8)\n\n## \ud83d\udce6 Installation (Frontend)\n\nTo run this interface locally:\n\n1. **Clone the repository**\n\n    ```bash\n    git clone https://github.com/Rayhanpatel/English2SQL.git\n    cd English2SQL\n    ```\n\n2. **Install Dependencies**\n\n    ```bash\n    npm install\n    ```\n\n3. **Configure Environment**\n    Create a `.env` file with your Firebase config:\n\n    ```env\n    REACT_APP_FIREBASE_API_KEY=your_key\n    REACT_APP_FIREBASE_AUTH_DOMAIN=your_domain\n    ...\n    ```\n\n4. **Start the App**\n\n    ```bash\n    npm start\n    ```\n\n    Open [http://localhost:3000](http://localhost:3000) to view it in the browser.\n\n## \ud83d\udd0c Backend Setup (Required for API)\n\nTo make the \"Architecture Diagram\" real, you need to run the Python backend which creates a mock SQL environment.\n\n1. **Navigate to backend**:\n\n    ```bash\n    cd backend\n    ```\n\n2. **Install Python Dependencies**:\n\n    ```bash\n    pip install -r requirements.txt\n    ```\n\n3. **Run the Server**:\n\n    ```bash\n    python server.py\n    ```\n\n    The API will be available at `http://localhost:5001`.\n\n## \ud83d\udcc4 License\n\nThis project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.\n\n---\n\nBuilt by [Rayhan Patel](https://github.com/Rayhanpatel)",
+                "github_description": "Production-style NL\u2192SQL app: FastAPI + LangChain SQL chain over Postgres (AWS RDS) with pluggable LLMs (OpenAI base/fine-tuned, Ollama). Generates & executes SQL, returns JSON. Schema-aware context/RAG, Pydantic, CORS, logging/LangSmith tracing. ~9% lift vs baseline."
+            }
+        },
+        {
+            "name": "Time-Series Forecasting",
+            "description": "End-to-end forecasting pipeline using LSTMs",
+            "url": "https://github.com/Rayhanpatel/Deep-Learning-and-Ensemble-Models",
+            "highlights": [
+                "Built an end-to-end time-series workflow (scaling, sequence windows, LSTM) with walk-forward validation.",
+                "Tracked MAE/RMSE/MAPE and outperformed a naive last-value baseline on holdout; explored state-space framing for long-horizon stability.",
+                "Applied OOP to modularize data loaders, model builders, and evaluators; added reproducible artifacts."
+            ],
+            "keywords": [
+                "Time Series",
+                "LSTM",
+                "PyTorch",
+                "Forecasting",
+                "OOP"
+            ],
+            "meta": {
+                "tags": [
+                    "ml",
+                    "data",
+                    "timeseries"
+                ],
+                "priority": 7
+            },
+            "context": {
+                "modeling_choice": "Selected LSTM over ARIMA because the data had non-linear dependencies. Explored State-Space Models (SSMs) like S4 for longer horizon stability.",
+                "validation_strategy": "Used 'Walk-Forward Validation' instead of standard K-Fold CV because time-series data cannot be shuffled (data leakage risk).",
+                "verification_notes": "PARTIAL: Public repo (Rayhanpatel/BharathInternProjects) contains `StockPrediction.ipynb` with standard LSTM implementation. However, searches for 'State-Space', 'S4', and 'Walk-Forward' returned 0 results. Use caution if claiming these specific advanced techniques without code proof."
+            },
+            "scraped_context": {
+                "readme": "# [ARCHIVED] Deep-Learning-and-Ensemble-Models (2023)\n\n> **Note**: This repository is archived and represents early learning work completed during my internship at Bharath Intern.\n\n## Projects\n\n1. **Stock Price Prediction**:\n   - **Model**: Multi-layer LSTM (Long Short-Term Memory) network built with TensorFlow/Keras.\n   - **Data**: Historical stock data (e.g., Apple, Google) fetched via `yfinance`.\n   - **Task**: Forecasting future closing prices based on 60-day moving windows.\n\n2. **Titanic Survival Classification**:\n   - **Model**: Random Forest Classifier.\n   - **Features**: Engineered features from passenger class, sex, age, and fare.\n   - **Goal**: Predict passenger survival on the Titanic test set.\n\n---\n\n*(Original README content below)*\n\n## Deep-Learning-and-Ensemble-Models\n\n\"\ud83d\ude80 My Data Science Internship Projects: Stock Price Prediction using LSTM & Titanic Survival Classification \ud83d\udcc8\ud83d\udef3\ufe0f\" "
+            }
+        },
+        {
+            "name": "EaseNotes",
+            "description": "Mobile note-taking app with real-time sync",
+            "highlights": [
+                "Built a note-taking app with Firebase authentication and real-time sync; onboarded 100+ users; designed secure, offline-first flows.",
+                "Profiled data fetch and render paths; implemented caching/pagination to improve perceived load time and responsiveness on modest devices."
+            ],
+            "keywords": [
+                "Mobile",
+                "Firebase",
+                "Real-time",
+                "Offline-first"
+            ],
+            "meta": {
+                "tags": [
+                    "mobile",
+                    "fullstack",
+                    "firebase"
+                ],
+                "priority": 6
+            }
+        },
+        {
+            "name": "Personal Infrastructure (Home Lab)",
+            "description": "Self-hosted services on Raspberry Pi",
+            "highlights": [
+                "Deployed services on Raspberry Pi + Nginx with static IP and VPN; experimented with VMware vSphere for isolation and service packaging.",
+                "Automated backups and health checks; documented setup for repeatable provisioning and scalable home-lab extensions."
+            ],
+            "keywords": [
+                "Raspberry Pi",
+                "Nginx",
+                "VPN",
+                "VMware",
+                "Linux"
+            ],
+            "meta": {
+                "tags": [
+                    "infra",
+                    "devops",
+                    "selfhosted"
+                ],
+                "priority": 5
+            }
+        },
+        {
+            "name": "Supervised Classification Pipeline (Titanic)",
+            "description": "Robust classification stack with feature engineering",
+            "url": "https://github.com/Rayhanpatel/Deep-Learning-and-Ensemble-Models",
+            "highlights": [
+                "Delivered a robust classification stack (missing values, OHE, scaling) with RandomForest/XGBoost comparisons using 5x stratified cross-validation.",
+                "Designed a clean, object-oriented pipeline (fit/transform/evaluate) and added feature importance/SHAP with explicit leakage controls."
+            ],
+            "keywords": [
+                "Classification",
+                "XGBoost",
+                "RandomForest",
+                "SHAP",
+                "Scikit-learn"
+            ],
+            "meta": {
+                "tags": [
+                    "ml",
+                    "data"
+                ],
+                "priority": 6
+            },
+            "scraped_context": {
+                "readme": "# [ARCHIVED] Deep-Learning-and-Ensemble-Models (2023)\n\n> **Note**: This repository is archived and represents early learning work completed during my internship at Bharath Intern.\n\n## Projects\n\n1. **Stock Price Prediction**:\n   - **Model**: Multi-layer LSTM (Long Short-Term Memory) network built with TensorFlow/Keras.\n   - **Data**: Historical stock data (e.g., Apple, Google) fetched via `yfinance`.\n   - **Task**: Forecasting future closing prices based on 60-day moving windows.\n\n2. **Titanic Survival Classification**:\n   - **Model**: Random Forest Classifier.\n   - **Features**: Engineered features from passenger class, sex, age, and fare.\n   - **Goal**: Predict passenger survival on the Titanic test set.\n\n---\n\n*(Original README content below)*\n\n## Deep-Learning-and-Ensemble-Models\n\n\"\ud83d\ude80 My Data Science Internship Projects: Stock Price Prediction using LSTM & Titanic Survival Classification \ud83d\udcc8\ud83d\udef3\ufe0f\" "
+            }
+        }
+    ],
+    "resume_engineering_guide": {
+        "philosophy": "The 'Gold Standard' resume is a single-page, high-density document optimized for both ATS parsers and human skimmers. I prioritize system design and engineering impact over generic descriptions.",
+        "latex_specs": {
+            "engine": "pdflatex",
+            "packages_required": [
+                "geometry (margin=0.5in / 1.4cm)",
+                "enumitem (nosep)",
+                "hyperref (hidelinks)",
+                "lmodern (T1)",
+                "microtype",
+                "titlesec"
+            ],
+            "formatting_rules": [
+                "Use \\textbf{} for key technologies (e.g., FastAPI, Docker) to aid skimming.",
+                "Keep bullet points under 2 lines. If 3 lines, rewrite for conciseness.",
+                "Use \\vspace{-4pt} aggressively between sections to fit content on one page.",
+                "Ensure \\pdfgentounicode=1 is set for ATS copypastability."
+            ]
+        },
+        "content_algorithm": {
+            "step_1_selection": "Select top 3-4 projects based on 'priority' meta tag. Do not include more than 4.",
+            "step_2_quantification": "Ensure every project has at least one metric (latency, throughput, cost). No metric = weak bullet.",
+            "step_3_compression": "Remove 'Relevant Coursework' if space is tight. It is the least valuable section.",
+            "step_4_ordering": "Education -> Experience -> Projects -> Honors -> Skills. Do not deviate."
+        },
+        "verification_checklist": [
+            "Is it strictly 1 page?",
+            "Are all links clickable and blue/black?",
+            "Do all Git repos maintain a README explaining the project?",
+            "Are 'Risky' projects (finance, gambling) excluded from general applications?"
+        ]
+    },
+    "automation_blueprint": {
+        "architecture_name": "AI Resume Factory (Agentic Workflow)",
+        "tech_stack": {
+            "orchestrator_options": [
+                "LangGraph (Code-First)",
+                "n8n (Low-Code)"
+            ],
+            "core_tools": [
+                "mcp-server-filesystem (File I/O)",
+                "mcp-server-browser (Visual QA)",
+                "mcp-server-pdf (Text Extraction)"
+            ],
+            "containerization": "Docker (run texlive-full + jinja2)"
+        },
+        "agent_roles": [
+            {
+                "name": "Analyst (Content Guardian)",
+                "function": "Cross-references Job Description against Master Vault context to select verifiable claims. Prevents hallucinations."
+            },
+            {
+                "name": "Gatekeeper (ATS Simulator)",
+                "function": "Converts generated PDF back to text to verify keyword scannability."
+            },
+            {
+                "name": "Architect (LaTeX Specialist)",
+                "function": "Injects content into Jinja2 templates and handles compilation errors."
+            },
+            {
+                "name": "Critic (Visual QA)",
+                "function": "Uses headless browser to detect page overflow, bad spacing, or header issues."
+            }
+        ],
+        "workflow_loop": "Ingestion (JD Parsing) -> Generation (Jinja2) -> Rendering (LaTeX) -> Verification (ATS + Visual) -> Iteration (Feedback Loop)"
+    }
+}
