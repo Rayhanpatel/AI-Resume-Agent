@@ -329,6 +329,8 @@ Only `GOOGLE_API_KEY` is required. All other services degrade gracefully when th
 │   │   ├── ttl_cache.py           # Thread-safe TTL cache (OrderedDict + Lock)
 │   │   ├── middleware.py          # Pure ASGI Request ID middleware
 │   │   └── timeout.py            # Safe async timeout (asyncio.wait)
+│   ├── infra/
+│   │   └── schema.sql             # Supabase database schema
 │   ├── middleware/
 │   │   └── rate_limiter.py        # Per-IP sliding window rate limiter
 │   ├── models/
@@ -360,10 +362,10 @@ Only `GOOGLE_API_KEY` is required. All other services degrade gracefully when th
 │   │   │   ├── ThemeToggle.jsx    # Dark/light toggle (memo-wrapped)
 │   │   │   └── ErrorBoundary.jsx  # React error boundary
 │   │   ├── hooks/
-│   │   │   └── useChatSession.js  # All business logic (297 lines)
+│   │   │   └── useChatSession.js  # All business logic (300+ lines)
 │   │   ├── App.jsx                # Thin UI wrapper
 │   │   ├── main.jsx               # React root (StrictMode + ErrorBoundary)
-│   │   └── index.css              # Design system (457 lines)
+│   │   └── index.css              # Design system (480+ lines)
 │   ├── index.html                 # SEO meta, OG tags, loading spinner
 │   ├── vite.config.js             # Dev proxy, build config
 │   ├── tailwind.config.js         # Custom palette + animations
