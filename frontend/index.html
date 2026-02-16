@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <!-- SEO Meta Tags -->
+  <title>Chat with Rayhan Patel | AI Resume Assistant</title>
+  <meta name="description"
+    content="An interactive AI chatbot that answers questions about Rayhan Patel's professional background, skills, and experience. Ask about ML expertise, projects, and more!" />
+  <meta name="keywords" content="Rayhan Patel, resume, ML engineer, software engineer, AI, chatbot" />
+  <meta name="author" content="Rayhan Patel" />
+
+  <!-- Open Graph -->
+  <meta property="og:title" content="Chat with Rayhan Patel | AI Resume Assistant" />
+  <meta property="og:description"
+    content="Interactive AI chatbot to learn about Rayhan's professional background, ML experience, and projects" />
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://chat.rayhanpatel.com" />
+
+  <!-- Open Graph Image -->
+  <meta property="og:image" content="https://chat.rayhanpatel.com/og-image.png" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Chat with Rayhan Patel | AI Resume" />
+  <meta name="twitter:description" content="Ask an AI about Rayhan's ML experience, projects & skills" />
+  <meta name="twitter:image" content="https://chat.rayhanpatel.com/og-image.png" />
+
+  <!-- Theme Color -->
+  <meta name="theme-color" content="#4f46e5" />
+
+  <!-- Cloudflare Turnstile (bot protection) -->
+  <script src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit" async defer></script>
+
+  <!-- Loading Spinner Styles (shown before React hydrates) -->
+  <style>
+    .initial-loader {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #312e81 100%);
+    }
+
+    .initial-loader .spinner {
+      width: 40px;
+      height: 40px;
+      border: 3px solid rgba(255, 255, 255, 0.1);
+      border-top-color: #6366f1;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div id="root">
+    <!-- Loading state before React loads -->
+    <div class="initial-loader">
+      <div class="spinner"></div>
+    </div>
+  </div>
+  <script type="module" src="/src/main.jsx"></script>
+</body>
+
+</html>
