@@ -117,6 +117,10 @@ async def parse_job_description(
         else:
             return JobInfo()
         
+        # Handle list response (Gemini sometimes returns [{}])
+        if isinstance(parsed, list) and len(parsed) > 0:
+            parsed = parsed[0]
+
         if not isinstance(parsed, dict):
             return JobInfo()
         
