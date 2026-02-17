@@ -9,6 +9,16 @@ A production-grade conversational AI agent that answers recruiter questions abou
 
 ---
 
+## Demo
+
+<p align="center">
+  <img src="docs/demo.gif" alt="AI Resume Chatbot Demo" width="720" />
+</p>
+
+> **Try it live →** [chat.rayhanpatel.com](https://chat.rayhanpatel.com)
+
+---
+
 ## Quick Start
 
 ### Prerequisites
