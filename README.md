@@ -1,6 +1,6 @@
 # AI Resume Chatbot
 
-A production-grade conversational AI agent that answers recruiter questions about Rayhan Patel's professional background. Built with FastAPI, Google Gemini 2.0 Flash, and React 18. Uses raw HTTP calls to Gemini (no SDK), semantic memory via Mem0, real-time SSE streaming, and a full observability stack.
+A conversational AI agent that answers recruiter questions about Rayhan Patel's professional background — built with observability, security, and graceful degradation in mind. FastAPI, Google Gemini 2.0 Flash, and React 18. Raw HTTP calls to Gemini (no SDK), semantic memory via Mem0, real-time SSE streaming, and automated LLM-as-a-Judge evaluation.
 
 [![Live Demo](https://img.shields.io/badge/Live-chat.rayhanpatel.com-blue?style=for-the-badge&logo=vercel)](https://chat.rayhanpatel.com)
 [![Backend Status](https://img.shields.io/badge/Backend-Railway-green?style=for-the-badge&logo=railway)](https://rayhan-ai-resume-production-6239.up.railway.app/api/v1/health)
