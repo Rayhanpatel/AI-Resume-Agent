@@ -75,7 +75,7 @@ The frontend proxies `/api` requests to the backend during development (configur
 | Semantic Memory | Cross-session conversational context | Mem0 Cloud API with vector search in `memory.py` |
 | Intent Classification | Filters off-topic queries before LLM calls | Gemini Flash gate with fail-safe default to `job_related` |
 | Prompt Injection Defense | Protects against embedded instructions in job descriptions | `<<<JOB_DESCRIPTION_START>>>` markers with explicit ignore instructions in `prompts.py` |
-| Observability | Full LLM tracing with cost tracking | Langfuse SDK v3 with per-model pricing table in `tracer.py` |
+| Observability | Full LLM tracing, cost tracking, and automated quality evaluation | Langfuse SDK v3 with per-model pricing in `tracer.py` + 5 LLM-as-a-Judge evaluators (Hallucination, Relevance, Conciseness, Helpfulness, Toxicity) via Gemini 2.5 Flash |
 | Rate Limiting | Per-IP sliding window throttle | Cloudflare-aware IP extraction (`CF-Connecting-IP` → `X-Forwarded-For`) |
 | Session Persistence | Backend: Supabase PostgreSQL, Frontend: localStorage | 24h TTL, in-memory `TTLCache` fallback if DB is down |
 | Session Resume | "Welcome back" modal for returning users | `localStorage` check on mount in `useChatSession.js` |
@@ -120,9 +120,10 @@ flowchart LR
     subgraph Ext["External Services"]
         Gemini["Gemini 2.0<br/>Flash"]
         Mem0["Mem0<br/>Cloud"]
-        LF["Langfuse"]
+        LF["Langfuse<br/>+ Evaluators"]
         Supa[("Supabase<br/>PostgreSQL")]
         Sheets["Google<br/>Sheets"]
+        Turn(["Cloudflare<br/>Turnstile"])
     end
 
     U --> CF --> React
@@ -133,12 +134,13 @@ flowchart LR
     Agent -.->|"traces"| LF
     API -.->|"sessions"| Supa
     API -.->|"leads"| Sheets
+    API -.->|"bot check"| Turn
 
     classDef ext fill:#fed7aa,stroke:#ea580c
     classDef be fill:#d1fae5,stroke:#059669
     classDef fe fill:#dbeafe,stroke:#3b82f6
 
-    class Gemini,Mem0,LF,Supa,Sheets ext
+    class Gemini,Mem0,LF,Supa,Sheets,Turn ext
     class API,IC,Agent,VA be
     class React fe
 ```
@@ -188,7 +190,7 @@ sequenceDiagram
 
     API->>L: Create trace
 
-    API->>IC: Classify intent (15s timeout)
+    API->>IC: Classify intent (10s timeout)
     activate IC
     IC->>G: Gemini Flash (temperature=0.1, JSON mode)
     G-->>IC: {intent: "job_related"}
@@ -225,6 +227,10 @@ sequenceDiagram
     API->>S: Log event with metrics (background task)
     API->>L: Flush traces
     deactivate API
+
+    Note over L: Async (server-side)
+    L->>L: Run 5 LLM-as-a-Judge evaluators
+    Note over L: Hallucination · Relevance · Conciseness<br/>Helpfulness · Toxicity
 ```
 
 ### Frontend Component Tree
@@ -350,7 +356,7 @@ Only `GOOGLE_API_KEY` is required. All other services degrade gracefully when th
 │   │   ├── intent.py              # Intent classifier (job_related/off_topic)
 │   │   ├── vertex_auth.py         # Vertex AI OAuth2 + AI Studio fallback
 │   │   ├── memory.py              # Mem0 semantic memory wrapper
-│   │   ├── tracer.py              # Langfuse tracing + cost calculation
+│   │   ├── tracer.py              # Langfuse tracing + cost calculation + evaluator integration
 │   │   ├── supabase_service.py    # Async Supabase client (sessions + events)
 │   │   ├── job_extractor.py       # SSRF-protected URL fetcher
 │   │   ├── job_parser.py          # LLM-powered job description parser
@@ -423,6 +429,10 @@ Every external service wrapper (`MemoryService`, `SupabaseService`, `TracingServ
 
 All string fields in Pydantic request models run through `_strip_html()` (a regex that removes all HTML tags) via `@field_validator(mode="before")`. This runs *before* Pydantic's type coercion, so malicious HTML never reaches business logic. The admin auth endpoint uses `secrets.compare_digest()` for constant-time key comparison, preventing timing-based attacks.
 
+### LLM-as-a-Judge over rule-based evaluation
+
+Traditional metrics (BLEU, ROUGE) measure surface-level text overlap and fail on open-ended conversational responses. We use Langfuse's LLM-as-a-Judge evaluators with Gemini 2.5 Flash scoring every trace across 5 dimensions (Hallucination, Relevance, Conciseness, Helpfulness, Toxicity). This runs server-side in Langfuse at 100% sampling — zero backend code changes, zero latency impact on users, and the evaluation model is different from the generation model to avoid self-bias.
+
 ---
 
 ## Deployment
@@ -454,7 +464,7 @@ All string fields in Pydantic request models run through `_strip_html()` (a rege
 | pydantic | ≥2.10 | Request/response validation + input sanitization |
 | pydantic-settings | ≥2.7 | Environment variable loading |
 | mem0ai | ≥1.0.2 | Semantic memory API client |
-| langfuse | ≥3.12 | LLM observability SDK |
+| langfuse | ≥3.12 | LLM observability + LLM-as-a-Judge evaluation |
 | supabase | ≥2.27 | Async PostgreSQL client |
 | tenacity | ≥8.2 | Retry with exponential backoff |
 | google-auth | ≥2.27 | Vertex AI OAuth2 token management |

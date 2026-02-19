@@ -195,7 +195,7 @@ class AgentService:
         except Exception as e:
             logger.warning(f"Agent error (non-retryable): {e}")
             return {
-                "response": "I apologize, but I'm having trouble responding right now. Please try again or contact Rayhan directly at rayhan.patel@outlook.com.",
+                "response": "I apologize, but I'm having trouble responding right now. Please try again or contact Rayhan directly at rayhanbp@umd.edu.",
                 "error": str(e),
                 "latency_ms": int((time.time() - start_time) * 1000)
             }
@@ -286,4 +286,4 @@ class AgentService:
 
         except Exception as e:
             logger.warning(f"Stream error: {e}")
-            yield f"I apologize, but I'm having trouble responding right now. Please try again or contact Rayhan directly at rayhan.patel@outlook.com."
+            yield f"I apologize, but I'm having trouble responding right now. Please try again or contact Rayhan directly at rayhanbp@umd.edu."

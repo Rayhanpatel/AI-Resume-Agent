@@ -132,7 +132,7 @@ async def chat(
     except RetryError:
         logger.warning("All retries exhausted for agent_service.respond")
         agent_result = {
-            "response": "I apologize, but I'm having trouble responding right now. Please try again or contact Rayhan directly at rayhan.patel@outlook.com.",
+            "response": "I apologize, but I'm having trouble responding right now. Please try again or contact Rayhan directly at rayhanbp@umd.edu.",
             "latency_ms": int((time.time() - start_time) * 1000)
         }
     

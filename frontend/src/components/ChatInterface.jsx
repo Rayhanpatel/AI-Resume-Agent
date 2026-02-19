@@ -132,7 +132,7 @@ function ChatInterface({
                             <Linkedin className="w-4 h-4" />
                         </a>
                         <a
-                            href="mailto:rayhan.patel@outlook.com"
+                            href="mailto:rayhanbp@umd.edu"
                             className="hidden sm:flex p-2 rounded-lg hover:bg-white/10 text-gray-400 hover:text-primary-400 transition-all hover:scale-110"
                             title="Email"
                             aria-label="Email Rayhan"

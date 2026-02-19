@@ -94,7 +94,8 @@
             "highlights": [
                 "Engineered high-throughput FastAPI microservices on GCP, optimizing serverless concurrency for scalable AI-driven applications.",
                 "Architected a G-Eval framework to quantify hallucination rates, implementing PII guardrails to ensure enterprise-grade data security.",
-                "Contributed to open-source frameworks Mem0 and EmbedChain by adding memory storage features for agentic workflows, improving reproducibility in multi-turn tasks."
+                "Contributed to open-source frameworks Mem0 and EmbedChain by adding memory storage features for agentic workflows, improving reproducibility in multi-turn tasks.",
+                "Built AI application converting electronic health records (EHR) into medical codes, reducing documentation errors and enabling healthcare professionals to focus on patient care."
             ],
             "keywords": [
                 "FastAPI",
@@ -145,6 +146,9 @@
             "organization": "Pear VC + OpenAI Hackathon",
             "position": "Finalist (2024)",
             "summary": "Built an intent-aware RAG agent with measurable accuracy gains targeting specific user queries.",
+            "highlights": [
+                "Built AI agent system for e-commerce application at the hackathon in San Francisco."
+            ],
             "meta": {
                 "tags": [
                     "hackathon",
@@ -283,15 +287,15 @@
     "projects": [
         {
             "name": "AI Resume Chatbot",
-            "description": "Context-aware AI agent that answers recruiter questions about my professional background via voice/text",
+            "description": "Context-aware AI agent that answers recruiter questions about my professional background via real-time streaming text",
             "url": "https://chat.rayhanpatel.com",
             "highlights": [
-                "Leveraged Gemini 1.5 Pro's 2M token context window to ingest full resume data, eliminating the need for RAG complexity while maintaining 100% recall.",
-                "Engineered production infrastructure integrating 5+ services including Supabase (session persistence), Langfuse (LLM tracing), and Mem0 (semantic user memory).",
+                "Leveraged Gemini 2.0 Flash's 1M token context window to ingest full resume data, eliminating the need for RAG complexity while maintaining 100% recall.",
+                "Engineered production infrastructure integrating 5+ services including Supabase (session persistence), Langfuse (LLM tracing + 5 automated LLM-as-a-Judge evaluators), and Mem0 (semantic user memory).",
                 "Fixed critical async deadlocks by rewriting the Gemini SDK with raw HTTP/2 and implementing a custom thread-safe TTLCache to optimize concurrency."
             ],
             "keywords": [
-                "Gemini 1.5 Pro",
+                "Gemini 2.0 Flash",
                 "FastAPI",
                 "React",
                 "HTTP/2",
@@ -316,7 +320,7 @@
                 "integrations_detail": {
                     "Railway": "Serverless container deployment platform for auto-scaling the Dockerized FastAPI backend.",
                     "Supabase": "Managed PostgreSQL for persisting chat sessions and user metadata.",
-                    "Langfuse": "Open-source LLM observability platform for tracing generation latency and cost per session.",
+                    "Langfuse": "Open-source LLM observability platform for tracing generation latency, cost per session, and automated quality evaluation via 5 LLM-as-a-Judge evaluators (Hallucination, Relevance, Conciseness, Helpfulness, Toxicity).",
                     "Mem0": "Semantic memory layer for recalling user preferences across sessions."
                 },
                 "context_strategy": "Instead of RAG (which can lose context), I injected the full resume into the system prompt, leveraging long-context capabilities for superior answer quality.",
@@ -325,7 +329,7 @@
             },
             "scraped_context": {
                 "site_description": "Interactive AI chatbot to learn about Rayhan's professional background, ML experience, and projects. Can answer questions about ML expertise, projects, and more!",
-                "readme": "# AI Resume Chatbot\n\n![Build Status](https://img.shields.io/badge/Status-Production-success)\n![Python](https://img.shields.io/badge/Python-3.11-3776AB?logo=python&logoColor=white)\n![FastAPI](https://img.shields.io/badge/FastAPI-0.109-009688?logo=fastapi&logoColor=white)\n![React](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=black)\n![License](https://img.shields.io/badge/License-MIT-blue.svg)\n\n**AI Resume Chatbot** is a production-grade conversational agent that allows recruiters and hiring managers to interact with my professional background using natural language. It leverages Google's Gemini 1.5 Pro model with long-context capabilities.\n\n---\n\n## \ud83d\ude80 Live Demo\n\n\ud83d\udc49 **Try it here:** [chat.rayhanpatel.com](https://chat.rayhanpatel.com)\n\n---\n\n## \u2728 Key Features\n\n- **Context-Aware Q&A**: Answers questions about my experience, skills, and projects with high accuracy.\n- **Real-time Streaming**: Uses Server-Sent Events (SSE) for token-by-token streaming responses.\n- **Voice Interaction**: Supports voice input for a seamless conversational experience.\n- **Security & Rate Limiting**: Implements robust sliding-window rate limiting (In-Memory) and SSRF protection.\n- **Optimized Performance**: Backend rewritten with raw `httpx` and custom async TTL caching.\n\n## \ud83c\udfd7\ufe0f Architecture\n\nThe system follows a modern monolithic architecture:\n\n- **Frontend**: React (Vite) + TailwindCSS for a responsive, chat-like UI.\n- **Backend**: FastAPI (Python) handling API requests and session management.\n- **LLM Engine**: Google Gemini 1.5 Pro accessed via raw HTTP/2.\n- **Infrastructure**: Dockerized service deployed on Railway.\n\n## \ud83d\udee0\ufe0f Tech Stack\n\n- **Languages**: Python, TypeScript\n- **Frameworks**: FastAPI, React\n- **AI/ML**: Gemini 1.5 Pro\n- **DevOps**: Docker, GitHub Actions, Railway\n\n## \ud83c\udf1f Engineering Highlights\n\n- **Solved Async Deadlocks**: Fixed critical thread-starvation by rewriting integration using `httpx` + `asyncio`.\n- **Latency Reduction**: Achieved sub-200ms TTFB via aggressive caching.\n- **Production Readiness**: detailed logging, error handling, and security middlewares.\n\n---\n\nBuilt by [Rayhan Patel](https://github.com/Rayhanpatel)",
+                "readme": "# AI Resume Chatbot\n\n![Build Status](https://img.shields.io/badge/Status-Production-success)\n![Python](https://img.shields.io/badge/Python-3.11-3776AB?logo=python&logoColor=white)\n![FastAPI](https://img.shields.io/badge/FastAPI-0.109-009688?logo=fastapi&logoColor=white)\n![React](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=black)\n![License](https://img.shields.io/badge/License-MIT-blue.svg)\n\n**AI Resume Chatbot** is a production-grade conversational agent that allows recruiters and hiring managers to interact with my professional background using natural language. It leverages Google's Gemini 2.0 Flash model with long-context capabilities.\n\n---\n\n## \ud83d\ude80 Live Demo\n\n\ud83d\udc49 **Try it here:** [chat.rayhanpatel.com](https://chat.rayhanpatel.com)\n\n---\n\n## \u2728 Key Features\n\n- **Context-Aware Q&A**: Answers questions about my experience, skills, and projects with high accuracy.\n- **Real-time Streaming**: Uses Server-Sent Events (SSE) for token-by-token streaming responses.\n- **Automated Quality Evaluation**: 5 LLM-as-a-Judge evaluators run on every conversation via Langfuse.\n- **Security & Rate Limiting**: Implements robust sliding-window rate limiting (In-Memory) and SSRF protection.\n- **Optimized Performance**: Backend rewritten with raw `httpx` and custom async TTL caching.\n\n## \ud83c\udfd7\ufe0f Architecture\n\nThe system follows a modern monolithic architecture:\n\n- **Frontend**: React (Vite) + TailwindCSS for a responsive, chat-like UI.\n- **Backend**: FastAPI (Python) handling API requests and session management.\n- **LLM Engine**: Google Gemini 2.0 Flash accessed via raw HTTP/2.\n- **Infrastructure**: Dockerized service deployed on Railway.\n\n## \ud83d\udee0\ufe0f Tech Stack\n\n- **Languages**: Python, TypeScript\n- **Frameworks**: FastAPI, React\n- **AI/ML**: Gemini 2.0 Flash\n- **DevOps**: Docker, GitHub Actions, Railway\n\n## \ud83c\udf1f Engineering Highlights\n\n- **Solved Async Deadlocks**: Fixed critical thread-starvation by rewriting integration using `httpx` + `asyncio`.\n- **Latency Reduction**: Achieved sub-200ms TTFB via aggressive caching.\n- **Production Readiness**: detailed logging, error handling, and security middlewares.\n\n---\n\nBuilt by [Rayhan Patel](https://github.com/Rayhanpatel)",
                 "repo_url": "https://github.com/Rayhanpatel/AI-Resume-Agent"
             }
         },
@@ -392,6 +396,7 @@
             "description": "Natural Language to SQL converter using RAG and LLMs",
             "url": "https://github.com/Rayhanpatel/English2SQL",
             "highlights": [
+                "Earned highest grade among all students in batch for final year thesis project.",
                 "Implemented NL-to-SQL over relational/star schemas; applied RAG + prompt optimization on a 120-query eval set for a measurable accuracy lift.",
                 "Achieved +9% exact-match accuracy on evaluation suite; built clean API for offline/online testing.",
                 "Exposed REST endpoints with FastAPI and Docker; added unit tests and regression scripts for reliable, end-to-end evaluation."
