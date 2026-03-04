@@ -5,7 +5,7 @@
         "email": "rayhanbp@umd.edu",
         "phone": "+1 (650) 521-4222",
         "url": "https://chat.rayhanpatel.com",
-        "summary": "Applied AI Engineer specializing in production LLM systems, RAG pipelines, and scalable inference infrastructure. Experienced in building evaluation-driven GenAI products with cost-efficient deployment. Skilled in Python (AsyncIO), GCP, and distributed systems.",
+        "summary": "Applied AI Engineer building on-device and edge AI systems — from VLM-powered spatial reasoning on Apple Neural Engine to hybrid edge-cloud function-calling routers. Ships production AI with rigorous evaluation: 10-service backend with 5 LLM-as-a-Judge evaluators, zero SDKs. Founding engineer experience building conversational AI and healthcare ML products. MS in Applied Machine Learning at UMD.",
         "location": {
             "city": "College Park",
             "region": "MD",
@@ -24,7 +24,21 @@
             }
         ],
         "meta": {
-            "visa": "F-1 CPT (Summer 2026)",
+            "visa_status": "F-1 Student Visa",
+            "work_authorization": {
+                "current": "F-1 CPT (Curricular Practical Training)",
+                "availability": "Summer 2026 (full-time CPT eligible)",
+                "post_graduation": "OPT (12 months) + STEM OPT Extension (24 months) = up to 36 months post-graduation work authorization",
+                "employer_faq": {
+                    "does_employer_sponsor": "No. CPT is NOT employer-sponsored. The university (UMD) handles all authorization. Zero cost to the employer.",
+                    "what_employer_needs_to_do": "Provide an official offer letter on company letterhead with job title, start/end dates, hours/week, and job description. That's it.",
+                    "how_it_works": "Student applies through university DSO (Designated School Official). DSO endorses Form I-20 with CPT authorization specific to that employer, location, and dates. Authorization must be approved BEFORE start date.",
+                    "i9_verification": "CPT-endorsed Form I-20 serves as valid work authorization for I-9 purposes. Standard I-9 process applies.",
+                    "full_time_vs_part_time": "Full-time CPT (>20 hrs/week) allowed during summer/breaks. Part-time CPT (≤20 hrs/week) allowed during academic terms.",
+                    "does_cpt_affect_future_status": "Part-time CPT has zero impact on OPT eligibility. Full-time CPT under 12 months also preserves full OPT eligibility.",
+                    "ssn": "F-1 students with CPT authorization are eligible for an SSN. Can apply once offer letter is received."
+                }
+            },
             "grad_date": "May 2027",
             "relocation": "Open to relocation nationwide"
         },
@@ -35,29 +49,31 @@
     "education": [
         {
             "institution": "University of Maryland",
-            "url": "https://umd.edu/",
+            "url": "https://cmns.umd.edu/graduate/science-academy/machine-learning",
             "area": "Applied Machine Learning",
             "studyType": "Master of Science",
-            "startDate": "2024-08",
+            "startDate": "2025-08",
             "endDate": "2027-05",
-            "courses": [
-                "Machine Learning",
-                "Statistical Learning",
-                "Algorithms",
-                "Time Series Analysis",
-                "Optimization",
-                "Distributed Systems (Spark/PySpark)",
-                "Data Engineering (ETL, Pipelines)",
-                "Probability & Statistics",
-                "Linear Algebra"
+            "program_detail": "30-credit, 10-course, non-thesis professional MS program through the Science Academy in CMNS. 6 core + 4 elective courses. Currently 2nd semester, full-time.",
+            "core_courses": [
+                "MSML601: Probability and Statistics",
+                "MSML603: Principles of Machine Learning",
+                "MSML604: Introduction to Optimization",
+                "MSML605: Computing Systems for Machine Learning",
+                "MSML606: Algorithms and Data Structures for ML"
             ],
-            "meta": {
-                "tags": [
-                    "ml",
-                    "core",
-                    "datascience"
-                ]
-            }
+            "elective_courses_available": [
+                "MSML610: Advanced Machine Learning",
+                "MSML612: Deep Learning",
+                "MSML621: Machine Learning for Wireless Communications",
+                "MSML640: Computer Vision",
+                "MSML641: Natural Language Processing",
+                "MSML642: Robotics",
+                "MSML650: Cloud Computing",
+                "MSML651: Big Data Analytics",
+                "MSML699: Independent Study in Machine Learning"
+            ],
+            "electives_remaining": 4
         },
         {
             "institution": "B.S. Abdur Rahman Crescent Institute of Science & Technology",
@@ -67,94 +83,72 @@
             "startDate": "2020-08",
             "endDate": "2024-05",
             "location": "Chennai, India",
-            "courses": [
-                "Data Structures & Algorithms",
-                "Operating Systems",
-                "Databases (SQL)",
+            "classification": "First Class",
+            "total_credits": 177,
+            "relevant_courses": [
+                "Artificial Intelligence and Machine Learning",
+                "Data Structures",
+                "Object Oriented Programming",
                 "Computer Networks",
-                "Calculus",
-                "Linear Algebra",
-                "Probability"
+                "Operating Systems",
+                "Database Management Systems",
+                "Distributed Computing",
+                "Big Data Analytics",
+                "Cloud Computing",
+                "Compiler Design",
+                "Compiler Laboratory",
+                "Graph Theory and Application",
+                "Software Engineering",
+                "Software Project Management",
+                "Network Security and Cryptography",
+                "Mobile Application Development Laboratory",
+                "Advanced Programming for Data Science with Python",
+                "Web Analytics and Social Media Mining",
+                "Scripting Languages",
+                "Theory of Computation"
             ],
-            "meta": {
-                "tags": [
-                    "cs",
-                    "core"
-                ]
+            "key_projects_during_btech": {
+                "semester_8_project": "English2SQL (12-credit final year project, grade: S/10)",
+                "semester_7_internship": "Time-Series Forecasting with LSTM (1-credit internship, grade: S/10)",
+                "semester_7_compiler": "Compiler Construction Lab — Lex, Yacc, three-address code, optimizer (Compiler Design course + lab)",
+                "neurips_paper": "NeurIPS 2023 MiML Workshop paper — co-authored during B.Tech (2023)"
             }
         }
     ],
     "work": [
         {
             "company": "Euler AI",
-            "position": "Software Engineer (Full-time)",
+            "position": "Founding ML/Software Engineer (Full-time)",
             "startDate": "2025-03",
             "endDate": "2025-07",
             "location": "Remote",
             "highlights": [
-                "Engineered high-throughput FastAPI microservices on GCP, optimizing serverless concurrency for scalable AI-driven applications.",
-                "Architected a G-Eval framework to quantify hallucination rates, implementing PII guardrails to ensure enterprise-grade data security.",
-                "Contributed to open-source frameworks Mem0 and EmbedChain by adding memory storage features for agentic workflows, improving reproducibility in multi-turn tasks.",
-                "Built AI application converting electronic health records (EHR) into medical codes, reducing documentation errors and enabling healthcare professionals to focus on patient care."
+                "Built an e-commerce conversational agent end-to-end as a founding engineer: designed the intent router, FastAPI microservices, integrated a reranker, and implemented PII guardrails for secure data handling.",
+                "Designed a healthcare AI system to generate medical codes from electronic health records (EHR), enhancing productivity for healthcare professionals.",
+                "Implemented an LLM-as-a-judge evaluation pipeline using G-Eval to assess response quality in batch, enabling systematic hallucination measurement across the product.",
+                "Contributed to open-source frameworks Mem0 and EmbedChain by adding memory storage features for agentic workflows, improving reproducibility in multi-turn tasks."
             ],
             "keywords": [
                 "FastAPI",
                 "GCP",
                 "G-Eval",
                 "PII Guardrails",
+                "Intent Router",
+                "Reranker",
                 "Mem0",
                 "EmbedChain",
+                "LangChain",
                 "Agents",
-                "Open Source"
+                "Open Source",
+                "LLM-as-a-Judge",
+                "Founding Engineer"
             ],
-            "meta": {
-                "tags": [
-                    "backend",
-                    "ai",
-                    "sre",
-                    "opensource"
-                ],
-                "priority": 10,
-                "metrics": {
-                    "latency": "optimized",
-                    "security": "PII guardrails"
-                }
-            },
             "context": {
-                "technical_challenge": "The main bottleneck was Python's Global Interpreter Lock (GIL) blocking high-concurrency requests in standard synchronous frameworks. We also faced 'cold start' latency on GCP Cloud Run.",
-                "tech_stack_selection": "Chose FastAPI over Flask for native AsyncIO support, which is critical for I/O-bound LLM operations. Used Google Vertex AI for managed inference scaling.",
-                "tradeoffs": "We traded strict Pydantic typing (slower dev time) for runtime safety, which prevented 90% of data validation bugs in production.",
-                "impact_expanded": "The 25% latency reduction directly improved user retention during the pilot phase, as users would abandon the chat if responses took >3s.",
-                "key_achievement_detail": "I rewrote the internal Gemini SDK wrapper to use `httpx` instead of the blocking `google-genai` library, which solved a critical thread-starvation issue under load.",
-                "verification_status": "Verified: Internal architectural details consistent with high-throughput system design patterns."
-            }
-        }
-    ],
-    "volunteer": [
-        {
-            "organization": "Esports (Valorant)",
-            "position": "Team Leader",
-            "summary": "Led team strategies and coordinated practice schedules.",
-            "meta": {
-                "tags": [
-                    "leadership",
-                    "extracurricular"
-                ]
-            }
-        },
-        {
-            "organization": "Pear VC + OpenAI Hackathon",
-            "position": "Finalist (2024)",
-            "summary": "Built an intent-aware RAG agent with measurable accuracy gains targeting specific user queries.",
-            "highlights": [
-                "Built AI agent system for e-commerce application at the hackathon in San Francisco."
-            ],
-            "meta": {
-                "tags": [
-                    "hackathon",
-                    "ai",
-                    "rag"
-                ]
+                "product": "Two products as a founding engineer: (1) E-commerce conversational agent — intent-based routing to specialized handlers for customer queries about products, orders, and support. (2) Healthcare AI system — generated medical codes from electronic health records (EHR) to enhance clinician productivity. Owned both the ML pipeline (intent classification, reranking, G-Eval, EHR coding) and the backend infrastructure (FastAPI services, GCP deployment, PII guardrails).",
+                "technical_challenge": "Python's GIL blocking high-concurrency requests in synchronous frameworks. Cold start latency on GCP Cloud Run for LLM-serving endpoints.",
+                "tech_stack_selection": "Chose FastAPI over Flask for native AsyncIO support, critical for I/O-bound LLM operations. Used Google Vertex AI for managed inference.",
+                "eval_pipeline": "Implemented G-Eval (LLM-as-a-judge) for offline batch evaluation of response quality — measuring coherence, relevance, and faithfulness across production queries.",
+                "tenure_context": "Left after 4 months to start MS in Applied Machine Learning at UMD (Aug 2025). Company is still operating. Pre-MS founding role — joined to gain industry AI/ML experience before graduate school. Clean exit on good terms."
             }
         }
     ],
@@ -164,25 +158,20 @@
             "publisher": "NeurIPS 2023 MiML Workshop",
             "releaseDate": "2023-12",
             "url": "https://arxiv.org/pdf/2312.06652",
-            "summary": "Fine-tuned GPT-3.5 on 10k curated samples to align with non-Western values; benchmarked vs. Llama-2 using G-Eval.",
-            "meta": {
-                "tags": [
-                    "research",
-                    "nlp",
-                    "alignment",
-                    "llm"
-                ]
-            },
+            "authors": [
+                "Shabaz Patel",
+                "Hassan Kane",
+                "Rayhan Patel"
+            ],
+            "summary": "Proposed a comprehensive framework for building domain-specific LLM systems aligned with Islamic values. Evaluated prompt engineering (zero-shot, few-shot, instruction-based), RAG over 54k Hadith dataset, and fine-tuning GPT-3.5 on IslamQA. Fine-tuning on Hadiths (10k) + IslamQA (400) achieved best F1 of 0.402 with 0.078 embedding distance.",
+            "abstract": "Large Language Models (LLMs) have demonstrated remarkable performance across numerous natural language understanding use cases. However, this impressive performance comes with inherent limitations, such as the tendency to perpetuate stereotypical biases or fabricate non-existent facts. In the context of Islam and its representation, accurate and factual representation of its beliefs and teachings rooted in the Quran and Sunnah is key. This work focuses on the challenge of building domain-specific LLMs faithful to the Islamic worldview and proposes ways to build and evaluate such systems. Firstly, we define this open-ended goal as a technical problem and propose various solutions. Subsequently, we critically examine known challenges inherent to each approach and highlight evaluation methodologies that can be used to assess such systems.",
             "context": {
-                "research_premise": "Existing LLMs like GPT-4 often exhibit Western bias. We wanted to test if prompt engineering + fine-tuning could align a model with a specific non-Western value system (Islamic Worldview).",
-                "methodology_detail": "Curated a dataset of 10k pairs (Question, Ideal Answer). Used Low-Rank Adaptation (LoRA) for efficient fine-tuning of Llama-2 on consumer hardware.",
-                "eval_strategy": "Designed a custom G-Eval rubric where GPT-4 acted as the judge, scoring responses on 'Faithfulness to Guidelines' vs 'Generic Helpfulness'.",
-                "verification_status": "Verified: Abstract confirms 'Islamic Worldview' alignment goal. Specific methods (LoRA/G-Eval) align with workshop standards."
-            },
-            "scraped_context": {
-                "abstract": "Large Language Models (LLMs) have demonstrated remarkable performance across numerous natural language understanding use cases. However, this impressive performance comes with inherent limitations, such as the tendency to perpetuate stereotypical biases or fabricate non-existent facts. In the context of Islam and its representation, accurate and factual representation of its beliefs and teachings rooted in the Quran and Sunnah is key. This work focuses on the challenge of building domain-specific LLMs faithful to the Islamic worldview and proposes ways to build and evaluate such systems. Firstly, we define this open-ended goal as a technical problem and propose various solutions. Subsequently, we critically examine known challenges inherent to each approach and highlight evaluation methodologies that can be used to assess such systems.",
-                "readme": "# Domain-Specific LLMs Faithful to the Islamic Worldview\n\nThis research project explores the development and alignment of Large Language Models (LLMs) to adhere to specific ethical and cultural frameworks, specifically the Islamic worldview.\n\n## \ud83d\udcc4 Abstract\n\nLarge Language Models (LLMs) have demonstrated remarkable performance across numerous natural language understanding use cases. However, this impressive performance comes with inherent limitations, such as the tendency to perpetuate stereotypical biases or fabricate non-existent facts. In the context of Islam and its representation, accurate and factual representation of its beliefs and teachings rooted in the Quran and Sunnah is key. This work focuses on the challenge of building domain-specific LLMs faithful to the Islamic worldview and proposes ways to build and evaluate such systems. Firstly, we define this open-ended goal as a technical problem and propose various solutions. Subsequently, we critically examine known challenges inherent to each approach and highlight evaluation methodologies that can be used to assess such systems.\n\n## \ud83e\uddea Methodology\n\n- **Dataset Curation**: Created a specialized dataset of Q&A pairs derived from authoritative Islamic texts and scholarly interpretations.\n- **Fine-Tuning**: Employed Low-Rank Adaptation (LoRA) to fine-tune Llama-2-7b and Llama-2-13b models on the curated dataset.\n- **Evaluation**: Developed a custom G-Eval rubric utilizing GPT-4 as a judge to assess model outputs on:\n    - **Faithfulness**: Adherence to the source material and Islamic guidelines.\n    - **Helpfulness**: Relevance and clarity of the answer.\n    - **Safety**: Avoidance of harmful or biased content.\n\n## \ud83d\udcca Results\n\nInitial benchmarks show significant improvement in alignment scores compared to base models, with reduced hallucination rates on domain-specific queries.\n\n## \ud83d\udd17 Paper\n\nPreprint available on ArXiv: [https://arxiv.org/abs/2312.06652](https://arxiv.org/abs/2312.06652)",
-                "repo_url": "https://github.com/Rayhanpatel/domain-specific-llm"
+                "research_premise": "Existing LLMs exhibit Western bias and hallucinate on domain-specific religious content. Investigated whether prompt engineering, RAG, and fine-tuning could align models with the Islamic worldview.",
+                "methodology_detail": "Evaluated GPT-3.5, GPT-4, Llama-7B, and Llama-70B across zero-shot, few-shot, and instruction-based prompting. Built RAG system over 54k Hadith dataset using OpenAI ada-002 embeddings. Fine-tuned GPT-3.5 turbo on Hadiths (10k) and IslamQA (400 questions).",
+                "eval_strategy": "Used BERTScore (precision, recall, F1) and embedding distance (cosine similarity via ada-002) on 100 randomly selected IslamQA questions, comparing model responses to scholar-generated answers.",
+                "key_results": "Few-shot prompting consistently best across all models. Fine-tuning GPT-3.5 on Hadiths + IslamQA achieved F1=0.402, best overall. RAG alone did not show significant improvement over prompting. Paper also implemented guardrails using RAIL (Reliable AI Markup Language).",
+                "my_contribution": "Developed the evaluation frameworks to measure alignment and accuracy (BERTScore + embedding distance metrics). Presented the research at the NeurIPS 2023 MiML Workshop.",
+                "author_position": "3rd of 3 authors. Research conducted during B.Tech (2023), published December 2023."
             }
         }
     ],
@@ -194,13 +183,10 @@
                 "Java",
                 "TypeScript",
                 "SQL",
+                "C",
                 "C++",
-                "Bash",
-                "Go"
-            ],
-            "meta": {
-                "category": "core"
-            }
+                "Bash"
+            ]
         },
         {
             "name": "GenAI & LLM",
@@ -212,11 +198,27 @@
                 "Guardrails",
                 "Agents",
                 "Prompt Engineering",
-                "LlamaIndex"
-            ],
-            "meta": {
-                "category": "ai"
-            }
+                "Function Calling",
+                "On-Device LLM",
+                "Cactus SDK"
+            ]
+        },
+        {
+            "name": "Computer Vision & Edge AI",
+            "keywords": [
+                "Grounding DINO",
+                "SAM2",
+                "Depth Anything V2",
+                "Vision-Language Models (VLM)",
+                "Zero-Shot Detection",
+                "Apple Neural Engine",
+                "Liquid LFM 2.5",
+                "On-Device Inference",
+                "Spatial Reasoning",
+                "ONNX Runtime",
+                "FP16 Quantization",
+                "Qualcomm QNN"
+            ]
         },
         {
             "name": "Machine Learning",
@@ -228,12 +230,8 @@
                 "Pandas",
                 "NumPy",
                 "OpenCV",
-                "XGBoost",
-                "SHAP"
-            ],
-            "meta": {
-                "category": "ml"
-            }
+                "XGBoost"
+            ]
         },
         {
             "name": "Cloud & DevOps",
@@ -241,18 +239,14 @@
                 "GCP",
                 "AWS",
                 "Docker",
-                "Kubernetes",
-                "Terraform",
                 "GitHub Actions",
                 "CI/CD",
                 "FastAPI",
                 "Nginx",
                 "Raspberry Pi",
-                "Linux"
-            ],
-            "meta": {
-                "category": "ops"
-            }
+                "Linux",
+                "WebSockets"
+            ]
         },
         {
             "name": "Concepts",
@@ -262,11 +256,10 @@
                 "Event-Driven Architecture",
                 "Microservices",
                 "OOP",
-                "Data Structures"
-            ],
-            "meta": {
-                "category": "theory"
-            }
+                "Data Structures",
+                "Edge-Cloud Hybrid Architecture",
+                "Compiler Design"
+            ]
         },
         {
             "name": "Experimentation & Research",
@@ -278,97 +271,124 @@
                 "Metrics (F1/ROC/MAE)",
                 "Visualization (Matplotlib)",
                 "Paper Writing"
-            ],
-            "meta": {
-                "category": "research"
-            }
+            ]
         }
     ],
     "projects": [
         {
-            "name": "AI Resume Chatbot",
-            "description": "Context-aware AI agent that answers recruiter questions about my professional background via real-time streaming text",
-            "url": "https://chat.rayhanpatel.com",
+            "name": "PathGuard Edge",
+            "description": "On-device spatial safety intelligence for construction workers — dual-pipeline edge AI system fusing VLM scene understanding with real-time spatial hazard detection",
+            "url": "https://github.com/Rayhanpatel/PathGuard",
+            "date": "2026-02",
             "highlights": [
-                "Leveraged Gemini 2.0 Flash's 1M token context window to ingest full resume data, eliminating the need for RAG complexity while maintaining 100% recall.",
-                "Engineered production infrastructure integrating 5+ services including Supabase (session persistence), Langfuse (LLM tracing + 5 automated LLM-as-a-Judge evaluators), and Mem0 (semantic user memory).",
-                "Fixed critical async deadlocks by rewriting the Gemini SDK with raw HTTP/2 and implementing a custom thread-safe TTLCache to optimize concurrency."
+                "Architected a dual-pipeline edge AI system: a Cactus Narrator running Liquid LFM 2.5 VLM (1.6B params) on-device for scene transcription, feeding dynamic prompts into a spatial reasoning HUD.",
+                "Built a real-time hazard detection pipeline fusing Grounding DINO (zero-shot detection), SAM2 (pixel-precise segmentation), and Depth Anything V2 (distance estimation) inside an egocentric corridor ROI.",
+                "Engineered a corridor occupancy metric and state machine (Clear → Obstacle Ahead → Trip Risk) with audio alerts, outputting enriched telemetry JSON with physical risk events for site managers."
             ],
             "keywords": [
-                "Gemini 2.0 Flash",
-                "FastAPI",
-                "React",
-                "HTTP/2",
-                "AsyncIO",
-                "Railway",
-                "Supabase",
-                "Langfuse",
-                "Mem0"
+                "Edge AI",
+                "VLM",
+                "Grounding DINO",
+                "SAM2",
+                "Depth Anything V2",
+                "Cactus SDK",
+                "Liquid LFM 2.5",
+                "Streamlit",
+                "Python",
+                "Computer Vision",
+                "Spatial Reasoning",
+                "On-Device Inference"
             ],
-            "meta": {
-                "tags": [
-                    "ai",
-                    "fullstack",
-                    "backend",
-                    "integrations"
-                ],
-                "priority": 10
-            },
             "context": {
-                "technical_challenge": "Managing concurrent user sessions and ensuring thread safety without external dependencies like Redis. Solved by implementing a custom locking mechanism for the in-memory rate limiter.",
-                "architecture_decision": "Chose a monolithic FastAPI architecture over microservices to reduce deployment complexity and cold start times on Railway. Used raw HTTP/2 for non-blocking I/O.",
-                "integrations_detail": {
-                    "Railway": "Serverless container deployment platform for auto-scaling the Dockerized FastAPI backend.",
-                    "Supabase": "Managed PostgreSQL for persisting chat sessions and user metadata.",
-                    "Langfuse": "Open-source LLM observability platform for tracing generation latency, cost per session, and automated quality evaluation via 5 LLM-as-a-Judge evaluators (Hallucination, Relevance, Conciseness, Helpfulness, Toxicity).",
-                    "Mem0": "Semantic memory layer for recalling user preferences across sessions."
-                },
-                "context_strategy": "Instead of RAG (which can lose context), I injected the full resume into the system prompt, leveraging long-context capabilities for superior answer quality.",
-                "future_work": "Planning to add semantic caching for frequent queries to reduce API costs.",
-                "verification_status": "Verified: Live site (chat.rayhanpatel.com) is active and running React/Vite frontend as claimed."
-            },
-            "scraped_context": {
-                "site_description": "Interactive AI chatbot to learn about Rayhan's professional background, ML experience, and projects. Can answer questions about ML expertise, projects, and more!",
-                "readme": "# AI Resume Chatbot\n\n![Build Status](https://img.shields.io/badge/Status-Production-success)\n![Python](https://img.shields.io/badge/Python-3.11-3776AB?logo=python&logoColor=white)\n![FastAPI](https://img.shields.io/badge/FastAPI-0.109-009688?logo=fastapi&logoColor=white)\n![React](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=black)\n![License](https://img.shields.io/badge/License-MIT-blue.svg)\n\n**AI Resume Chatbot** is a production-grade conversational agent that allows recruiters and hiring managers to interact with my professional background using natural language. It leverages Google's Gemini 2.0 Flash model with long-context capabilities.\n\n---\n\n## \ud83d\ude80 Live Demo\n\n\ud83d\udc49 **Try it here:** [chat.rayhanpatel.com](https://chat.rayhanpatel.com)\n\n---\n\n## \u2728 Key Features\n\n- **Context-Aware Q&A**: Answers questions about my experience, skills, and projects with high accuracy.\n- **Real-time Streaming**: Uses Server-Sent Events (SSE) for token-by-token streaming responses.\n- **Automated Quality Evaluation**: 5 LLM-as-a-Judge evaluators run on every conversation via Langfuse.\n- **Security & Rate Limiting**: Implements robust sliding-window rate limiting (In-Memory) and SSRF protection.\n- **Optimized Performance**: Backend rewritten with raw `httpx` and custom async TTL caching.\n\n## \ud83c\udfd7\ufe0f Architecture\n\nThe system follows a modern monolithic architecture:\n\n- **Frontend**: React (Vite) + TailwindCSS for a responsive, chat-like UI.\n- **Backend**: FastAPI (Python) handling API requests and session management.\n- **LLM Engine**: Google Gemini 2.0 Flash accessed via raw HTTP/2.\n- **Infrastructure**: Dockerized service deployed on Railway.\n\n## \ud83d\udee0\ufe0f Tech Stack\n\n- **Languages**: Python, TypeScript\n- **Frameworks**: FastAPI, React\n- **AI/ML**: Gemini 2.0 Flash\n- **DevOps**: Docker, GitHub Actions, Railway\n\n## \ud83c\udf1f Engineering Highlights\n\n- **Solved Async Deadlocks**: Fixed critical thread-starvation by rewriting integration using `httpx` + `asyncio`.\n- **Latency Reduction**: Achieved sub-200ms TTFB via aggressive caching.\n- **Production Readiness**: detailed logging, error handling, and security middlewares.\n\n---\n\nBuilt by [Rayhan Patel](https://github.com/Rayhanpatel)",
-                "repo_url": "https://github.com/Rayhanpatel/AI-Resume-Agent"
+                "problem_space": "800+ construction workers die annually from falls/trips. Cloud-based solutions fail because job sites lack reliable connectivity. Spatial safety intelligence must live on the edge.",
+                "architecture_decision": "Dual pipeline: VLM generates scene-specific prompts (avoiding static/hallucinated detection lists), then spatial pipeline performs corridor-bounded hazard reasoning. Classical CV fallback runs every frame; DINO runs on a schedule.",
+                "key_innovation": "Corridor ROI — a trapezoid representing the worker's egocentric walking lane. All hazard reasoning is bounded to this region, eliminating false positives from objects outside the path.",
+                "integration_detail": "Enriched telemetry JSON bridges Cactus semantic report with PathGuard physical data: peak corridor occupancy, depth buckets (near/mid/far), and trip risk event timestamps.",
+                "hackathon_context": "UMD × Ironsite Startup Shell Hackathon (Feb 2026). $17,500 prize pool ($10k/$5k/$2.5k). ~60 participants. Focused on spatial/physical intelligence and world models. Submissions required GitHub repo, detailed README, and 3-5 min demo video. Applied Cactus SDK knowledge gained from FunctionGemma hackathon the same weekend.",
+                "my_contribution": "Built the Cactus Narrator integration (on-device VLM via Liquid LFM 2.5 on Apple Neural Engine), wrote the hybrid routing logic (confidence-based on-device/cloud escalation with cooldown timer), created the dynamic prompt generation pipeline (VLM scene descriptions → Gemini extraction → GroundedDINO-compatible prompt list), and merged both sub-projects into one unified codebase under extreme time pressure. Also assisted Suraj Rao and Keshav Naram on the PathGuard HUD side (corridor reasoning, state machine). Recorded and narrated the demo video.",
+                "team": "Rayhan Patel (Lead — Cactus integration, project merge, demo), Suraj Rao (PathGuard HUD core — detection, depth, corridor), Keshav Naram (PathGuard HUD — fallback CV, state machine, Streamlit UI)",
+                "video_demo": "https://youtu.be/Zr4QqsBu43g",
+                "submission": "Devpost: https://devpost.com/software/pathguard-abgh9k"
             }
         },
         {
-            "name": "Support AI Agent",
-            "description": "Customer support automation agent for product knowledge bases",
+            "name": "FunctionGemma Hybrid Router",
+            "description": "3-tier hybrid AI router orchestrating FunctionGemma-270M on-device and Gemini 2.5 Flash Lite in the cloud for optimized function-calling",
+            "url": "https://github.com/Rayhanpatel/functiongemma-hackathon",
+            "date": "2026-02",
             "highlights": [
-                "Built intent classification + RAG over product KB; achieved 18% deflection rate and 12% reduction in Average Handle Time (AHT).",
-                "Implemented drift checks and continuous evaluation/monitoring to trigger automated updates."
+                "Built a 3-tier hybrid routing system orchestrating FunctionGemma-270M on-device (via Cactus SDK) with Gemini 2.5 Flash Lite cloud fallback for function-calling tasks.",
+                "Achieved 99% function-calling accuracy at 548ms average latency by designing intelligent edge/cloud routing logic that prioritizes local inference.",
+                "Developed at the Cactus × Google DeepMind Global Hackathon (Feb 2026); applied learnings directly to build PathGuard Edge."
+            ],
+            "keywords": [
+                "FunctionGemma",
+                "Gemini",
+                "Edge AI",
+                "Function Calling",
+                "Hybrid Routing",
+                "Cactus SDK",
+                "On-Device AI",
+                "Python"
+            ],
+            "context": {
+                "hackathon_rubrics": "Judged on: (1) quality of hybrid routing algorithm, (2) end-to-end products executing function calls, (3) low-latency voice-to-action.",
+                "architecture_decision": "3 tiers: Tier 1 = FunctionGemma-270M on-device for fast/private execution. Tier 2 = confidence-based routing with semantic validation gate. Tier 3 = Gemini 2.5 Flash Lite cloud fallback for complex tasks. Pre-routing intelligence scores prompt difficulty 0.0-1.0 before inference.",
+                "engineering_details": "Engineered 5-step pipeline: (1) Pre-Routing Intelligence via lexical difficulty scoring, (2) Semantic Validation Gate catching tool-name hallucinations, (3) Deterministic NLP argument extraction fixing the 270M model's broken JSON integer parsing, (4) Multi-Intent Cloud Merging that preserves valid local calls while filling gaps via cloud, (5) Aggressive latency slicing with Singleton genai client cache saving ~100ms TLS handshake per call.",
+                "metrics_detail": "0.99 F1 accuracy score on 30-case benchmark (10 easy / 10 medium / 10 hard). 70% on-device ratio. 548ms average latency. Composite score ~80.9% (formula: 0.60*F1 + 0.15*time_score + 0.25*on_device_ratio). Baseline started at ~50% F1, iterated through 62.3% → 65.3% → final 0.99 F1 by fixing confidence_threshold, cloud_handoff handling, and argument post-processing.",
+                "my_contribution": "Solo-engineered the entire system. Designed and implemented the 3-Tier Pre-Routing algorithm, integrated FunctionGemma-270M on-device via Cactus SDK, built the Semantic Validation Gate, deterministic NLP argument parser, Multi-Intent Cloud Merging, and latency optimizations. Debugged model weight corruption, confidence_threshold tuning, and Gemini API rate limiting.",
+                "outcome": "2nd place. Won $5,000 in Gemini API credits. Achieved near-perfect 0.99 F1. Applied Cactus SDK and edge AI knowledge directly to PathGuard Edge the same weekend.",
+                "event": "Cactus × Google DeepMind Global Hackathon (Feb 21, 2026), hosted by AI Tinkerers DC at University of Maryland. Six-city global event."
+            }
+        },
+        {
+            "name": "AI Resume Chatbot",
+            "description": "Production AI agent answering recruiter questions — 10 backend services, 5 LLM-as-a-Judge evaluators, zero SDKs. Live at chat.rayhanpatel.com",
+            "url": "https://chat.rayhanpatel.com",
+            "date": "2025",
+            "highlights": [
+                "Built a service-oriented AI agent with 10 backend services (Intent Classifier, Agent, Memory, Tracer, Rate Limiter, Session, Lead Capture, Job Extractor, Job Parser, Prompt Generator) and graceful degradation — chat continues even if every external service is down.",
+                "Replaced the blocking Google GenAI SDK with direct httpx HTTP/2 calls to the Gemini REST API, implementing async connection pooling (20 keepalive, 100 max connections), a thread-safe TTLCache with deadlock prevention, and pure ASGI middleware to avoid Starlette's BaseHTTPMiddleware hanging bug.",
+                "Deployed 5 automated LLM-as-a-Judge evaluators (Hallucination, Relevance, Conciseness, Helpfulness, Toxicity) via Langfuse at 100% sampling with zero latency impact — evaluation model (Gemini 2.5 Flash) is separate from generation model to avoid self-bias."
             ],
             "keywords": [
                 "RAG",
-                "Intent Classification",
-                "Product KB",
-                "Automation",
-                "Metrics"
+                "Gemini",
+                "FastAPI",
+                "React",
+                "httpx",
+                "HTTP/2",
+                "AsyncIO",
+                "Langfuse",
+                "Mem0",
+                "Supabase",
+                "Cloudflare",
+                "SSE",
+                "LLM-as-a-Judge"
             ],
-            "meta": {
-                "tags": [
-                    "ai",
-                    "nlp",
-                    "support",
-                    "agent"
-                ],
-                "priority": 9,
-                "metrics": {
-                    "deflection": "+18%",
-                    "AHT": "-12%"
-                }
+            "context": {
+                "architecture": "Split Architecture: Frontend on Vercel (through Cloudflare DNS+SSL), Backend on Railway (direct API access bypassing Cloudflare to avoid SSE timeout limits). Service-Oriented Architecture — thin FastAPI route handlers delegate to rich domain services. Every external dependency (Mem0, Supabase, Langfuse) wrapped in a service class with 'enabled' flag that fails gracefully.",
+                "httpx_decision": "The official google-genai Python SDK uses synchronous transport internally, causing blocking I/O and threading issues with asyncio. Replaced with direct httpx HTTP/2 calls to Gemini REST API (httpx >=0.28). Provides full async support, connection pooling (20 keepalive, 100 max), and explicit control over timeouts and retries.",
+                "ttlcache_decision": "TTLCache extends OrderedDict with threading.Lock on all public methods. Internal operations use super().__delitem__() and super().__setitem__() to bypass overridden methods that would re-acquire the lock, preventing deadlocks.",
+                "security_layers": "8-layer SSRF-protected job URL fetcher, Cloudflare Turnstile bot detection (Managed Mode), HTML stripping via @field_validator(mode='before') on all Pydantic models, secrets.compare_digest() for constant-time admin auth, prompt injection defense with <<<JOB_DESCRIPTION_START>>> markers.",
+                "intent_classification": "Off-topic queries classified and declined BEFORE the expensive agent call. Uses Gemini Flash (cheapest model) with temperature=0.1 for deterministic output. Defaults to job_related on any failure.",
+                "eval_pipeline": "5 LLM-as-a-Judge evaluators run server-side in Langfuse at 100% sampling: Hallucination, Relevance, Conciseness, Helpfulness, Toxicity. Evaluation model (Gemini 2.5 Flash) differs from generation model (Gemini 2.0 Flash) to avoid self-bias. Zero latency impact on users.",
+                "key_features_summary": "25+ features: real-time SSE streaming, dual LLM fallback (Vertex AI → AI Studio), job URL extraction + LLM-powered parsing, dynamic starter prompts, semantic memory (Mem0), session persistence (Supabase + TTLCache fallback), dark/light theme, share conversation, keyboard shortcuts, lead capture (Google Sheets), WCAG accessibility, React ErrorBoundary, OG+Twitter Card SEO, iOS mobile polish.",
+                "tech_stack_detail": "Backend: FastAPI >=0.115, uvicorn >=0.34, httpx >=0.28, Pydantic >=2.10, mem0ai >=1.0.2, langfuse >=3.12, supabase >=2.27, tenacity >=8.2, google-auth >=2.27. Frontend: React 18.3, Vite 5.4, TailwindCSS 3.4, lucide-react, react-markdown 10.1, remark-gfm 4.0.",
+                "my_contribution": "Solo project — built end-to-end.",
+                "repo_url": "https://github.com/Rayhanpatel/AI-Resume-Agent",
+                "video_demo": "https://youtu.be/5xGjCrDEoMQ"
             }
         },
         {
             "name": "AlphaFoundry (Quant Engine)",
             "description": "Factor-based quantitative investment strategy engine using XGBoost and Fama-French factors",
             "url": "https://github.com/Rayhanpatel/AlphaFoundry_Factor-Based_Quantitative_Strategy_Engine",
+            "date": "2025",
             "highlights": [
                 "Architected a rolling-window backtesting engine that combines Fama-French 5-factor analysis with XGBoost Learning-to-Rank, achieving a Sharpe Ratio of 0.95 (vs SPY 0.85).",
                 "Built a production-grade FastAPI inference service for real-time asset ranking.",
-                "Implemented 'Walk-Forward' validation to prevent look-ahead bias in financial time-series modeling."
+                "Implemented Walk-Forward validation to prevent look-ahead bias in financial time-series modeling."
             ],
             "keywords": [
                 "Quantitative Finance",
@@ -378,27 +398,22 @@
                 "Python",
                 "Pandas"
             ],
-            "meta": {
-                "tags": [
-                    "ml",
-                    "finance",
-                    "backend",
-                    "data"
-                ],
-                "priority": 8
-            },
-            "scraped_context": {
-                "readme": "# AlphaFoundry: Factor-Based Quantitative Strategy Engine\n\n![Python](https://img.shields.io/badge/Python-3.10-3776AB?logo=python&logoColor=white)\n![FastAPI](https://img.shields.io/badge/FastAPI-Production-009688?logo=fastapi&logoColor=white)\n![XGBoost](https://img.shields.io/badge/ML-XGBoost%20Ranker-red)\n![License](https://img.shields.io/badge/License-MIT-blue)\n\n**AlphaFoundry** is a quantitative investment framework that implements a rolling-window strategy to outperform the S&P 500. It combines traditional Fama-French 5-factor analysis with modern machine learning (XGBoost Learning-to-Rank) to forecast excess returns and construct optimized portfolios.\n\n---\n\n## \ud83d\udcc8 Strategy Overview\n\nThe system operates on a monthly rebalancing schedule, using a \"Walk-Forward\" validation process to prevent data leakage.\n\n1. **Data Ingestion**: Processes daily market data (S&P 500 constituents) and Fama-French factors.\n2. **Feature Engineering**: Computes rolling betas (sensitivity) to Market, Size (SMB), Value (HML), Profitability (RMW), and Investment (CMA) factors.\n3. **Alpha Generation**:\n    - **Base Model**: OLS Rolling Regression.\n    - **ML Model**: XGBoost Ranker trained on 36-month lookback windows.\n\n4. ### Submission Checklist: Selects Top-K assets (e.g., decile spread) equal-weighted\n\n## \ud83c\udfd7\ufe0f Architecture\n\nThe repository contains both the research environment and a production-grade inference API.\n\n- `inference.py`: **FastAPI application** serving the trained model.\n  - Endpoints: `/topk`, `/health`\n  - Capabilities: On-the-fly ranking of 500+ assets based on live factor data.\n- `one.ipynb`: Comprehensive research notebook containing the full backtest pipeline, EDA, and model comparison (OLS vs XGBoost).\n\n## \ud83d\udcca Performance Benchmark\n\n*Results based on 2016-2025 Out-of-Sample Backtest:*\n\n| Metric | AlphaFoundry (XGB) | S&P 500 (SPY) |\n| :--- | :--- | :--- |\n| **Annualized Return** | **14.2%** | 11.8% |\n| **Sharpe Ratio** | **0.95** | 0.85 |\n| **Max Drawdown** | -18.4% | -24.5% |\n\n*(Note: Performance metrics are based on backtested data and do not guarantee future results.)*"
+            "context": {
+                "problem_space": "Retail investors lack access to systematic, factor-based strategies that hedge funds use. Most open-source quant tools focus on single-factor or momentum only.",
+                "architecture_decision": "Monthly rebalancing on Walk-Forward validation to prevent data leakage. Research environment (Jupyter) + production FastAPI inference API (/topk, /health) that ranks 500+ S&P assets on-the-fly using live factor data.",
+                "strategy_overview": "Data Ingestion (S&P 500 daily + Fama-French factors) → Feature Engineering (Rolling Betas: Market, SMB, HML, RMW, CMA) → Alpha Generation (OLS Rolling Regression as base, XGBoost Ranker on 36-month lookback as ML model) → Portfolio Selection (Top-K decile equal-weighted).",
+                "performance_benchmark": "2016-2025 Out-of-Sample Backtest: AlphaFoundry XGB achieved 14.2% annualized return (vs SPY 11.8%), 0.95 Sharpe Ratio (vs SPY 0.85), -18.4% max drawdown (vs SPY -24.5%). Note: backtested data, does not guarantee future results.",
+                "my_contribution": "Solo project — built end-to-end."
             }
         },
         {
             "name": "English2SQL",
-            "description": "Natural Language to SQL converter using RAG and LLMs",
+            "description": "Natural Language to SQL converter using RAG and LLMs — B.Tech final year project (Semester 8)",
             "url": "https://github.com/Rayhanpatel/English2SQL",
+            "date": "2024",
             "highlights": [
-                "Earned highest grade among all students in batch for final year thesis project.",
                 "Implemented NL-to-SQL over relational/star schemas; applied RAG + prompt optimization on a 120-query eval set for a measurable accuracy lift.",
-                "Achieved +9% exact-match accuracy on evaluation suite; built clean API for offline/online testing.",
+                "Achieved +9% execution accuracy lift on evaluation suite; built clean API for offline/online testing.",
                 "Exposed REST endpoints with FastAPI and Docker; added unit tests and regression scripts for reliable, end-to-end evaluation."
             ],
             "keywords": [
@@ -408,194 +423,115 @@
                 "FastAPI",
                 "Docker"
             ],
-            "meta": {
-                "tags": [
-                    "ai",
-                    "backend",
-                    "data"
-                ],
-                "priority": 8
-            },
             "context": {
                 "problem_space": "Business users struggle to write complex SQL queries. Existing text-to-SQL models fail on schema-specific column names.",
-                "solution_detail": "I injected the database schema (DDL) into the RAG context window. I also used 'few-shot prompting' with 5 examples of similar queries to guide the LLM.",
-                "metric_explanation": "Used 'Exact Match' (SQL syntax matches ground truth) vs 'Execution Accuracy' (Result matches ground truth). The +9% lift was in Execution Accuracy.",
-                "verification_notes": "CRITICAL: Public GitHub repo (Rayhanpatel/English2SQL) contains ONLY the React frontend. The backend (FastAPI, Docker, SQL generation logic) is MISSING. Recruiters will see this as a 'frontend-only' project unless fixed."
-            },
-            "scraped_context": {
-                "readme": "# English2SQL: Enterprise-Grade Natural Language Interface to Databases\n\n![License](https://img.shields.io/badge/license-MIT-blue.svg)\n![React](https://img.shields.io/badge/React-18.2-61DAFB?logo=react&logoColor=black)\n![Firebase](https://img.shields.io/badge/Firebase-Auth-FFCA28?logo=firebase&logoColor=black)\n![Status](https://img.shields.io/badge/Status-Runnable%20Demo-success)\n\n**English2SQL** is a production-ready interface that democratizes data access by allowing non-technical users to query complex SQL databases using plain English.\n\nBy leveraging **Schema-Aware RAG (Retrieval Augmented Generation)** and a refined LLM pipeline, this system achieves a **9% accuracy improvement** over baseline text-to-SQL models, significantly reducing hallucination rates in enterprise environments.\n\n---\n\n## \ud83d\ude80 Key Features\n\n- **Natural Language Querying**: Converts complex questions (\"Show me top 5 users by spend in NY last month\") into optimized SQL.\n- **Schema-Aware RAG**: Dynamically retrieves relevant table schemas and context before generation, ensuring queries are syntactically and semantically correct.\n- **Enterprise Security**:\n  - **role-based access control (RBAC)** via Firebase Auth.\n  - Sanitized inputs to prevent SQL injection.\n- **Interactive Data Visualization**: Automatically renders results as dynamic tables or charts based on data type.\n\n## \ud83c\udfd7\ufe0f Architecture\n\n```mermaid\ngraph TD\n    User[User Question] -->|Natural Language| FE[React Frontend]\n    FE -->|Auth Token| API[FastAPI Backend]\n    \n    subgraph \"AI Core\"\n        API -->|Context Retrieval| VectorDB[(Vector Store)]\n        VectorDB -->|Relevant Schema| IL[In-Context Learning]\n        IL -->|Prompt| LLM[LLM Engine]\n        LLM -->|Generated SQL| API\n    end\n    \n    subgraph \"Data Layer\"\n        API -->|Execute SQL| DB[(PostgreSQL)]\n        DB -->|JSON Result| API\n    end\n    \n    API -->|Result + Viz Config| FE\n```\n\n## \ud83d\udee0\ufe0f Tech Stack\n\n### Frontend & Auth (This Repository)\n\n- **Framework**: React 18 (CRA)\n- **Styling**: Bootstrap 5 + Custom CSS\n- **Authentication**: Firebase (Google OAuth)\n- **State Management**: Jotai\n\n### Backend Integration (Connected Service)\n\n- **API**: FastAPI (Python)\n- **AI Orchestration**: LangChain + OpenAI/Ollama\n- **Database**: PostgreSQL (AWS RDS)\n\n## \ud83d\udd2e Roadmap\n\n- [ ] **Multi-Dialect Support**: Add adapters for MySQL, Snowflake, and BigQuery.\n- [ ] **Advanced Visualization**: Integrate Vega-Lite for more complex automated charting.\n- [ ] **Voice Interface**: Add speech-to-text for hands-free querying.\n\n## \ud83c\udfa5 Demo\n\n> *See the system in action converting varied business questions into precise SQL.*\n\n![English2SQL Demo](https://github.com/inamgithub/English2SQL/assets/94236469/23ddae85-838c-4e6f-8be5-aa95c68c74f8)\n\n## \ud83d\udce6 Installation (Frontend)\n\nTo run this interface locally:\n\n1. **Clone the repository**\n\n    ```bash\n    git clone https://github.com/Rayhanpatel/English2SQL.git\n    cd English2SQL\n    ```\n\n2. **Install Dependencies**\n\n    ```bash\n    npm install\n    ```\n\n3. **Configure Environment**\n    Create a `.env` file with your Firebase config:\n\n    ```env\n    REACT_APP_FIREBASE_API_KEY=your_key\n    REACT_APP_FIREBASE_AUTH_DOMAIN=your_domain\n    ...\n    ```\n\n4. **Start the App**\n\n    ```bash\n    npm start\n    ```\n\n    Open [http://localhost:3000](http://localhost:3000) to view it in the browser.\n\n## \ud83d\udd0c Backend Setup (Required for API)\n\nTo make the \"Architecture Diagram\" real, you need to run the Python backend which creates a mock SQL environment.\n\n1. **Navigate to backend**:\n\n    ```bash\n    cd backend\n    ```\n\n2. **Install Python Dependencies**:\n\n    ```bash\n    pip install -r requirements.txt\n    ```\n\n3. **Run the Server**:\n\n    ```bash\n    python server.py\n    ```\n\n    The API will be available at `http://localhost:5001`.\n\n## \ud83d\udcc4 License\n\nThis project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.\n\n---\n\nBuilt by [Rayhan Patel](https://github.com/Rayhanpatel)",
-                "github_description": "Production-style NL\u2192SQL app: FastAPI + LangChain SQL chain over Postgres (AWS RDS) with pluggable LLMs (OpenAI base/fine-tuned, Ollama). Generates & executes SQL, returns JSON. Schema-aware context/RAG, Pydantic, CORS, logging/LangSmith tracing. ~9% lift vs baseline."
+                "solution_detail": "Injected the database schema (DDL) into the RAG context window. Used few-shot prompting with 5 examples of similar queries to guide the LLM.",
+                "tech_detail": "Production-style NL→SQL app: FastAPI + LangChain SQL chain over Postgres (AWS RDS) with pluggable LLMs (OpenAI base/fine-tuned, Ollama). Generates & executes SQL, returns JSON. Schema-aware context/RAG, Pydantic, CORS, logging/LangSmith tracing.",
+                "metric_explanation": "Used Exact Match (SQL syntax matches ground truth) vs Execution Accuracy (Result matches ground truth). The +9% lift was in Execution Accuracy.",
+                "my_contribution": "Team project (B.Tech final year, 12 credits). Rayhan contributed to the backend and RAG pipeline."
             }
         },
         {
-            "name": "Time-Series Forecasting",
-            "description": "End-to-end forecasting pipeline using LSTMs",
-            "url": "https://github.com/Rayhanpatel/Deep-Learning-and-Ensemble-Models",
+            "name": "Compiler Construction Lab",
+            "description": "Suite of compiler construction modules in C and Python — lexical analysis (Lex), syntax analysis (Yacc), three-address code generation, and code optimization. B.Tech Semester 7 course project.",
+            "url": "https://github.com/Rayhanpatel/Compiler",
+            "date": "2024",
             "highlights": [
-                "Built an end-to-end time-series workflow (scaling, sequence windows, LSTM) with walk-forward validation.",
-                "Tracked MAE/RMSE/MAPE and outperformed a naive last-value baseline on holdout; explored state-space framing for long-horizon stability.",
-                "Applied OOP to modularize data loaders, model builders, and evaluators; added reproducible artifacts."
+                "Built lexical analysis modules using Flex (Lex) for tokenizing C source code — extracting keywords, identifiers, constants, and operators.",
+                "Implemented syntax analysis using Bison (Yacc) for grammar validation of variable declarations and control structures, plus an arithmetic expression evaluator with precedence rules.",
+                "Developed three-address code generator converting expressions to intermediate representation (quadruples), and a code optimizer implementing constant folding and dead code elimination."
+            ],
+            "keywords": [
+                "C",
+                "Python",
+                "Compiler Design",
+                "Flex/Lex",
+                "Bison/Yacc",
+                "Lexical Analysis",
+                "Syntax Analysis",
+                "Three-Address Code",
+                "Code Optimization",
+                "GCC"
+            ]
+        },
+        {
+            "name": "Time-Series Forecasting",
+            "description": "LSTM-based stock price prediction pipeline — B.Tech Semester 7 internship project",
+            "url": "https://github.com/Rayhanpatel/Deep-Learning-and-Ensemble-Models",
+            "date": "2023",
+            "highlights": [
+                "Built an end-to-end time-series workflow (scaling, 60-day sequence windows, multi-layer LSTM) using TensorFlow/Keras for stock price forecasting.",
+                "Tracked MAE/RMSE and compared against a naive last-value baseline on holdout data."
             ],
             "keywords": [
                 "Time Series",
                 "LSTM",
-                "PyTorch",
-                "Forecasting",
-                "OOP"
-            ],
-            "meta": {
-                "tags": [
-                    "ml",
-                    "data",
-                    "timeseries"
-                ],
-                "priority": 7
-            },
-            "context": {
-                "modeling_choice": "Selected LSTM over ARIMA because the data had non-linear dependencies. Explored State-Space Models (SSMs) like S4 for longer horizon stability.",
-                "validation_strategy": "Used 'Walk-Forward Validation' instead of standard K-Fold CV because time-series data cannot be shuffled (data leakage risk).",
-                "verification_notes": "PARTIAL: Public repo (Rayhanpatel/BharathInternProjects) contains `StockPrediction.ipynb` with standard LSTM implementation. However, searches for 'State-Space', 'S4', and 'Walk-Forward' returned 0 results. Use caution if claiming these specific advanced techniques without code proof."
-            },
-            "scraped_context": {
-                "readme": "# [ARCHIVED] Deep-Learning-and-Ensemble-Models (2023)\n\n> **Note**: This repository is archived and represents early learning work completed during my internship at Bharath Intern.\n\n## Projects\n\n1. **Stock Price Prediction**:\n   - **Model**: Multi-layer LSTM (Long Short-Term Memory) network built with TensorFlow/Keras.\n   - **Data**: Historical stock data (e.g., Apple, Google) fetched via `yfinance`.\n   - **Task**: Forecasting future closing prices based on 60-day moving windows.\n\n2. **Titanic Survival Classification**:\n   - **Model**: Random Forest Classifier.\n   - **Features**: Engineered features from passenger class, sex, age, and fare.\n   - **Goal**: Predict passenger survival on the Titanic test set.\n\n---\n\n*(Original README content below)*\n\n## Deep-Learning-and-Ensemble-Models\n\n\"\ud83d\ude80 My Data Science Internship Projects: Stock Price Prediction using LSTM & Titanic Survival Classification \ud83d\udcc8\ud83d\udef3\ufe0f\" "
-            }
+                "TensorFlow",
+                "Keras",
+                "Forecasting"
+            ]
         },
         {
-            "name": "EaseNotes",
-            "description": "Mobile note-taking app with real-time sync",
+            "name": "Supervised Classification Pipeline (Titanic)",
+            "description": "Random Forest classifier with basic feature engineering — B.Tech Semester 7 internship project",
+            "url": "https://github.com/Rayhanpatel/Deep-Learning-and-Ensemble-Models",
+            "date": "2023",
             "highlights": [
-                "Built a note-taking app with Firebase authentication and real-time sync; onboarded 100+ users; designed secure, offline-first flows.",
-                "Profiled data fetch and render paths; implemented caching/pagination to improve perceived load time and responsiveness on modest devices."
+                "Built a Random Forest classifier with feature engineering (passenger class, sex, age, fare) for Titanic survival prediction.",
+                "Applied standard preprocessing (missing values, encoding, scaling) and evaluated on test set."
             ],
             "keywords": [
-                "Mobile",
-                "Firebase",
-                "Real-time",
-                "Offline-first"
-            ],
-            "meta": {
-                "tags": [
-                    "mobile",
-                    "fullstack",
-                    "firebase"
-                ],
-                "priority": 6
-            }
+                "Classification",
+                "RandomForest",
+                "Scikit-learn",
+                "Feature Engineering"
+            ]
         },
         {
             "name": "Personal Infrastructure (Home Lab)",
-            "description": "Self-hosted services on Raspberry Pi",
+            "description": "Self-hosted AI and media infrastructure across Raspberry Pi 4 and custom PC (RTX 2080 Super)",
+            "date": "2023-present",
             "highlights": [
-                "Deployed services on Raspberry Pi + Nginx with static IP and VPN; experimented with VMware vSphere for isolation and service packaging.",
-                "Automated backups and health checks; documented setup for repeatable provisioning and scalable home-lab extensions."
+                "Built a self-hosted media and AI lab: Plex media server and VPN on Raspberry Pi 4 with Nginx reverse proxy and static IP.",
+                "Hosted local LLMs via Ollama on a custom PC (RTX 2080 Super, AMD 3800X, 32GB RAM) for private AI inference, accessible across devices.",
+                "Currently experimenting with Crawl4AI web crawling framework for automated data collection pipelines."
             ],
             "keywords": [
                 "Raspberry Pi",
                 "Nginx",
                 "VPN",
-                "VMware",
-                "Linux"
+                "Ollama",
+                "Self-Hosted LLM",
+                "Plex",
+                "Linux",
+                "Crawl4AI"
             ],
-            "meta": {
-                "tags": [
-                    "infra",
-                    "devops",
-                    "selfhosted"
-                ],
-                "priority": 5
-            }
-        },
-        {
-            "name": "Supervised Classification Pipeline (Titanic)",
-            "description": "Robust classification stack with feature engineering",
-            "url": "https://github.com/Rayhanpatel/Deep-Learning-and-Ensemble-Models",
-            "highlights": [
-                "Delivered a robust classification stack (missing values, OHE, scaling) with RandomForest/XGBoost comparisons using 5x stratified cross-validation.",
-                "Designed a clean, object-oriented pipeline (fit/transform/evaluate) and added feature importance/SHAP with explicit leakage controls."
-            ],
-            "keywords": [
-                "Classification",
-                "XGBoost",
-                "RandomForest",
-                "SHAP",
-                "Scikit-learn"
-            ],
-            "meta": {
-                "tags": [
-                    "ml",
-                    "data"
-                ],
-                "priority": 6
-            },
-            "scraped_context": {
-                "readme": "# [ARCHIVED] Deep-Learning-and-Ensemble-Models (2023)\n\n> **Note**: This repository is archived and represents early learning work completed during my internship at Bharath Intern.\n\n## Projects\n\n1. **Stock Price Prediction**:\n   - **Model**: Multi-layer LSTM (Long Short-Term Memory) network built with TensorFlow/Keras.\n   - **Data**: Historical stock data (e.g., Apple, Google) fetched via `yfinance`.\n   - **Task**: Forecasting future closing prices based on 60-day moving windows.\n\n2. **Titanic Survival Classification**:\n   - **Model**: Random Forest Classifier.\n   - **Features**: Engineered features from passenger class, sex, age, and fare.\n   - **Goal**: Predict passenger survival on the Titanic test set.\n\n---\n\n*(Original README content below)*\n\n## Deep-Learning-and-Ensemble-Models\n\n\"\ud83d\ude80 My Data Science Internship Projects: Stock Price Prediction using LSTM & Titanic Survival Classification \ud83d\udcc8\ud83d\udef3\ufe0f\" "
+            "context": {
+                "hardware": "Two-node setup: (1) Raspberry Pi 4 — Plex media server, VPN, Nginx reverse proxy with static IP. (2) Custom PC — RTX 2080 Super GPU, AMD Ryzen 7 3800X, 32GB RAM — runs Ollama for local LLM inference (accessed remotely for personal private chat). Currently exploring Crawl4AI deployment.",
+                "motivation": "Hands-on experience with self-hosting, GPU-accelerated inference, and network administration. Demonstrates comfort with Linux, hardware, and DevOps outside of coursework."
             }
         }
     ],
-    "resume_engineering_guide": {
-        "philosophy": "The 'Gold Standard' resume is a single-page, high-density document optimized for both ATS parsers and human skimmers. I prioritize system design and engineering impact over generic descriptions.",
-        "latex_specs": {
-            "engine": "pdflatex",
-            "packages_required": [
-                "geometry (margin=0.5in / 1.4cm)",
-                "enumitem (nosep)",
-                "hyperref (hidelinks)",
-                "lmodern (T1)",
-                "microtype",
-                "titlesec"
-            ],
-            "formatting_rules": [
-                "Use \\textbf{} for key technologies (e.g., FastAPI, Docker) to aid skimming.",
-                "Keep bullet points under 2 lines. If 3 lines, rewrite for conciseness.",
-                "Use \\vspace{-4pt} aggressively between sections to fit content on one page.",
-                "Ensure \\pdfgentounicode=1 is set for ATS copypastability."
-            ]
+    "volunteer": [
+        {
+            "organization": "Cactus × Google DeepMind Global Hackathon",
+            "position": "Solo Developer — Team LocalHost (Feb 2026) — 2nd Place",
+            "summary": "2nd place ($5,000 Gemini API credits). Solo-built FunctionGemma hybrid router (0.99 F1, 548ms, 70% on-device). Six-city global event. Applied learnings to PathGuard Edge."
         },
-        "content_algorithm": {
-            "step_1_selection": "Select top 3-4 projects based on 'priority' meta tag. Do not include more than 4.",
-            "step_2_quantification": "Ensure every project has at least one metric (latency, throughput, cost). No metric = weak bullet.",
-            "step_3_compression": "Remove 'Relevant Coursework' if space is tight. It is the least valuable section.",
-            "step_4_ordering": "Education -> Experience -> Projects -> Honors -> Skills. Do not deviate."
+        {
+            "organization": "UMD × Ironsite Startup Shell Hackathon",
+            "position": "Lead — Team PathGuard (Feb 2026)",
+            "summary": "Built PathGuard Edge: on-device spatial safety intelligence for construction workers. $17.5k prize pool, ~60 participants. Dual-pipeline edge AI fusing VLM scene understanding with real-time hazard detection."
         },
-        "verification_checklist": [
-            "Is it strictly 1 page?",
-            "Are all links clickable and blue/black?",
-            "Do all Git repos maintain a README explaining the project?",
-            "Are 'Risky' projects (finance, gambling) excluded from general applications?"
-        ]
-    },
-    "automation_blueprint": {
-        "architecture_name": "AI Resume Factory (Agentic Workflow)",
-        "tech_stack": {
-            "orchestrator_options": [
-                "LangGraph (Code-First)",
-                "n8n (Low-Code)"
-            ],
-            "core_tools": [
-                "mcp-server-filesystem (File I/O)",
-                "mcp-server-browser (Visual QA)",
-                "mcp-server-pdf (Text Extraction)"
-            ],
-            "containerization": "Docker (run texlive-full + jinja2)"
+        {
+            "organization": "Pear VC + OpenAI Hackathon (San Francisco)",
+            "position": "Finalist (2024)",
+            "summary": "Developed an advanced e-commerce AI agent system. Achieved finalist recognition among participants at this VC-hosted hackathon."
         },
-        "agent_roles": [
-            {
-                "name": "Analyst (Content Guardian)",
-                "function": "Cross-references Job Description against Master Vault context to select verifiable claims. Prevents hallucinations."
-            },
-            {
-                "name": "Gatekeeper (ATS Simulator)",
-                "function": "Converts generated PDF back to text to verify keyword scannability."
-            },
-            {
-                "name": "Architect (LaTeX Specialist)",
-                "function": "Injects content into Jinja2 templates and handles compilation errors."
-            },
-            {
-                "name": "Critic (Visual QA)",
-                "function": "Uses headless browser to detect page overflow, bad spacing, or header issues."
-            }
-        ],
-        "workflow_loop": "Ingestion (JD Parsing) -> Generation (Jinja2) -> Rendering (LaTeX) -> Verification (ATS + Visual) -> Iteration (Feedback Loop)"
-    }
+        {
+            "organization": "Esports (Valorant)",
+            "position": "Team Leader",
+            "summary": "Led team strategies and coordinated practice schedules."
+        }
+    ]
 }

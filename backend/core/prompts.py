@@ -35,14 +35,18 @@ def load_resume_data() -> str:
             
         # 1. Redact Sensitive PII
         # The bot should NOT output the candidate's personal phone number to random users.
-        # Visa type is also redacted — employers should ask "are you authorized to work?"
-        # not the specific visa category, which can lead to discrimination.
+        # Specific visa category is redacted to prevent discrimination — the detailed
+        # work_authorization FAQ is kept because it helps recruiters understand that
+        # CPT requires zero employer sponsorship cost.
         if "basics" in data:
             if "phone" in data["basics"]:
                 data["basics"]["phone"] = "[Redacted via prompts.py]"
             # Email is kept visible as it's standard recruiting contact info.
-            if "meta" in data["basics"] and "visa" in data["basics"]["meta"]:
-                data["basics"]["meta"]["visa"] = "Authorized to work in the US (details available upon request)"
+            if "meta" in data["basics"]:
+                # Handle both old format (meta.visa) and new format (meta.visa_status)
+                data["basics"]["meta"].pop("visa", None)
+                data["basics"]["meta"].pop("visa_status", None)
+                # Keep work_authorization FAQ — it's designed for recruiter Q&A
 
         # 2. Exclude Internal Metadata
         # Remove meta-instructions irrelevant to the recruiter bot
