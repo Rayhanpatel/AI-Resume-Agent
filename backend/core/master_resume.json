@@ -5,7 +5,7 @@
         "email": "rayhanbp@umd.edu",
         "phone": "+1 (650) 521-4222",
         "url": "https://chat.rayhanpatel.com",
-        "summary": "Applied AI Engineer building on-device and edge AI systems — from VLM-powered spatial reasoning on Apple Neural Engine to hybrid edge-cloud function-calling routers. Ships production AI with rigorous evaluation: 10-service backend with 5 LLM-as-a-Judge evaluators, zero SDKs. Founding engineer experience building conversational AI and healthcare ML products. MS in Applied Machine Learning at UMD.",
+        "summary": "Applied AI Engineer building on-device and edge AI systems — from voice agents with Gemma 4 running 100% on-device (YC × Cactus × DeepMind Top 10 Finalist) to VLM-based spatial coherence for generative 3D (BigThink × World Labs Best Scientific & Engineering Application winner) to hybrid edge-cloud function-calling routers (Cactus × DeepMind 2nd place). Ships production AI with rigorous evaluation: live 10-service recruiter-chatbot backend with 5 LLM-as-a-Judge evaluators, zero SDKs, raw httpx HTTP/2 to Gemini. Founding engineer experience at Euler AI building conversational AI and healthcare ML. MS in Applied Machine Learning at UMD, graduating May 2027.",
         "location": {
             "city": "College Park",
             "region": "MD",
@@ -180,27 +180,56 @@
             "name": "Languages",
             "keywords": [
                 "Python (AsyncIO)",
-                "Java",
+                "JavaScript",
                 "TypeScript",
                 "SQL",
                 "C",
-                "C++",
-                "Bash"
+                "Bash",
+                "Java",
+                "C++"
             ]
         },
         {
             "name": "GenAI & LLM",
             "keywords": [
+                "Voice Agents",
                 "RAG",
-                "LangChain",
-                "Embeddings",
+                "Grounded Generation",
+                "Multimodal LLM (audio+vision+text)",
+                "LLM-as-Judge",
                 "G-Eval",
                 "Guardrails",
                 "Agents",
-                "Prompt Engineering",
                 "Function Calling",
+                "Structured Output (XML/JSON)",
+                "Prompt Engineering",
                 "On-Device LLM",
-                "Cactus SDK"
+                "Cactus SDK",
+                "Langfuse",
+                "Mem0",
+                "LangChain",
+                "Embeddings",
+                "Gemini 2.0/2.5 Flash/Flash-Lite/Pro",
+                "Gemma 4 E4B",
+                "FunctionGemma-270M",
+                "Claude API",
+                "GPT-3.5/4",
+                "Llama"
+            ]
+        },
+        {
+            "name": "Generative 3D & Graphics",
+            "keywords": [
+                "THREE.js",
+                "SparkJS",
+                "Gaussian Splatting",
+                "World Labs Marble API",
+                "WebGL",
+                "react-three-fiber",
+                "@pixiv/three-vrm",
+                "ViewFusion",
+                "Think3D",
+                "COLMAP Y-down ↔ THREE.js Y-up transforms"
             ]
         },
         {
@@ -210,14 +239,29 @@
                 "SAM2",
                 "Depth Anything V2",
                 "Vision-Language Models (VLM)",
+                "VLM-Based Spatial Coherence Evaluation",
+                "Multi-View Reasoning",
                 "Zero-Shot Detection",
                 "Apple Neural Engine",
                 "Liquid LFM 2.5",
                 "On-Device Inference",
                 "Spatial Reasoning",
+                "Rokid AR Glasses",
                 "ONNX Runtime",
                 "FP16 Quantization",
                 "Qualcomm QNN"
+            ]
+        },
+        {
+            "name": "Voice & Speech",
+            "keywords": [
+                "Silero VAD",
+                "faster-whisper",
+                "Kokoro TTS",
+                "Google Cloud TTS (Neural2-D)",
+                "Web Speech API",
+                "WebRTC",
+                "aiortc"
             ]
         },
         {
@@ -236,45 +280,231 @@
         {
             "name": "Cloud & DevOps",
             "keywords": [
-                "GCP",
+                "GCP (Vertex AI, Cloud TTS, Cloud Run)",
                 "AWS",
                 "Docker",
+                "FastAPI",
+                "uvicorn",
+                "HTTP/2",
+                "Server-Sent Events (SSE)",
+                "WebSockets",
                 "GitHub Actions",
                 "CI/CD",
-                "FastAPI",
+                "Railway",
+                "Vercel",
+                "Cloudflare",
+                "Supabase",
+                "npm Workspaces",
+                "n8n (self-hosted on Railway)",
                 "Nginx",
                 "Raspberry Pi",
-                "Linux",
-                "WebSockets"
+                "Tailscale",
+                "Linux"
             ]
         },
         {
             "name": "Concepts",
             "keywords": [
+                "Voice Agents",
+                "Graceful Degradation / Fallback Chains",
+                "Monorepo Architecture",
+                "Hybrid Edge-Cloud Routing",
+                "Agent-Tool Orchestration",
+                "Service-Oriented Architecture",
                 "Distributed Systems",
                 "System Design",
                 "Event-Driven Architecture",
                 "Microservices",
                 "OOP",
                 "Data Structures",
-                "Edge-Cloud Hybrid Architecture",
-                "Compiler Design"
+                "Compiler Design",
+                "Evolutionary Computation (research-exploration)",
+                "LLM Program Synthesis (research-exploration)"
             ]
         },
         {
             "name": "Experimentation & Research",
             "keywords": [
+                "LLM-as-Judge Design (G-Eval, ViewFusion, Langfuse)",
                 "Ablations",
                 "Model Evaluation",
                 "Reproducibility",
                 "Hypothesis Testing",
-                "Metrics (F1/ROC/MAE)",
+                "Metrics (F1/ROC/MAE, BERTScore, Embedding Distance, EM)",
+                "Multi-Phase Research Design",
+                "Paper Reading (Agentic-R, RankEvolve, SkyDiscover, EvoX, Think3D, ViewFusion)",
                 "Visualization (Matplotlib)",
-                "Paper Writing"
+                "Paper Writing (NeurIPS 2023 MiML Workshop)"
             ]
         }
     ],
     "projects": [
+        {
+            "name": "HVAC Copilot",
+            "description": "On-device voice + vision agent for field HVAC technicians. Gemma 4 E4B runs 100% on-device via Cactus Python on MacBook Pro M4; three thin clients (Chrome, iPhone Safari, Rokid AR glasses via WebRTC) share one assistant runtime over six function-calling tools.",
+            "url": "https://github.com/Rayhanpatel/Ycombinator-Cactus-Deepmind",
+            "date": "2026-04",
+            "highlights": [
+                "Built assistant runtime + 6-tool function-calling surface on Gemma 4 E4B running 100% on-device via Cactus Python; one runtime drives three clients (Chrome, iPhone Safari over LAN, Rokid AR glasses over WebRTC).",
+                "Authored a streaming token sanitizer handling Gemma 4's three tool-call opener variants so raw tool markers never leak into user-visible transcripts.",
+                "Designed explicit on-device vs online boundary \u2014 5 local tools + 1 gated cloud escalation (search_online_hvac) with amber UI banner, enforced in both the system prompt and the dispatcher. Top 10 Finalist out of 200+ builders."
+            ],
+            "keywords": [
+                "Gemma 4 E4B",
+                "Cactus SDK",
+                "Voice Agents",
+                "On-Device LLM",
+                "Function Calling",
+                "FastAPI",
+                "WebRTC",
+                "Rokid AR",
+                "Silero VAD",
+                "faster-whisper",
+                "Kokoro TTS",
+                "Apple Silicon"
+            ],
+            "context": {
+                "problem_space": "US HVAC technician shortage (~110K unfilled roles per BLS); senior-to-junior first-time-fix delta is 20+ points. Junior techs in the field need a senior on every truck. Cloud-first solutions fail: job sites have unreliable connectivity and customer data shouldn't leave the device.",
+                "architecture_decision": "One assistant runtime shared across three thin clients. On-device by default; a single explicit online-escalation tool is the only networked path out. Boundary enforced twice \u2014 once in the system prompt, once in the dispatcher (query_kb cannot auto-chain into search_online_hvac).",
+                "key_innovation": "Streaming token sanitizer for Gemma 4's three tool-call opener variants (<|tool_call|>, <|tool_call>, <|tool_call_start|>). A stateful _StreamSanitizer class buffers partial markers and only emits clean suffixes to the client while the tool-loop still captures structured calls.",
+                "my_contribution": "Built the assistant runtime (Gemma 4 tool-call parsing for all 3 opener variants, 3-pass tool-loop, _StreamSanitizer), tool dispatcher + 6-tool contract, voice pipeline (Silero VAD + faster-whisper STT + Kokoro TTS for the Rokid path), 8-hop latency instrumentation, and FastAPI + WebSocket server. Tash Matsusaki built the Rokid AR integration; Amogh D. Prasanna did pre-hackathon HVAC technician research.",
+                "measured_performance": "Model load 4-6s. TTFT bare-model 217ms; with full HVAC system (~935 prefill tokens) 3.9-4.5s on CPU-prefill. Decode ~17 tok/s. Rokid end-to-end ~20s. Cactus has not yet shipped an ANE-compiled model.mlpackage for Gemma 4 E4B \u2014 TTFT expected to drop under 1s on M4 with zero code change once they do.",
+                "outcome": "Top 10 Finalist out of 200+ builders at Y Combinator \u00d7 Cactus \u00d7 Google DeepMind Voice Agents Hackathon (Apr 19-20 2026, SF). No category prize. 4-person team with Amogh D. Prasanna, Tash Matsusaki, Evode Manirahari.",
+                "event": "Y Combinator \u00d7 Cactus \u00d7 Google DeepMind Voice Agents Hackathon (Apr 19-20, 2026, SF). 200+ builders, 15+ judges. Three category prizes; top 10 finalists below that tier.",
+                "video_demo": "https://youtube.com/shorts/xXLoZhNNC-0"
+            }
+        },
+        {
+            "name": "Auto-Eval3D",
+            "description": "ViewFusion spatial coherence evaluator for generative 3D Gaussian Splat worlds. Text prompt \u2192 Marble-generated 3D world \u2192 inside-out 4-view capture \u2192 Gemini 2.5 Pro multi-view reasoning \u2192 coherence score.",
+            "url": "https://github.com/Rayhanpatel/autoeval3d",
+            "date": "2026-03",
+            "highlights": [
+                "Built an automated text-to-evaluation pipeline: user prompt triggers World Labs Marble API to generate a Gaussian Splat world, SparkJS + THREE.js render it, an inside-out 4-view WebGL camera rig captures interior viewpoints, and Gemini 2.5 Pro evaluates geometric consistency.",
+                "Implemented the inside-out camera rig handling COLMAP's Y-down coordinate space (Math.PI X-axis rotation, camera placed at world origin with eye-level offset, 20-frame settle per view for SparkJS Gaussian re-sort).",
+                "Encoded ViewFusion-style structured reasoning as a 3-phase XML prompt (spatial pre-alignment \u2192 category analysis \u2192 scored findings with defined failure tiers). WINNER \u2014 Best Scientific & Engineering Application."
+            ],
+            "keywords": [
+                "Gemini 2.5 Pro",
+                "Vertex AI",
+                "World Labs Marble",
+                "Gaussian Splatting",
+                "THREE.js",
+                "SparkJS",
+                "VLM Evaluation",
+                "Multi-View Reasoning",
+                "ViewFusion",
+                "FastAPI",
+                "SQLite",
+                "WebGL"
+            ],
+            "context": {
+                "problem_space": "Generative 3D (Marble, text-to-3D diffusion) produces impressive-looking worlds that are often spatially incoherent \u2014 bookshelf viewed from the back becomes a stone wall, objects change scale between views, floors float. No automated benchmark for multi-view coherence existed. 2D metrics (FID, CLIP score) don't capture multi-view inconsistency.",
+                "architecture_decision": "FastAPI proxy + vanilla JS frontend + Gemini via Vertex AI + SQLite persistence. No framework on the frontend \u2014 the work is almost entirely imperative WebGL + THREE.js code, so React/Vue would be overhead. SQLite because evaluation history is small and local-first.",
+                "key_innovation": "Inside-out camera rig: places camera at world origin (where Marble worlds are generated from), rotates in place to look in 4 directions, captures each view with a 20-frame settle and dual-render to let SparkJS Gaussian re-sort. The naive approach (orbit camera around bounding box) photographs a blob in a void and produces useless evals \u2014 a bug I caught and fixed post-hackathon.",
+                "post_win_bug_fix": "After winning, re-audited the evaluation traces. The demo's Medieval Library scored 1/10 'severe Janus artifact' \u2014 but the score was actually critiquing bad screenshots (camera outside the scene), not a bad 3D world. Mar 30 commit 7ee621e rewrote the capture rig to live at world origin and rotate in place. Honest engineering discipline: kept auditing after the prize was awarded.",
+                "viewfusion_prompt_structure": "Three explicit XML phases. (1) <spatial_thinking>: force pairwise cross-image analysis (1-2, 1-3, 1-4, 2-3, 2-4, 3-4) with 6 artifact categories listed. (2) <thinking>: category-by-category evaluation. (3) <answer>: 1-10 score with threshold tiers (1-3 severe, 4-5 noticeable, 6-7 minor, 8-9 high, 10 perfect). Temperature 0.2. Backend parses each XML tag via regex and stores all three fields in SQLite.",
+                "my_contribution": "Solo author. FastAPI backend (387 lines) with 4 endpoints, vanilla JS frontend (674 lines) with the inside-out camera rig, SQLite CRUD layer, ViewFusion prompt. All 3 commits: Mar 28 submission, Mar 28 README + UML, Mar 30 camera-centering + prompt-injection + async-blocking fixes.",
+                "outcome": "WINNER \u2014 Best Scientific & Engineering Application track at BigThink \u00d7 World Labs Hackathon (Mar 28 2026). Prize: $150 World Labs credits.",
+                "submission": "https://devpost.com/software/auto-eval3d-spatial-coherence-evaluator",
+                "event": "BigThink \u00d7 World Labs Hackathon, Mar 28 2026. In-person judging in an auditorium. Seven category tracks awarded."
+            }
+        },
+        {
+            "name": "Wine Voice AI",
+            "description": "Self-directed product build: an npm-workspaces monorepo pairing a grounded voice wine advisor with an immersive 3D retail boutique. WASD-navigated first-person shop, VRM-model sommelier NPC, and a consultation state machine driving Vertex AI streaming + Google Cloud TTS.",
+            "url": "https://github.com/Rayhanpatel/Wine_Voice_AI",
+            "date": "2026-04",
+            "highlights": [
+                "Built a retail-grade voice wine advisor monorepo: three npm workspaces \u2014 wine-boutique-world (3D boutique with NPC sommelier), wine-voice-explorer (sandbox chat), and packages/wine-ai-core (shared library: catalog loading, NL parsing, Vertex AI SSE streaming, Cloud TTS, proxy server).",
+                "Kept Gemini grounded in the catalog with zero hallucinated bottles via local regex-based parsing of shopping signals (color, region, varietal, price, occasion) + filtered catalog injection + system-prompt invention ban. Added follow-up carry-forward and progressive relaxation.",
+                "Designed a resilient voice pipeline: Chrome Web Speech Recognition with 14 wine-specific transcript auto-corrections ('pinot newar' \u2192 'pinot noir'), 1.6s silence timeout for hands-free turn-taking, premium Cloud TTS voice (en-US-Neural2-D), and a graceful fallback ladder (Cloud TTS \u2192 browser speechSynthesis \u2192 silent text)."
+            ],
+            "keywords": [
+                "Voice Agents",
+                "Grounded Generation",
+                "Gemini 2.5 Flash",
+                "Vertex AI",
+                "Google Cloud TTS",
+                "Web Speech API",
+                "React 19",
+                "react-three-fiber",
+                "THREE.js",
+                "@pixiv/three-vrm",
+                "TypeScript",
+                "npm Workspaces",
+                "SSE Streaming",
+                "Playwright"
+            ],
+            "context": {
+                "problem_space": "Wine retail is a product-discovery problem disguised as a catalog problem. Shoppers want to describe a scenario ('housewarming for my sister, light reds, under $40') and get grounded recommendations \u2014 not filter-UI checkboxes. Static catalogs require SKU literacy shoppers don't have; chat interfaces hallucinate bottles that don't exist.",
+                "architecture_decision": "Monorepo with npm workspaces so retrieval + voice + LLM logic lives in one package (packages/wine-ai-core) and both apps import from it. Vite middleware wraps the proxy server for dev; standalone Node server (app.mjs) exposes the same routes for deployable environments.",
+                "key_innovation": "Grounded retrieval + prompt conditioning instead of fine-tuning or vector-store RAG. Parsed structured shopping signals locally (20 color variants with 'ros\u00e9'/'rose' normalization, 24 region keywords, 40+ varietals), filtered the catalog before prompting Gemini, injected only filtered results as JSON. System prompt forbids invention. Follow-up carry-forward inherits prior-turn filters on 'cheaper' / 'what about'. Progressive relaxation widens the net when no exact matches exist.",
+                "consultation_state_machine": "useSommelierConsultation() drives 5 states: closed \u2192 greeting \u2192 listening \u2192 thinking (Vertex AI streams reply) \u2192 speaking (Cloud TTS plays, interruptible). Conversation history capped at 5 turns for prefill-token hygiene.",
+                "my_contribution": "Solo-authored the entire monorepo: catalog parser, follow-up carry-forward, relaxation strategy, Vertex AI SSE streaming, Cloud TTS integration, proxy server with gcloud token caching, 3D boutique scene, VRM-model NPC sommelier, consultation state machine, recommendation cards, ambience audio, health checks, error classification, Playwright E2E suite. Self-directed product build.",
+                "scope_rationale": "Recognized the interesting question was not 'can you answer wine questions' but 'does voice + retail atmosphere change the buying experience'. Extracted wine-ai-core as a workspace BEFORE adding any 3D so the shared core could be iterated in the sandbox and the 3D shell could drop onto it cleanly."
+            }
+        },
+        {
+            "name": "Immersive Landing",
+            "description": "Sibling hackathon project to Auto-Eval3D. Transforms a plain-English business description into a fullscreen explorable 3D landing page \u2014 Claude generates copy + Marble prompts, Marble generates the Gaussian Splat, SparkJS renders it.",
+            "url": "https://github.com/Rayhanpatel/immersive-landing",
+            "date": "2026-03",
+            "highlights": [
+                "Built the commercial-surface sibling to Auto-Eval3D during the same BigThink \u00d7 World Labs weekend: Auto-Eval3D measures whether Marble worlds are coherent, Immersive Landing demonstrates what commercial value those worlds have when they are.",
+                "Two-view React app: InputView (business description form + example gallery) and PreviewView (fullscreen splat viewer with business info overlay). Claude API generates on-page copy + Marble-ready world prompts from a single description.",
+                "SparkJS + THREE.js splat-rendering patterns informed the wine-boutique-world build in Wine Voice AI one week later."
+            ],
+            "keywords": [
+                "React 18",
+                "Vite",
+                "SparkJS 2.0",
+                "THREE.js",
+                "Claude API",
+                "World Labs Marble",
+                "Gaussian Splatting",
+                "WebGL"
+            ],
+            "context": {
+                "problem_space": "Businesses want immersive product surfaces but can't afford custom 3D builds. Marble worlds are cheap to generate but need a compelling shell (fullscreen viewer, generated copy, navigation) to feel like a real landing page.",
+                "relationship_to_auto_eval3d": "Built the same weekend (Mar 28-30 2026) for BigThink \u00d7 World Labs. Auto-Eval3D is the evaluator; Immersive Landing is the commercial surface. A deep side-by-side analysis surfaced concrete gaps in Auto-Eval3D's renderer (missing ACES tone mapping, near plane 0.1 vs 0.01, no vignette) that became its future roadmap.",
+                "my_contribution": "Solo build. Single commit f33b42a on Mar 30 2026. React + Vite frontend, Claude API integration for copy + Marble-prompt generation, Marble API plumbing, SparkJS 2.0 splat viewer.",
+                "event": "BigThink \u00d7 World Labs Hackathon, Mar 28-30 2026. Sibling to Auto-Eval3D."
+            }
+        },
+        {
+            "name": "Evolutionary Agentic Search (research, paused)",
+            "description": "A 5-phase research project exploring whether reranking algorithms and query-reconstruction logic can be co-evolved via LLM-driven program synthesis (RankEvolve + SkyDiscover + EvoX + SmartSearch) with fitness signals from Agentic-R's multi-turn reasoning utility. Phase 1 + Phase 2 scaffolded; paused since Mar 11 2026.",
+            "url": "https://github.com/Rayhanpatel/evo-agentic-search",
+            "date": "2026-03",
+            "highlights": [
+                "Proposed a self-improving search engine where reranking programs are evolved via LLM-driven program synthesis and query-reconstruction logic is meta-evolved, with fitness grounded in Agentic-R's per-passage multi-turn utility signals.",
+                "Designed the critical Phase 1 Fitness Bridge: compresses Agentic-R's vector-valued trajectory utility into a scalar fitness via weighted aggregation (alpha=0.3 local, 0.7 global EM), chosen over StarPO which optimizes agent policies rather than program-synthesis fitness.",
+                "Planned DeepSearchQA (900 causal-chain multi-hop tasks) over HotpotQA to stress-test dependency chains and expose reward-hacking. 7 phase docs authored; Phase 1 + 2 modules scaffolded."
+            ],
+            "keywords": [
+                "Evolutionary Algorithms",
+                "LLM Program Synthesis",
+                "Agentic-R",
+                "RankEvolve",
+                "SkyDiscover",
+                "EvoX",
+                "SmartSearch",
+                "Dr. Zero",
+                "Python 3.10",
+                "vllm",
+                "faiss_gpu",
+                "DeepSearchQA",
+                "Reranking",
+                "Multi-Hop QA"
+            ],
+            "context": {
+                "status": "Paused since Mar 11 2026. Design documentation complete (7 phase docs). Phase 1 (fitness_bridge) + Phase 2 (reranker_evolution) scaffolded in src/. Phases 3, 4, 5 not implemented.",
+                "problem_space": "Modern search systems have human-written reranking math that hits diminishing returns as retrieval surfaces diversify. LLM-driven program synthesis can evolve ranking programs automatically, but Agentic-R's available fitness signals are multi-dimensional and multi-turn, not the scalar fitness program-synthesis loops need. The core research question: can the bridge between them be built cleanly enough that the rest of the 5-phase plan stays publishable?",
+                "why_paused": "Competing priorities through Feb-Apr 2026: Feb FunctionGemma hackathon (2nd place), Feb PathGuard, Mar BigThink win (Auto-Eval3D), Apr Wine Voice AI + YC hackathon (HVAC Copilot finalist). Research projects need long uninterrupted blocks of focus; the hackathon season absorbed that capacity. Paused, not abandoned.",
+                "my_contribution": "Solo: full system design, 7-phase architecture, fitness-bridge algorithm (weighted aggregation with alpha calibration), Phase 1 + 2 implementation scaffold, infrastructure setup (pyproject.toml with GPU optional-deps, pytest, ruff, CodeRabbit config)."
+            }
+        },
         {
             "name": "PathGuard Edge",
             "description": "On-device spatial safety intelligence for construction workers — dual-pipeline edge AI system fusing VLM scene understanding with real-time spatial hazard detection",
@@ -337,7 +567,7 @@
                 "engineering_details": "Engineered 5-step pipeline: (1) Pre-Routing Intelligence via lexical difficulty scoring, (2) Semantic Validation Gate catching tool-name hallucinations, (3) Deterministic NLP argument extraction fixing the 270M model's broken JSON integer parsing, (4) Multi-Intent Cloud Merging that preserves valid local calls while filling gaps via cloud, (5) Aggressive latency slicing with Singleton genai client cache saving ~100ms TLS handshake per call.",
                 "metrics_detail": "0.99 F1 accuracy score on 30-case benchmark (10 easy / 10 medium / 10 hard). 70% on-device ratio. 548ms average latency. Composite score ~80.9% (formula: 0.60*F1 + 0.15*time_score + 0.25*on_device_ratio). Baseline started at ~50% F1, iterated through 62.3% → 65.3% → final 0.99 F1 by fixing confidence_threshold, cloud_handoff handling, and argument post-processing.",
                 "my_contribution": "Solo-engineered the entire system. Designed and implemented the 3-Tier Pre-Routing algorithm, integrated FunctionGemma-270M on-device via Cactus SDK, built the Semantic Validation Gate, deterministic NLP argument parser, Multi-Intent Cloud Merging, and latency optimizations. Debugged model weight corruption, confidence_threshold tuning, and Gemini API rate limiting.",
-                "outcome": "2nd place. Won $5,000 in Gemini API credits. Achieved near-perfect 0.99 F1. Applied Cactus SDK and edge AI knowledge directly to PathGuard Edge the same weekend.",
+                "outcome": "2nd place. Final prize: $1,000 in Google Cloud credits (originally announced as $5,000; organizers adjusted the prize pool post-judging to $2,500 / $1,000 for 1st / 2nd). LinkedIn post from 2026-02-24 references the originally-announced figure. Achieved near-perfect 0.99 F1. Applied Cactus SDK and edge AI knowledge directly to PathGuard Edge the same weekend.",
                 "event": "Cactus × Google DeepMind Global Hackathon (Feb 21, 2026), hosted by AI Tinkerers DC at University of Maryland. Six-city global event."
             }
         },
@@ -514,9 +744,19 @@
     ],
     "volunteer": [
         {
+            "organization": "Y Combinator × Cactus × Google DeepMind Voice Agents Hackathon",
+            "position": "Team Member — Team HVAC Copilot (4-person team, Apr 2026) — Top 10 Finalist",
+            "summary": "Top 10 Finalist out of 200+ builders at Y Combinator SF. Built HVAC Copilot: voice + vision agent for HVAC technicians, Gemma 4 E4B 100% on-device via Cactus, three thin clients (Chrome, iPhone Safari, Rokid AR glasses via WebRTC) sharing one runtime over six function-calling tools. Owned the assistant runtime + tool dispatcher + voice pipeline + latency instrumentation. Teammates: Amogh D. Prasanna, Tash Matsusaki, Evode Manirahari."
+        },
+        {
+            "organization": "BigThink × World Labs Hackathon",
+            "position": "Solo Developer (Mar 2026) — WINNER, Best Scientific & Engineering Application",
+            "summary": "WINNER of Best Scientific & Engineering Application track. Prize: $150 World Labs credits. Solo-built Auto-Eval3D: automated ViewFusion spatial coherence evaluator for generative 3D Gaussian Splat worlds. Text prompt → Marble world → inside-out 4-view WebGL capture → Gemini 2.5 Pro with structured 3-phase XML reasoning → 1-10 coherence score. Also built Immersive Landing as the commercial-surface sibling project that same weekend."
+        },
+        {
             "organization": "Cactus × Google DeepMind Global Hackathon",
             "position": "Solo Developer — Team LocalHost (Feb 2026) — 2nd Place",
-            "summary": "2nd place ($5,000 Gemini API credits). Solo-built FunctionGemma hybrid router (0.99 F1, 548ms, 70% on-device). Six-city global event. Applied learnings to PathGuard Edge."
+            "summary": "2nd place. Final prize: $1,000 Google Cloud credits (originally announced $5,000; organizers adjusted post-judging to $2,500 / $1,000 for 1st / 2nd). Solo-built FunctionGemma hybrid router (0.99 F1, 548ms, 70% on-device). Six-city global event. Applied learnings to PathGuard Edge."
         },
         {
             "organization": "UMD × Ironsite Startup Shell Hackathon",
