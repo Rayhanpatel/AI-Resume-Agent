@@ -63,7 +63,8 @@ async def check_llm(http_client: httpx.AsyncClient, vertex_auth, api_key: str, m
             "contents": [{"role": "user", "parts": [{"text": "Reply with the single word: ok"}]}],
             "generationConfig": generation_config(max_output_tokens=256),
         }
-        response = await http_client.post(url, json=payload, headers=headers, timeout=20.0)
+        # Tiny prompts on gemini-3.8-flash occasionally take 10-20 s; real chat prompts start in ~2 s
+        response = await http_client.post(url, json=payload, headers=headers, timeout=30.0)
         latency_ms = int((time.time() - start) * 1000)
         if response.status_code != 200:
             return {"ok": False, "api_mode": api_mode, "model": model, "latency_ms": latency_ms,
@@ -72,5 +73,6 @@ async def check_llm(http_client: httpx.AsyncClient, vertex_auth, api_key: str, m
         return {"ok": bool(text), "api_mode": api_mode, "model": model, "latency_ms": latency_ms,
                 "error": None if text else "empty response"}
     except Exception as e:
+        # httpx timeouts stringify to "", so always lead with the exception type
         return {"ok": False, "api_mode": api_mode, "model": model,
-                "latency_ms": int((time.time() - start) * 1000), "error": str(e)[:300]}
+                "latency_ms": int((time.time() - start) * 1000), "error": f"{type(e).__name__}: {e}"[:300]}

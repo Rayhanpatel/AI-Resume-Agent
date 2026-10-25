@@ -116,7 +116,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="Rayhan's AI Resume Chatbot",
     description="Production-grade modular API for AI resume interactions",
-    version="2.4.0",
+    version="2.4.1",
     lifespan=lifespan
 )
 

@@ -101,3 +101,36 @@ def test_llm_health_is_cached_and_returns_503_on_failure(monkeypatch):
     assert first.status_code == 503 and second.status_code == 503
     assert first.json()["error"] == "HTTP 403"  # no provider error text leaks publicly
     assert len(calls) == 1  # second request served from cache
+
+
+def test_llm_health_retries_a_failure_after_a_minute(monkeypatch):
+    from api.routes import health
+
+    calls = []
+    clock = [1000.0]
+
+    async def fake_check(http_client, vertex_auth, api_key, model):
+        calls.append(model)
+        ok = len(calls) > 1  # first probe fails, the retry passes
+        return {"ok": ok, "api_mode": "Vertex AI", "model": model, "latency_ms": 5,
+                "error": None if ok else "ReadTimeout: "}
+
+    monkeypatch.setattr(health, "check_llm", fake_check)
+    monkeypatch.setattr(health.time, "time", lambda: clock[0])
+    monkeypatch.setenv("GOOGLE_API_KEY", "test")
+
+    app = FastAPI()
+    app.include_router(health.router, prefix="/api/v1")
+    app.state.http_client = None
+    app.state.vertex_auth = None
+
+    with TestClient(app) as client:
+        first = client.get("/api/v1/health/llm")
+        clock[0] += 61
+        second = client.get("/api/v1/health/llm")
+        clock[0] += 300
+        third = client.get("/api/v1/health/llm")
+
+    assert first.status_code == 503 and first.json()["error"] == "ReadTimeout"
+    assert second.status_code == 200
+    assert third.status_code == 200 and len(calls) == 2  # a pass is cached for 10 minutes

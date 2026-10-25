@@ -9,8 +9,9 @@ from services.gemini import check_llm
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
-APP_VERSION = "2.4.0"
-LLM_CHECK_TTL_SECONDS = 600  # one real model call per 10 minutes at most
+APP_VERSION = "2.4.1"
+LLM_CHECK_TTL_SECONDS = 600         # a passing check is reused for 10 minutes
+LLM_CHECK_FAILURE_TTL_SECONDS = 60  # a failing one is retried after a minute
 
 
 @router.get("/health")
@@ -40,7 +41,8 @@ async def llm_health_check(request: Request):
     """
     state = request.app.state
     cached = getattr(state, "llm_check_cache", None)
-    if cached and time.time() - cached["checked_at"] < LLM_CHECK_TTL_SECONDS:
+    ttl = LLM_CHECK_TTL_SECONDS if cached and cached["ok"] else LLM_CHECK_FAILURE_TTL_SECONDS
+    if cached and time.time() - cached["checked_at"] < ttl:
         result = cached
     else:
         settings = get_settings()
