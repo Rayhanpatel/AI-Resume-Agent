@@ -45,7 +45,8 @@ def test_tools_list_is_stateless_and_read_only():
         for t in tools:
             assert t["annotations"]["readOnlyHint"] is True
 
-        r2 = client.post("/mcp/", headers={**HEADERS, "mcp-method": "tools/call"},
+        # tools/call also wants the tool name in an mcp-name header (lets proxies route without parsing bodies)
+        r2 = client.post("/mcp/", headers={**HEADERS, "mcp-method": "tools/call", "mcp-name": "get_profile"},
                          json={"jsonrpc": "2.0", "id": 2, "method": "tools/call",
                                "params": {"name": "get_profile", "arguments": {"section": "faq"}, "_meta": ENVELOPE}})
         assert r2.status_code == 200, r2.text
