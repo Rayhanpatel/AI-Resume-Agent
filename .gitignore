@@ -75,6 +75,7 @@ htmlcov/
 !backend/core/profile.json
 !frontend/vercel.json
 !frontend/public/profile.json
+!frontend/src/lib/
 
 # Windsurf
 .windsurf/

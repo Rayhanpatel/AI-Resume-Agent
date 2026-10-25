@@ -24,7 +24,8 @@ def test_token_round_trip_and_rejections():
     token = tokens.issue("abc")
     assert tokens.verify(token, "abc")
     assert not tokens.verify(token, "other-session")       # bound to the session
-    assert not tokens.verify(token[:-1] + "0", "abc")      # tampered signature
+    flipped = "0" if token[-1] != "0" else "1"
+    assert not tokens.verify(token[:-1] + flipped, "abc")  # tampered signature (always a different last digit)
     assert not tokens.verify(None, "abc") and not tokens.verify("junk", "abc")
     assert not SessionTokens("different-secret").verify(token, "abc")
 
