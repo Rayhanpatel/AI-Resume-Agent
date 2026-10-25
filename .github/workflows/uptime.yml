@@ -1,0 +1,29 @@
+name: Uptime
+
+# The agent once answered every question with an apology for months while
+# /health said healthy. This makes a real model call daily; GitHub emails the
+# repo owner when a scheduled run fails.
+on:
+  schedule:
+    - cron: "17 13 * * *"  # daily, 9:17 a.m. ET
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Agent answers with a real model call
+        run: |
+          for attempt in 1 2 3; do
+            code=$(curl -s -o body.json -w "%{http_code}" -m 60 https://rayhan-ai-resume-production-6239.up.railway.app/api/v1/health/llm || echo 000)
+            echo "attempt $attempt: HTTP $code $(cat body.json 2>/dev/null)"
+            [ "$code" = "200" ] && exit 0
+            sleep 70  # a failed check is cached for 60 s
+          done
+          echo "::error::chat.rayhanpatel.com model check failed (HTTP $code)"
+          exit 1
+
+      - name: Site and chat pages load
+        run: |
+          curl -sf -m 30 -o /dev/null https://rayhanpatel.com/
+          curl -sf -m 30 -o /dev/null https://chat.rayhanpatel.com/
