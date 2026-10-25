@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { User, Building2, ArrowRight, Sparkles, Briefcase, Link } from 'lucide-react'
+import { reportTurnstileError } from '../lib/telemetry.js'
 
 // Use test key in development (always passes), production key in production
 const TURNSTILE_SITE_KEY = import.meta.env.DEV
@@ -26,6 +27,9 @@ function WelcomeForm({ onStart, defaultValues = {} }) {
     const tokenRef = useRef(null)
     const [turnstileReady, setTurnstileReady] = useState(false)
     const [startError, setStartError] = useState('')
+    // Exposed as data-turnstile-state for the synthetic browser check: loading, rendered,
+    // token, expired, error:<code> or not-loaded
+    const [turnstileState, setTurnstileState] = useState('loading')
 
     // Render Turnstile widget when API is loaded
     useEffect(() => {
@@ -40,14 +44,16 @@ function WelcomeForm({ onStart, defaultValues = {} }) {
                 sitekey: TURNSTILE_SITE_KEY,
                 callback: (token) => {
                     tokenRef.current = token
-                    if (mounted) setTurnstileReady(true)
+                    if (mounted) { setTurnstileReady(true); setTurnstileState('token') }
                 },
                 'expired-callback': () => {
                     tokenRef.current = null
-                    if (mounted) setTurnstileReady(false)
+                    if (mounted) { setTurnstileReady(false); setTurnstileState('expired') }
                 },
                 'error-callback': (errorCode) => {
                     tokenRef.current = null
+                    if (mounted) setTurnstileState(`error:${errorCode}`)
+                    reportTurnstileError(errorCode)
                     console.warn('Turnstile error:', errorCode, '— enabling fallback in 3s')
                     // CRITICAL: Don't permanently lock the button on Turnstile failure.
                     // Allow submission after 3s — backend validates token and fails open
@@ -59,6 +65,7 @@ function WelcomeForm({ onStart, defaultValues = {} }) {
                 theme: 'dark',
                 size: 'flexible',
             })
+            if (mounted) setTurnstileState((s) => (s === 'loading' ? 'rendered' : s))
         }
 
         // Check if Turnstile API is already loaded
@@ -79,6 +86,7 @@ function WelcomeForm({ onStart, defaultValues = {} }) {
                 if (mounted && !tokenRef.current) {
                     setTurnstileReady(true)
                 }
+                if (mounted && !window.turnstile) setTurnstileState('not-loaded')
             }, 10000)
             return () => {
                 mounted = false
@@ -220,7 +228,7 @@ function WelcomeForm({ onStart, defaultValues = {} }) {
                 </div>
 
                 {/* Cloudflare Turnstile Widget */}
-                <div ref={turnstileRef} className="flex justify-center" />
+                <div ref={turnstileRef} className="flex justify-center" data-turnstile-state={turnstileState} />
 
                 {startError && (
                     <p role="alert" className="text-sm text-red-300 bg-red-500/10 border border-red-500/30 rounded-lg px-3 py-2">
