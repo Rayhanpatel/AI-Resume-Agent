@@ -25,8 +25,12 @@ class Settings(BaseSettings):
 
     # Gemini models (Google retires model IDs; change these, not the code)
     # gemini-2.0-flash was retired on Vertex Jun 1 2026, gemini-2.5-* on Oct 20 2026.
-    gemini_model: str = "gemini-3.8-flash"            # answers recruiters
-    gemini_fast_model: str = "gemini-3.5-flash-lite"  # intent, job parsing, starter prompts
+    # gemini-3.8-flash was the first choice, but on Oct 25 2026 it took 30-45 s per answer
+    # while 3.5 Flash started streaming in about 1 s. Measure before changing these.
+    gemini_model: str = "gemini-3.5-flash"                     # answers recruiters
+    gemini_fallback_model: str = "gemini-3.5-flash-lite"       # used if the answer model fails or stalls
+    gemini_first_token_timeout: float = 10.0                   # seconds before switching to the fallback
+    gemini_fast_model: str = "gemini-3.5-flash-lite"           # intent, job parsing, starter prompts
     gemini_thinking_level: str = "low"                # low | medium | high
     # Gemini 3.x models are served from the global endpoint, not us-central1
     gemini_location: str = "global"

@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect, useRef } from 'react'
 
 const SESSION_TTL_MS = 24 * 60 * 60 * 1000 // 24 hours
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+const HISTORY_TURNS = 10 // matches MAX_HISTORY_TURNS in backend/services/agent.py
 
 /**
  * useChatSession Hook
@@ -31,6 +32,8 @@ export function useChatSession() {
     // Refs to avoid stale closures and enable cleanup
     const isLoadingRef = useRef(false)
     const streamAbortRef = useRef(null)
+    const messagesRef = useRef([])
+    useEffect(() => { messagesRef.current = messages }, [messages])
 
     // Session resume modal state
     const [showResumeModal, setShowResumeModal] = useState(false)
@@ -204,6 +207,12 @@ export function useChatSession() {
         }
         setMessages(prev => [...prev, userMessage])
 
+        // Recent turns go to the backend as real conversation history (it keeps the last 10)
+        const history = messagesRef.current
+            .filter(m => m.content && m.content.trim())
+            .slice(-HISTORY_TURNS)
+            .map(m => ({ role: m.role, content: m.content.slice(0, 4000) }))
+
         const aiMessageId = Date.now() + 1
         setMessages(prev => [...prev, { id: aiMessageId, role: 'assistant', content: '' }])
         setIsLoading(true)
@@ -219,7 +228,8 @@ export function useChatSession() {
                     session_id: sessionId,
                     user_name: userName,
                     company: company || null,
-                    job_posting: jobPosting || null
+                    job_posting: jobPosting || null,
+                    history
                 }),
                 signal: streamAbortRef.current.signal
             })

@@ -73,7 +73,9 @@ async def lifespan(app: FastAPI):
         http_client=app.state.http_client,
         vertex_auth=app.state.vertex_auth,
         model=settings.gemini_model,
-        thinking_level=settings.gemini_thinking_level
+        thinking_level=settings.gemini_thinking_level,
+        fallback_model=settings.gemini_fallback_model,
+        first_token_timeout=settings.gemini_first_token_timeout
     )
 
     # In-memory sessions storage with TTL and size limit to prevent memory leaks

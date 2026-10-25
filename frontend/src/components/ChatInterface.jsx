@@ -173,8 +173,9 @@ function ChatInterface({
                             <Globe className="w-4 h-4" />
                         </a>
                         <a
-                            href="/rayhanbp.pdf"
-                            download
+                            href="https://rayhanpatel.com/Rayhan_Patel_Resume.pdf"
+                            target="_blank"
+                            rel="noopener noreferrer"
                             className="hidden sm:flex p-2 rounded-lg hover:bg-white/10 text-gray-400 hover:text-green-400 transition-all hover:scale-110"
                             title="Download Resume"
                             aria-label="Download Rayhan's resume as PDF"

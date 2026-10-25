@@ -1,6 +1,8 @@
 # AI Resume Chatbot
 
-A conversational AI agent that answers recruiter questions about Rayhan Patel's professional background — built with observability, security, and graceful degradation in mind. FastAPI, Google Gemini 2.0 Flash, and React 18. Raw HTTP calls to Gemini (no SDK), semantic memory via Mem0, real-time SSE streaming, and automated LLM-as-a-Judge evaluation.
+A conversational AI agent that answers recruiter questions about Rayhan Patel's professional background — built with observability, security, and graceful degradation in mind. FastAPI, Gemini 3.5 Flash on Vertex AI with automatic model fallback, and React 18. Raw HTTP calls to Gemini (no SDK), real multi-turn history plus Mem0 memory, SSE streaming, LLM-as-a-Judge evaluation, and a golden-question eval that runs against the real model.
+
+Its knowledge comes from `backend/core/profile.json`, the same public profile that renders [rayhanpatel.com](https://rayhanpatel.com), so the site and the agent can't drift apart.
 
 [![Live Demo](https://img.shields.io/badge/Live-chat.rayhanpatel.com-blue?style=for-the-badge&logo=vercel)](https://chat.rayhanpatel.com)
 [![Backend Status](https://img.shields.io/badge/Backend-Railway-green?style=for-the-badge&logo=railway)](https://rayhan-ai-resume-production-6239.up.railway.app/api/v1/health)
@@ -68,7 +70,13 @@ The frontend proxies `/api` requests to the backend during development (configur
 | Feature | Description | Implementation |
 |---------|-------------|----------------|
 | Real-time Streaming | Token-by-token response delivery | SSE with `X-Accel-Buffering: no` to bypass Cloudflare/nginx buffering |
-| Dual LLM Fallback | Vertex AI (production) → AI Studio (free tier) | Automatic switchover in `vertex_auth.py` based on credential availability |
+| Model Fallback | A slow or failing model never takes the chat down | Answer model → fallback model if it errors, returns nothing, or stays silent past `GEMINI_FIRST_TOKEN_TIMEOUT`; the fallback gets one patient retry (`agent.py`) |
+| Models as Config | Google retires model IDs; changing one is an env var | `GEMINI_MODEL`, `GEMINI_FALLBACK_MODEL`, `GEMINI_FAST_MODEL` in `config.py`; one request helper in `services/gemini.py` |
+| Real Health Check | Catches a dead model, not just a dead process | `/api/v1/health/llm` makes a real model call (cached 10 min, failures retried after 60 s) and returns 503 when it fails |
+| Conversation History | Follow-up questions work | The frontend sends the last 10 turns; the backend merges them into alternating turns ending with the question |
+| Golden Eval | Checks what the model actually says | `backend/evals/golden.py`: 13 recruiter questions with must-say / must-not-say checks, run against the real model |
+| Truth Tests | Known-wrong claims can't come back | `tests/test_profile.py` fails CI if banned wording appears in the profile or the rendered prompt |
+| Vertex / AI Studio | Vertex AI in production, AI Studio for local runs | Chosen in `vertex_auth.py` from credential availability |
 | Job URL Extraction | Paste LinkedIn/Greenhouse/Lever URLs | 8-layer SSRF-protected fetcher in `job_extractor.py` |
 | LLM-Powered Job Parsing | Structured extraction from job postings | Gemini Flash with `responseMimeType: application/json` in `job_parser.py` |
 | Dynamic Starter Prompts | Context-aware suggested questions | LLM-generated per job description with generic fallback defaults in `prompt_generator.py` |
@@ -119,7 +127,7 @@ flowchart LR
     end
 
     subgraph Ext["External Services"]
-        Gemini["Gemini 2.0<br/>Flash"]
+        Gemini["Gemini 3.5<br/>Flash"]
         Mem0["Mem0<br/>Cloud"]
         LF["Langfuse<br/>+ Evaluators"]
         Supa[("Supabase<br/>PostgreSQL")]
@@ -146,7 +154,7 @@ flowchart LR
     class React fe
 ```
 
-> **10 backend services**, **5 core modules**, and **4 API route groups** — see [Project Structure](#project-structure) for the complete inventory.
+> **10 backend modules** in **one FastAPI deployment**, plus **4 API route groups**. See [Project Structure](#project-structure) for the complete inventory.
 
 ### Traffic Flow & Security
 
@@ -193,7 +201,7 @@ sequenceDiagram
 
     API->>IC: Classify intent (10s timeout)
     activate IC
-    IC->>G: Gemini Flash (temperature=0.1, JSON mode)
+    IC->>G: Gemini Flash-Lite (JSON mode)
     G-->>IC: {intent: "job_related"}
     IC-->>API: Pass
     deactivate IC
@@ -292,7 +300,8 @@ erDiagram
 
 | Endpoint | Method | Auth | Description |
 |----------|--------|------|-------------|
-| `/api/v1/health` | GET | None | Returns service status for all 6 subsystems |
+| `/api/v1/health` | GET | None | Liveness: config flags for all 6 subsystems (Railway's healthcheck) |
+| `/api/v1/health/llm` | GET | None | Readiness: one real model call, cached; 503 if the model fails |
 | `/api/v1/session` | POST | None | Create session with optional job URL/text parsing |
 | `/api/v1/chat` | POST | None | Non-streaming chat response |
 | `/api/v1/chat/stream` | POST | None | SSE streaming chat response |
@@ -309,7 +318,12 @@ All variables loaded via Pydantic `BaseSettings` from `backend/.env`.
 |----------|----------|-------------|
 | `GOOGLE_API_KEY` | Yes | Gemini API key (AI Studio fallback) |
 | `GOOGLE_CLOUD_PROJECT` | No | GCP project ID for Vertex AI |
-| `GOOGLE_CLOUD_LOCATION` | No | GCP region (default: `us-central1`) |
+| `GEMINI_MODEL` | No | Answer model (default: `gemini-3.5-flash`) |
+| `GEMINI_FALLBACK_MODEL` | No | Used if the answer model fails or stalls (default: `gemini-3.5-flash-lite`) |
+| `GEMINI_FIRST_TOKEN_TIMEOUT` | No | Seconds of silence before falling back (default: `10`) |
+| `GEMINI_FAST_MODEL` | No | Intent, job parsing, starter prompts (default: `gemini-3.5-flash-lite`) |
+| `GEMINI_THINKING_LEVEL` | No | `low`, `medium` or `high` (default: `low`) |
+| `GEMINI_LOCATION` | No | Vertex location (default: `global`, where Gemini 3.x is served) |
 | `GOOGLE_APPLICATION_CREDENTIALS_JSON` | No | Service account JSON for Vertex AI |
 | `MEM0_API_KEY` | No | Mem0 Cloud API key (memory disabled if absent) |
 | `ADMIN_API_KEY` | No | Secret key for `/admin` endpoints |
@@ -342,7 +356,8 @@ Only `GOOGLE_API_KEY` is required. All other services degrade gracefully when th
 │   │       └── health.py          # /health endpoint
 │   ├── core/
 │   │   ├── config.py              # Pydantic BaseSettings
-│   │   ├── prompts.py             # System prompt, resume, technical context
+│   │   ├── prompts.py             # System prompt + technical context
+│   │   ├── profile.json           # Public profile, synced from the rayhanpatel.com repo
 │   │   ├── ttl_cache.py           # Thread-safe TTL cache (OrderedDict + Lock)
 │   │   ├── middleware.py          # Pure ASGI Request ID middleware
 │   │   └── timeout.py            # Safe async timeout (asyncio.wait)
@@ -353,7 +368,8 @@ Only `GOOGLE_API_KEY` is required. All other services degrade gracefully when th
 │   ├── models/
 │   │   └── schemas.py             # Pydantic v2 request/response models
 │   ├── services/
-│   │   ├── agent.py               # Core chat agent (streaming + non-streaming)
+│   │   ├── agent.py               # Core chat agent (streaming + non-streaming, model fallback)
+│   │   ├── gemini.py              # Endpoint, generation config, response parsing, health probe
 │   │   ├── intent.py              # Intent classifier (job_related/off_topic)
 │   │   ├── vertex_auth.py         # Vertex AI OAuth2 + AI Studio fallback
 │   │   ├── memory.py              # Mem0 semantic memory wrapper
@@ -389,7 +405,7 @@ Only `GOOGLE_API_KEY` is required. All other services degrade gracefully when th
 │   └── package.json               # React 18, lucide, react-markdown
 ├── .github/
 │   └── workflows/
-│       └── ci.yml                 # Backend import check + Frontend build (2 jobs)
+│       └── ci.yml                 # Backend imports + pytest, frontend build (2 jobs)
 ├── Makefile                       # setup, api, ui, build, clean
 └── README.md
 ```
@@ -397,6 +413,10 @@ Only `GOOGLE_API_KEY` is required. All other services degrade gracefully when th
 ---
 
 ## Design Decisions
+
+### Model IDs are configuration, and failure is planned for
+
+In 2026 Google retired `gemini-2.0-flash` (June 1) and `gemini-2.5-*` (October 20). The agent had the model ID hardcoded in five places and a health check that only read config flags, so it answered every question with an apology while `/health` said healthy. Now the model IDs are settings, `/health/llm` makes a real call, and the answer path falls back to a second model when the first errors or stalls. The fallback is measured: on Oct 25, 2026 `gemini-3.8-flash` took 30–45 s per answer while `gemini-3.5-flash` started streaming in about 1 s, and `gemini-3.5-flash` returned occasional 429s that the fallback absorbed.
 
 ### Raw HTTP instead of Google GenAI SDK
 
@@ -420,7 +440,7 @@ User messages appear in the chat instantly before the API responds (optimistic r
 
 ### Intent classification as a gate
 
-Off-topic queries are classified and declined *before* the expensive agent call. The classifier uses Gemini Flash (cheapest model) with `temperature=0.1` for deterministic output and defaults to `job_related` on any failure, ensuring users are never incorrectly blocked.
+Off-topic queries are classified and declined *before* the expensive agent call. The classifier uses Gemini Flash-Lite (the cheapest model) in JSON mode and defaults to `job_related` on any failure, ensuring users are never incorrectly blocked.
 
 ### Graceful degradation via service flags
 
@@ -432,7 +452,7 @@ All string fields in Pydantic request models run through `_strip_html()` (a rege
 
 ### LLM-as-a-Judge over rule-based evaluation
 
-Traditional metrics (BLEU, ROUGE) measure surface-level text overlap and fail on open-ended conversational responses. We use Langfuse's LLM-as-a-Judge evaluators with Gemini 2.5 Flash scoring every trace across 5 dimensions (Hallucination, Relevance, Conciseness, Helpfulness, Toxicity). This runs server-side in Langfuse at 100% sampling — zero backend code changes, zero latency impact on users, and the evaluation model is different from the generation model to avoid self-bias.
+Traditional metrics (BLEU, ROUGE) measure surface-level text overlap and fail on open-ended conversational responses. We use Langfuse's LLM-as-a-Judge evaluators, with a judge model separate from the answer model, scoring every trace across 5 dimensions (Hallucination, Relevance, Conciseness, Helpfulness, Toxicity). This runs server-side in Langfuse at 100% sampling — zero backend code changes, zero latency impact on users, and the evaluation model is different from the generation model to avoid self-bias.
 
 ---
 
@@ -443,7 +463,7 @@ Traditional metrics (BLEU, ROUGE) measure surface-level text overlap and fail on
 | Backend | Railway | `Dockerfile` → `python:3.11-slim`, `start.sh` runs uvicorn with `$PORT`, restart on failure (10 retries), health check at `/api/v1/health` |
 | Frontend | Vercel | Auto-deploy from `main` branch, custom domain `chat.rayhanpatel.com` |
 | CDN | Cloudflare | DNS + SSL + Proxy, SSE buffering bypassed via response headers |
-| CI | GitHub Actions | 2-job pipeline: backend (Python 3.11, install deps, verify imports) + frontend (Node 18, `npm ci`, `npm run build`) on push/PR to `main` |
+| CI | GitHub Actions | 2-job pipeline: backend (Python 3.11, install deps, verify imports, pytest) + frontend (Node 20, `npm ci`, `npm run build`) on push/PR to `main` |
 
 ### Custom Domain
 

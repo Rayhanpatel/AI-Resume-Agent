@@ -1,0 +1,427 @@
+{
+  "meta": {
+    "updated": "2026-10-25",
+    "about_this_file": "Public-safe profile of Rayhan Patel. It is the single source for rayhanpatel.com (rendered by scripts/build.py) and for the agent at chat.rayhanpatel.com (copied in by scripts/sync_chatbot.py). Everything here is public. It never holds a phone number, a street address, internal employer metrics, ticket IDs or colleague names."
+  },
+
+  "basics": {
+    "name": "Rayhan Patel",
+    "full_name": "Rayhan Basheer Patel",
+    "headline": "Software Engineer, AI Agents",
+    "focus": "Production agents, agent memory and LLM evaluation",
+    "one_liner": "I build AI agents and measure whether they actually work.",
+    "intro": "Agent memory and LLM evaluation at 3E this summer. First-author paper at a RecSys 2026 workshop. Finishing an M.S. in Applied Machine Learning at the University of Maryland.",
+    "location": "San Francisco Bay Area, CA",
+    "degree_line": "M.S. Applied Machine Learning, University of Maryland, May 2027",
+    "availability": "Available June 2027",
+    "relocation": "Open to relocation nationwide",
+    "email": "rayhanbp@umd.edu",
+    "orcid": "0009-0004-4882-2123",
+    "links": {
+      "site": "https://rayhanpatel.com",
+      "agent": "https://chat.rayhanpatel.com",
+      "github": "https://github.com/Rayhanpatel",
+      "linkedin": "https://www.linkedin.com/in/rayhan-patel-cs/",
+      "scholar": "https://scholar.google.com/citations?user=lXIyoBIAAAAJ",
+      "resume": "https://rayhanpatel.com/Rayhan_Patel_Resume.pdf"
+    }
+  },
+
+  "about": [
+    "I build AI agents and measure whether they actually work. This summer at 3E I took agent memory from an open research question to a working multi-tenant MCP service, and built the benchmark that shaped its design.",
+    "Before that I was a founding engineer at Euler AI, where I shipped a shopping assistant and an LLM-as-a-judge pipeline that measured hallucination across the product. My first-author paper, EvoRank, was presented at a RecSys 2026 workshop.",
+    "I'm finishing an M.S. in Applied Machine Learning at the University of Maryland. From June 2027 I want to work full-time on a team that takes agents, evals and ML systems to production."
+  ],
+
+  "looking_for": {
+    "roles": ["Software Engineer, AI agents", "Machine Learning Engineer", "Applied AI / LLM evaluation", "ML platform and inference", "Forward deployed engineer (AI)"],
+    "start": "June 2027, full-time",
+    "where": "San Francisco Bay Area first, open to relocation nationwide"
+  },
+
+  "principles": [
+    {
+      "title": "Prove the measurement before trusting the result",
+      "body": "At 3E I calibrated the LLM judge against blinded human graders before reading a single score. The rubric, not the judge model, turned out to be the accuracy lever. EvoRank gates the search with a pre-spend headroom check and re-scores every winner on held-out queries."
+    },
+    {
+      "title": "The harness is part of the latency budget",
+      "body": "My on-device agent answered in 217 ms with a bare prompt and 3.9 to 4.5 s once about 935 tokens of system prompt and tool schemas were loaded. I traced it to CPU prefill. Tool definitions are not free."
+    },
+    {
+      "title": "Let the model handle language and let code make the decisions",
+      "body": "In MedBill the model reads the bill, but a deterministic gate decides whether a No Surprises Act claim stands. In the SDS agent the model extracts, and CAS check-digit math verifies. The check digit doesn't hallucinate."
+    }
+  ],
+
+  "experience": [
+    {
+      "company": "3E",
+      "team": "AI Platform team",
+      "role": "AI Engineer Intern",
+      "dates": "Jun 2026 – Aug 2026",
+      "location": "Bethesda, MD (hybrid)",
+      "summary": "Took the agent-memory question from open research to a working MCP service in ten weeks, for a production compliance-AI platform.",
+      "highlights": [
+        "Built the platform's only cross-system scoreboard for agent memory, comparing four existing memory systems (Hindsight, Cognee, Zep and AgentCore Memory) on the LoCoMo and LongMemEval benchmarks, with byte-identical prompts and sha-pinned question sets so runs stay comparable.",
+        "Calibrated the LLM judge against blinded human graders and constructed ground truth before trusting its scores. The rubric, not the judge model, was the accuracy lever.",
+        "Wrote the architecture proposal from the results. The systems tied on easy recall but split on temporal reasoning, so the design routes by use case behind one API contract.",
+        "Implemented the core of the multi-tenant memory MCP service on AWS Lambda and DynamoDB: six operations, tenant access that denies by default, versioned writes and about 125 conformance tests.",
+        "Designed tenant access that denies by default.",
+        "Built a 120+ model capability catalog with live probes for the company's internal AI gateway."
+      ],
+      "tech": ["Python", "AWS Lambda", "DynamoDB", "MCP", "Claude Agent SDK", "LLM-as-a-judge", "LoCoMo", "LongMemEval", "Langfuse"],
+      "details": {
+        "findings_in_plain_words": "On easy recall the memory systems tie, so the backend choice is a cost decision. On temporal reasoning it is an accuracy decision, so route by use case behind one contract. Abstention often moves opposite to accuracy. Stored extracted observations beat raw logs, which beat summaries. If a frozen index plus a good retriever could pass a memory test, the test measured retrieval, not memory.",
+        "how_he_works": "Frozen spec as the contract, guard tests written to fail first, verification against the live deployment before calling anything done, and documents that cite their evidence.",
+        "other_work": "In his first week he built and citation-audited a 98-paper literature corpus on agent memory. He also de-risked the serverless design with an MCP-on-Lambda spike validated by a 12-check acceptance suite against the live function.",
+        "how_he_got_it": "He built two public prototypes of the company's own problem space (RegSentinel and SDS Intake Agent) before applying. The offer followed.",
+        "after": "3E offered him a part-time continuation for fall 2026.",
+        "what_not_to_say": "The specific benchmark scores are internal to 3E. Hindsight, Cognee, Zep and AgentCore Memory are existing memory systems made by others; he benchmarked them, he did not build them. The memory service he built runs on Lambda and DynamoDB, and AgentCore was not its platform."
+      }
+    },
+    {
+      "company": "Euler AI",
+      "team": "Two-product AI startup",
+      "role": "Founding ML/Software Engineer (full-time, remote), 2025 · ML/AI Engineering Intern, 2024",
+      "dates": "Jan 2024 – May 2024 · Mar 2025 – Jul 2025",
+      "location": "Remote",
+      "summary": "Built the search and recommendation path of a conversational shopping assistant, plus the evaluation that measured it.",
+      "highlights": [
+        "Built the search and recommendation path of a shopping assistant as FastAPI services: a quantized DistilBERT intent router, embedding retrieval, a reranker and PII guardrails.",
+        "Shipped an LLM-as-a-judge (G-Eval) batch pipeline that measured hallucination across the product.",
+        "Designed a healthcare system that turns electronic health records into medical codes, so clinicians spend less time on paperwork."
+      ],
+      "tech": ["Python", "FastAPI", "AsyncIO", "DistilBERT", "Embeddings", "Reranking", "G-Eval", "GCP", "Vertex AI", "Cloud Run"],
+      "details": {
+        "architecture": "Requests pass PII protection and prompt-injection checks, then category and intent classifiers route them. Query reconstruction feeds retrieval over embeddings with a reranker. An asynchronous offline module scores responses with G-Eval (coherence, relevance, faithfulness). Tracing covers throughput, latency and cost.",
+        "why_fastapi": "Chose FastAPI over Flask for native AsyncIO, since the work is I/O-bound LLM calls.",
+        "why_he_left": "He left in July 2025 to start his M.S. at the University of Maryland. The company is still operating.",
+        "what_not_to_say": "There are no public metrics for this work, so do not give any numbers."
+      }
+    }
+  ],
+
+  "publications": [
+    {
+      "title": "EvoRank: LLM-Guided Evolution of Multi-Objective Learning-to-Rank Pipelines",
+      "venue": "GenAIECommerce 2026, a RecSys 2026 workshop (Minneapolis)",
+      "year": "2026",
+      "authors": "Rayhan Patel and Shabaz Patel (equal contribution)",
+      "role": "First author, equal contribution",
+      "summary": "An LLM evolves complete learning-to-rank pipelines (features, models, losses, ensembles) for multi-objective hotel search. The contribution is the audit: a pre-spend headroom gate and a transfer audit on held-out queries.",
+      "result": "All three runs beat an Optuna-tuned LambdaMART on relevance (best +0.0057 NDCG@10, p < 0.0001, 59,902 held-out queries), and the best run beat it on every objective. A one-shot late submission would have placed 20th of 340 on the original Kaggle test set.",
+      "links": {
+        "paper": "https://arxiv.org/abs/2609.22196",
+        "code": "https://github.com/shabazpatel/evorank"
+      },
+      "details": {
+        "negative_result": "The first campaign, which evolved only the training objective, selected noise: gains on the selection fold vanished on held-out data (+0.0002, p = 0.76) because the effects sat below the fitness fold's noise floor. Widening the search to whole pipelines cleared that floor.",
+        "leakage_story": "Building the headroom gate surfaced three target-encoding leakage bugs. Leave-one-out encoding, the textbook fix, was worse than the naive version. Only out-of-fold encoding split by query was clean.",
+        "cost": "About 50 iterations and about $10 of LLM spend per run.",
+        "presented": "Presented as a poster on Sep 28, 2026 at RecSys 2026 in Minneapolis.",
+        "precise_claim": "Significantly better relevance and conversion at matching revenue. Revenue was positive but inside the noise band."
+      }
+    },
+    {
+      "title": "Building Domain-Specific LLMs Faithful to the Islamic Worldview: Mirage or Technical Possibility?",
+      "venue": "NeurIPS 2023 Muslims in ML workshop",
+      "year": "2023",
+      "authors": "Shabaz Patel, Hassan Kane, Rayhan Patel",
+      "role": "Co-author",
+      "summary": "Tested whether prompting, RAG over 54K hadith, or GPT-3.5 fine-tuning makes LLMs answer faithfully to scholar answers. Built the evaluation (BERTScore and embedding distance) and presented the paper.",
+      "result": "Few-shot prompting was the most reliable across models. Fine-tuning on hadith plus IslamQA gave the best F1 (0.402).",
+      "links": {
+        "paper": "https://arxiv.org/abs/2312.06652"
+      }
+    }
+  ],
+
+  "projects": [
+    {
+      "id": "chat-agent",
+      "title": "Production Chat Agent",
+      "subtitle": "The agent you can talk to on this site",
+      "kind": "Live system · solo",
+      "date": "Jan 2026 – present",
+      "featured": true,
+      "summary": "A FastAPI and React agent that answers questions about my work. It streams over SSE, gates off-topic questions before the expensive call, reads a pasted job post, and keeps chatting when memory, database or tracing are down.",
+      "metrics": ["10 modules, one deployment", "5 LLM-as-judge evaluators"],
+      "highlights": [
+        "Replaced Google's SDK with raw async HTTP/2 after it hung the server, and traced a silent production hang to a cache deadlock by bisecting with diagnostic endpoints.",
+        "Five LLM-as-judge evaluators in Langfuse score answers, with a separate judge model to avoid self-bias.",
+        "Oct 2026: moved to Gemini 3.x after Google retired the original model, and added a health check that makes a real model call, since the old one only checked config."
+      ],
+      "links": {
+        "live": "https://chat.rayhanpatel.com",
+        "code": "https://github.com/Rayhanpatel/AI-Resume-Agent",
+        "walkthrough": "https://youtu.be/5xGjCrDEoMQ"
+      },
+      "tags": ["FastAPI", "React", "Gemini", "SSE", "Langfuse", "Supabase"],
+      "details": {
+        "architecture": "Frontend on Vercel behind Cloudflare. Backend on Railway, called directly so long streams avoid proxy timeouts. Thin route handlers delegate to services, and every external dependency (Mem0, Supabase, Langfuse) has an enabled flag so the chat degrades instead of failing.",
+        "models": "Answers come from Gemini 3.8 Flash on Vertex AI. A smaller Gemini 3.5 Flash-Lite classifies intent and parses job posts.",
+        "security": "SSRF-protected job URL fetcher, Cloudflare Turnstile, HTML stripped from every input, constant-time admin auth, and job descriptions fenced off as data so they can't override instructions.",
+        "bugs_worth_telling": "A threading.Lock plus overridden dict methods deadlocked every POST endpoint with no errors and no logs. He built diagnostic endpoints to binary-search it, and the fix was one line. Separately, asyncio.wait_for hung on clients that ignore cancellation, so he wrote a timeout helper on asyncio.wait.",
+        "data": "Its knowledge comes from the same profile file that renders rayhanpatel.com, so the site and the agent can't drift apart."
+      }
+    },
+    {
+      "id": "mcp-trust-monitor",
+      "title": "mcp-trust-monitor",
+      "subtitle": "Open-source guard for MCP tool calls",
+      "kind": "Open source · solo",
+      "date": "Oct 2026",
+      "featured": true,
+      "summary": "A Python SDK and CLI that holds an agent's MCP tool calls when a server's tool definitions change, until an operator approves the new revision.",
+      "metrics": ["2 alpha releases", "MIT licensed"],
+      "highlights": [
+        "Protected calls check approval, current metadata, launch identity and session freshness before dispatch. A changed definition, failed observation or quarantine blocks the call.",
+        "Background monitoring, a local operator console and decision-record export for audits."
+      ],
+      "links": {
+        "code": "https://github.com/Rayhanpatel/mcp-trust-monitor"
+      },
+      "tags": ["MCP", "Python", "Security", "SDK"]
+    },
+    {
+      "id": "hvac-copilot",
+      "title": "HVAC Copilot",
+      "subtitle": "On-device voice and vision agent for AR glasses",
+      "kind": "YC × Cactus × DeepMind hackathon · team of 4",
+      "date": "Apr 2026",
+      "featured": true,
+      "summary": "A field assistant for HVAC technicians running Gemma 4 E4B fully on-device. One runtime serves three clients: Chrome, iPhone Safari and Rokid AR glasses over WebRTC.",
+      "metrics": ["TTFT 217 ms bare vs 3.9–4.5 s loaded", "6 tools, on-device"],
+      "highlights": [
+        "Built the assistant runtime and a six-tool function-calling surface, with the on-device/online boundary enforced in the dispatcher, not just the prompt.",
+        "Wrote a streaming sanitizer for Gemma 4's three tool-call formats so raw tool syntax never reaches the user.",
+        "Profiled the latency end to end and traced the 4 s first token to CPU prefill of the system prompt and tool schemas."
+      ],
+      "links": {
+        "code": "https://github.com/Rayhanpatel/Ycombinator-Cactus-Deepmind",
+        "demo": "https://youtube.com/shorts/xXLoZhNNC-0",
+        "pitch": "https://youtu.be/w8ZFqvcm0f0"
+      },
+      "tags": ["Gemma 4", "On-device", "Function calling", "WebRTC", "Voice"],
+      "details": {
+        "his_part": "The assistant runtime, tool dispatcher and six-tool contract, the voice pipeline for the glasses (Silero VAD, faster-whisper, Kokoro TTS), latency instrumentation and the FastAPI/WebSocket server. A teammate built the Rokid Android app.",
+        "latency": "Decode about 17 tokens/s. The glasses path took about 20 s end to end, and the Gemma turn was the dominant hop.",
+        "what_not_to_say": "No placement or prize is claimed for this hackathon."
+      }
+    },
+    {
+      "id": "functiongemma-router",
+      "title": "FunctionGemma Hybrid Router",
+      "subtitle": "2nd place, Cactus × Google DeepMind hackathon",
+      "kind": "Hackathon · built end to end",
+      "date": "Feb 2026",
+      "featured": true,
+      "summary": "Routes function calls between FunctionGemma-270M on-device and Gemini Flash-Lite in the cloud, deciding before inference because the small model reports high confidence even when it's wrong.",
+      "metrics": ["0.99 F1", "548 ms average", "70% on-device"],
+      "highlights": [
+        "Pre-routing difficulty scoring, a validation gate that catches hallucinated tool names, and deterministic argument extraction for the 270M model's broken integers.",
+        "Proved that on-device beats a perfect cloud answer once local F1 passes 0.48 under the contest's scoring, and built around that."
+      ],
+      "links": {
+        "code": "https://github.com/Rayhanpatel/functiongemma-hackathon"
+      },
+      "tags": ["FunctionGemma", "Edge AI", "Routing", "Function calling"],
+      "details": {
+        "prize": "2nd place. The prize was $1,000 in Gemini API credits.",
+        "benchmark": "30-case benchmark (10 easy, 10 medium, 10 hard). He started from about 50% F1.",
+        "integrity": "Some top teams reached 16 ms by regex-matching the benchmark's exact query strings. He built a router that generalizes instead."
+      }
+    },
+    {
+      "id": "auto-eval3d",
+      "title": "Auto-Eval3D",
+      "subtitle": "Winner, Best Scientific & Engineering Application",
+      "kind": "BigThink × World Labs hackathon · solo",
+      "date": "Mar 2026",
+      "featured": true,
+      "summary": "Scores whether a generated 3D world stays consistent across viewpoints: prompt to World Labs Marble world, four inside-out views, then structured multi-view reasoning in Gemini.",
+      "metrics": ["Track winner", "4 views, 1 score, full trace"],
+      "highlights": [
+        "Built the inside-out WebGL camera rig and a three-phase reasoning prompt that flags Janus artifacts, warping, scale shifts and floating geometry.",
+        "After the win I re-audited the traces. The demo's 1/10 score was judging a badly placed camera, not a bad world, so I rewrote the capture rig."
+      ],
+      "links": {
+        "code": "https://github.com/Rayhanpatel/autoeval3d",
+        "devpost": "https://devpost.com/software/auto-eval3d-spatial-coherence-evaluator"
+      },
+      "tags": ["VLM evaluation", "Gaussian splats", "Three.js", "FastAPI"]
+    },
+    {
+      "id": "cerebras-kernel",
+      "title": "Top-K k-NN kernel for the Cerebras WSE-2",
+      "subtitle": "Take-home, written in CSL",
+      "kind": "Take-home · solo · code on request",
+      "date": "Apr 2026",
+      "featured": true,
+      "summary": "A distributed Top-K nearest-neighbour kernel across a grid of processing elements on the wafer-scale engine simulator: vectorized distance compute, a bounded heap per element, then a merge.",
+      "metrics": ["6/6 grader cases", "2.68× fewer cycles"],
+      "highlights": [
+        "2.68× fewer cycles than my first correct version, with bit-identical results on all six cases.",
+        "Measured a radix-sort variant at +24% cycles and rejected it."
+      ],
+      "links": {},
+      "on_request": "Code on request",
+      "tags": ["CSL", "Cerebras", "Kernels", "Performance"],
+      "details": {
+        "note": "The repository is private because it contains Cerebras's challenge materials. His own source is available on request."
+      }
+    },
+    {
+      "id": "medbill",
+      "title": "MedBill",
+      "subtitle": "Medical bill auditor that keeps patient data on the device",
+      "kind": "Anthropic × Maryland hackathon · solo",
+      "date": "Apr 2026",
+      "featured": false,
+      "summary": "Redacts patient information on-device, then uses Claude on the redacted text to find overcharges and draft a dispute letter. A deterministic gate, not the model, decides No Surprises Act claims.",
+      "metrics": [],
+      "highlights": [],
+      "links": {
+        "code": "https://github.com/Rayhanpatel/medbill"
+      },
+      "tags": ["Claude", "PHI redaction", "Presidio", "Streamlit"]
+    },
+    {
+      "id": "regsentinel",
+      "title": "RegSentinel and SDS Intake Agent",
+      "subtitle": "Compliance agents built before applying to 3E",
+      "kind": "Prototypes · solo",
+      "date": "May 2026",
+      "featured": false,
+      "summary": "A chemical-compliance agent on the Claude Agent SDK and an MCP server, with cited answers and human escalation for high-risk calls, plus a Safety Data Sheet extractor where code verifies what the model extracts. Built as prototypes of 3E's problem space before I applied. The offer followed.",
+      "metrics": [],
+      "highlights": [],
+      "links": {
+        "code": "https://github.com/Rayhanpatel/regsentinel",
+        "code_2": "https://github.com/Rayhanpatel/sds-intake-agent"
+      },
+      "tags": ["Claude Agent SDK", "MCP", "Guardrails"]
+    },
+    {
+      "id": "llm-inference-tuning",
+      "title": "LLM inference config tuning",
+      "subtitle": "An LLM agent that tunes vLLM serving configs",
+      "kind": "UMD study · 3 authors · my method",
+      "date": "Mar – May 2026",
+      "featured": true,
+      "summary": "Multi-objective tuning of LLM serving: throughput, time to first token and time per output token. I designed and built the LLM-agent method, one of five compared head to head against Bayesian optimization on shared benchmark infrastructure.",
+      "metrics": ["9 vLLM knobs", "4 GPU allocations", "5 methods compared"],
+      "highlights": [
+        "Same quasi-random warm start as the Bayesian baselines, so the comparison is fair by construction. Then one model call per trial, seeing the full sorted benchmark history, proposes the next config.",
+        "Every LLM-proposed config passes type coercion, schema repair and a hallucinated-key guard before it reaches a GPU. Benchmarked on Slurm."
+      ],
+      "links": {},
+      "on_request": "Report on request",
+      "tags": ["vLLM", "Slurm", "Multi-objective optimization"],
+      "details": {
+        "what_not_to_say": "The headline throughput and latency gains in the report belong to a teammate's method, not his."
+      }
+    },
+    {
+      "id": "pathguard",
+      "title": "PathGuard",
+      "subtitle": "On-device hazard alerts for construction workers",
+      "kind": "UMD × Ironsite hackathon · team lead of 3",
+      "date": "Feb 2026",
+      "featured": false,
+      "summary": "An on-device vision-language model describes the scene and drives zero-shot hazard detection (Grounding DINO, SAM2, Depth Anything V2) inside the worker's walking path, with audio alerts.",
+      "metrics": [],
+      "highlights": [],
+      "links": {
+        "code": "https://github.com/Rayhanpatel/PathGuard",
+        "video": "https://youtu.be/Zr4QqsBu43g"
+      },
+      "tags": ["VLM", "Computer vision", "Edge AI"],
+      "details": {
+        "what_not_to_say": "No placement is claimed for this hackathon."
+      }
+    },
+    {
+      "id": "retail-voice",
+      "title": "Retail Catalog Voice AI",
+      "subtitle": "Voice wine advisor in a 3D boutique",
+      "kind": "Product build · solo",
+      "date": "Apr 2026",
+      "featured": false,
+      "summary": "Voice in, spoken answer out, grounded in the catalog with no invented bottles: local parsing of the shopper's constraints filters the catalog before Gemini sees it.",
+      "metrics": [],
+      "highlights": [],
+      "links": {
+        "code": "https://github.com/Rayhanpatel/Retail-Catalog-Voice-AI",
+        "video": "https://www.loom.com/share/eae8e365e71a489e872152db640f4e63"
+      },
+      "tags": ["Voice", "Grounded generation", "Three.js"]
+    },
+    {
+      "id": "english2sql",
+      "title": "English2SQL",
+      "subtitle": "B.Tech final-year project",
+      "kind": "Team project · backend and RAG",
+      "date": "2024",
+      "featured": false,
+      "summary": "Natural language to SQL over Postgres with schema-aware prompting, evaluated on execution accuracy (+9% on a 120-query set).",
+      "metrics": [],
+      "highlights": [],
+      "links": {
+        "code": "https://github.com/Rayhanpatel/English2SQL"
+      },
+      "tags": ["LLM", "SQL", "FastAPI"]
+    }
+  ],
+
+  "now_building": {
+    "title": "MoonNod",
+    "summary": "A campus marketplace for used items and sublets, built with a team of four for my NLP course.",
+    "link": "https://moonnod.com"
+  },
+
+  "honors": [
+    {"title": "2nd place, Cactus × Google DeepMind Hackathon", "detail": "$1,000 in Gemini API credits", "date": "Feb 2026"},
+    {"title": "Winner, Best Scientific & Engineering Application", "detail": "BigThink × World Labs Hackathon", "date": "Mar 2026"},
+    {"title": "AWS re:Invent All Builders Welcome Grant", "detail": "Las Vegas, Nov 30 – Dec 4", "date": "2026"},
+    {"title": "AWS Certified AI Practitioner", "detail": "Amazon Web Services", "date": "2026"},
+    {"title": "Finalist, Pear VC + OpenAI Hackathon", "detail": "San Francisco", "date": "2024"}
+  ],
+
+  "skills": {
+    "Agents and LLMs": ["LLM agents", "Agent memory", "MCP", "Claude Agent SDK", "Function calling", "LLM evaluation and benchmarking", "LLM-as-a-judge", "RAG", "Guardrails", "On-device LLMs"],
+    "Backend": ["Python (AsyncIO)", "FastAPI", "SSE", "Pydantic", "pytest", "PostgreSQL", "Supabase", "TypeScript", "React"],
+    "Cloud and infra": ["AWS (Lambda, DynamoDB, Bedrock)", "GCP (Vertex AI, Cloud Run, Cloud SQL)", "Docker", "GitHub Actions", "Railway", "Vercel", "Cloudflare", "Linux", "Slurm"],
+    "ML and systems": ["PyTorch", "scikit-learn", "LightGBM / XGBoost", "Learning to rank", "vLLM", "CUDA kernels (Numba)", "Cerebras CSL"],
+    "Tools": ["Claude Code", "Langfuse", "Git"]
+  },
+
+  "education": [
+    {
+      "school": "University of Maryland, College Park",
+      "degree": "M.S., Applied Machine Learning",
+      "dates": "Aug 2025 – May 2027",
+      "notes": "Natural Language Processing, Computing Systems for ML, Optimization, Algorithms and Data Structures"
+    },
+    {
+      "school": "B.S. Abdur Rahman Crescent Institute of Science & Technology",
+      "degree": "B.Tech., Computer Science and Engineering",
+      "dates": "Aug 2019 – May 2024",
+      "notes": "Chennai, India"
+    }
+  ],
+
+  "open_source": [
+    {"project": "Mem0", "detail": "merged PR (2023), metadata support for added data sources", "link": "https://github.com/mem0ai/mem0/pull/253"}
+  ],
+
+  "faq": {
+    "work_authorization": "Rayhan is authorized to work in the US through OPT starting June 2027. It is STEM-eligible, so up to three years in total. For sponsorship questions, please contact him directly at rayhanbp@umd.edu.",
+    "availability": "He graduates in May 2027 and can start full-time in June 2027.",
+    "location": "He is based in the San Francisco Bay Area and open to relocation anywhere in the US, including on-site roles.",
+    "compensation": "For compensation, please contact Rayhan directly at rayhanbp@umd.edu.",
+    "internships_or_part_time": "He is looking for full-time roles starting June 2027.",
+    "contact": "Email rayhanbp@umd.edu or message him on LinkedIn (linkedin.com/in/rayhan-patel-cs). His resume is at rayhanpatel.com/Rayhan_Patel_Resume.pdf."
+  }
+}

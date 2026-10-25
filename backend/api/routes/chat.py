@@ -3,7 +3,6 @@ import asyncio
 import json
 import logging
 from fastapi import APIRouter, Request, Depends, HTTPException, BackgroundTasks
-from tenacity import RetryError
 from core.timeout import safe_timeout
 
 logger = logging.getLogger(__name__)
@@ -120,23 +119,17 @@ async def chat(
             latency_ms=latency_ms
         )
     
-    try:
-        agent_result = await agent_service.respond(
-            session_id=body.session_id,
-            query=body.query,
-            user_name=session.get("user_name", "Guest"),
-            company=session.get("company"),
-            job_posting=session.get("job_posting") or body.job_posting,
-            trace=trace
-        )
-    except RetryError:
-        logger.warning("All retries exhausted for agent_service.respond")
-        agent_result = {
-            "response": "I apologize, but I'm having trouble responding right now. Please try again or contact Rayhan directly at rayhanbp@umd.edu.",
-            "latency_ms": int((time.time() - start_time) * 1000)
-        }
+    agent_result = await agent_service.respond(
+        session_id=body.session_id,
+        query=body.query,
+        user_name=session.get("user_name", "Guest"),
+        company=session.get("company"),
+        job_posting=session.get("job_posting") or body.job_posting,
+        trace=trace,
+        history=[turn.model_dump() for turn in body.history]
+    )
     
-    if tracing_service: tracing_service.log_generation(trace=trace, name="response", model=agent_service.model, input_text=body.query, output_text=agent_result["response"])
+    if tracing_service: tracing_service.log_generation(trace=trace, name="response", model=agent_result.get("model", agent_service.model), input_text=body.query, output_text=agent_result["response"])
     
     if supabase_service and supabase_service.enabled:
         background_tasks.add_task(
@@ -235,7 +228,8 @@ async def stream_chat(
                 user_name=session.get("user_name", "Guest"),
                 company=session.get("company"),
                 job_posting=session.get("job_posting") or body.job_posting,
-                trace=trace
+                trace=trace,
+                history=[turn.model_dump() for turn in body.history]
             ):
                 chunks.append(chunk)
                 yield f"data: {json.dumps({'chunk': chunk})}\n\n"

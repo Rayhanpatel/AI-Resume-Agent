@@ -3,7 +3,7 @@ Pydantic Request/Response Schemas
 Validates and sanitizes all API input/output
 """
 from pydantic import BaseModel, field_validator, Field
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, Literal
 import re
 import uuid
 
@@ -59,6 +59,17 @@ class SessionRequest(BaseModel):
         return v if v else None
 
 
+class HistoryTurn(BaseModel):
+    """One earlier message in the conversation, sent by the frontend"""
+    role: Literal["user", "assistant"]
+    content: str = Field(..., min_length=1, max_length=4000)
+
+    @field_validator('content')
+    @classmethod
+    def sanitize_content(cls, v: str) -> str:
+        return _strip_html(v).strip()
+
+
 class ChatRequest(BaseModel):
     """Request to send a chat message"""
     session_id: str = Field(..., min_length=36, max_length=36)
@@ -66,6 +77,7 @@ class ChatRequest(BaseModel):
     user_name: Optional[str] = Field(None, min_length=1, max_length=100)
     company: Optional[str] = Field(None, max_length=100)
     job_posting: Optional[str] = Field(None, max_length=10000)
+    history: List[HistoryTurn] = Field(default_factory=list, max_length=12)  # recent turns, oldest first
 
     @field_validator('session_id')
     @classmethod

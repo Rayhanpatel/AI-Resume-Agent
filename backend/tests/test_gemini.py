@@ -134,3 +134,85 @@ def test_llm_health_retries_a_failure_after_a_minute(monkeypatch):
     assert first.status_code == 503 and first.json()["error"] == "ReadTimeout"
     assert second.status_code == 200
     assert third.status_code == 200 and len(calls) == 2  # a pass is cached for 10 minutes
+
+
+# ── Answer-model fallback ─────────────────────────────────────────────
+
+import json as _json
+import httpx
+
+
+def _sse(text):
+    body = "data: " + _json.dumps({"candidates": [{"content": {"parts": [{"text": text}]}}]}) + "\n\n"
+    return httpx.Response(200, text=body, headers={"content-type": "text/event-stream"})
+
+
+class _NoMemoryStore(_NoMemory):
+    enabled = False
+
+    async def add_message(self, *args, **kwargs):
+        return False
+
+
+def _agent(handler):
+    client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+    return AgentService(api_key="k", memory=_NoMemoryStore(), tracer=None, http_client=client,
+                        vertex_auth=None, model="primary-model", fallback_model="fallback-model",
+                        first_token_timeout=0.2)
+
+
+async def _collect(agent):
+    return "".join([c async for c in agent.respond_stream("s", "What did he build?", "Dana")])
+
+
+def test_stream_falls_back_when_the_answer_model_errors():
+    seen = []
+
+    def handler(request):
+        seen.append(request.url.path)
+        return httpx.Response(503, text="overloaded") if "primary-model" in request.url.path else _sse("From the fallback.")
+
+    assert asyncio.run(_collect(_agent(handler))) == "From the fallback."
+    assert any("primary-model" in p for p in seen) and any("fallback-model" in p for p in seen)
+
+
+def test_stream_falls_back_when_the_answer_model_stalls():
+    def handler(request):
+        if "primary-model" in request.url.path:
+            raise httpx.ReadTimeout("no first token", request=request)
+        return _sse("Fast answer.")
+
+    assert asyncio.run(_collect(_agent(handler))) == "Fast answer."
+
+
+def test_stream_apologizes_when_every_model_fails():
+    def handler(request):
+        return httpx.Response(500, text="down")
+
+    assert "rayhanbp@umd.edu" in asyncio.run(_collect(_agent(handler)))
+
+
+def test_non_streaming_falls_back_and_reports_the_model():
+    def handler(request):
+        if "primary-model" in request.url.path:
+            return httpx.Response(429, text="quota")
+        return httpx.Response(200, json={"candidates": [{"content": {"parts": [{"text": "OK from fallback"}]}}]})
+
+    result = asyncio.run(_agent(handler).respond("s", "q", "Dana"))
+    assert result["response"] == "OK from fallback" and result["model"] == "fallback-model"
+
+
+def test_stream_retries_the_fallback_when_it_returns_no_text():
+    calls = {"fallback": 0}
+
+    def handler(request):
+        if "primary-model" in request.url.path:
+            return httpx.Response(429, text="resource exhausted")
+        calls["fallback"] += 1
+        if calls["fallback"] == 1:  # first fallback answer is empty (MALFORMED_RESPONSE)
+            body = "data: " + _json.dumps({"candidates": [{"finishReason": "MALFORMED_RESPONSE"}]}) + "\n\n"
+            return httpx.Response(200, text=body)
+        return _sse("Second try worked.")
+
+    assert asyncio.run(_collect(_agent(handler))) == "Second try worked."
+    assert calls["fallback"] == 2

@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useEffect, useRef } from 'react'
 import WelcomeForm from './components/WelcomeForm'
 import ChatInterface from './components/ChatInterface'
 import ResumeSessionModal from './components/ResumeSessionModal'
@@ -9,6 +9,7 @@ import { useChatSession } from './hooks/useChatSession'
  * 
  * Thin UI wrapper. All business logic lives in useChatSession hook.
  * Reads URL params for QR-code deep-linking: ?company=...&name=...&job=...
+ * and ?q=... (a question from rayhanpatel.com, asked once the chat starts).
  */
 function App() {
     const {
@@ -35,8 +36,19 @@ function App() {
             name: params.get('name') || '',
             company: params.get('company') || '',
             job: params.get('job') || '',
+            question: (params.get('q') || '').slice(0, 300),
         }
     }, [])
+
+    // Ask the question passed from rayhanpatel.com once, right after the chat starts
+    const pendingQuestion = useRef(urlDefaults.question)
+    useEffect(() => {
+        if (hasStarted && pendingQuestion.current) {
+            const q = pendingQuestion.current
+            pendingQuestion.current = ''
+            sendMessage(q)
+        }
+    }, [hasStarted, sendMessage])
 
     return (
         <div className="h-[100dvh] w-full flex items-center justify-center p-0 sm:p-4 bg-black pb-[env(safe-area-inset-bottom)]">
