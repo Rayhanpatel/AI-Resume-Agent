@@ -3,8 +3,9 @@ MCP interface: the same agent, callable by other agents.
 
 Mounted at /mcp on the FastAPI app (Streamable HTTP, stateless, JSON responses).
 Three read-only tools over the public profile. No auth: the data is public and
-the tools take no actions; the same per-IP rate limit and quotas apply through
-the HTTP layer. The web chat remains the only recruiter-facing interface; this
+the tools take no actions; the per-IP rate limit, per-IP daily limit and the
+global daily token budget apply through `core/mcp_limits.py` (added Oct 25, 2026;
+before that this docstring claimed limits that were not there). The web chat remains the only recruiter-facing interface; this
 is the architecture (one agent, many hosts) and a demo for interviews.
 
 Try it from Claude: add a custom connector with the URL https://<api-host>/mcp
@@ -13,6 +14,7 @@ from mcp.server.mcpserver import MCPServer
 from mcp.types import ToolAnnotations
 
 from core.prompts import PROFILE
+from core.mcp_limits import record_tool_tokens
 
 READ_ONLY = ToolAnnotations(read_only_hint=True, destructive_hint=False, idempotent_hint=True, open_world_hint=False)
 
@@ -61,6 +63,7 @@ def attach_agent_tools(app_state):
         result = await app_state.agent_service.respond(
             session_id="mcp", query=question[:4000], user_name="an agent", company=(context or "")[:100] or None
         )
+        record_tool_tokens(app_state, result)
         verification = await verify_answer(result["response"], app_state.verifier, getattr(app_state, "decision_gate", None))
         return {"answer": result["response"], "model": result.get("model"), "verification": verification}
 
@@ -82,6 +85,7 @@ def attach_agent_tools(app_state):
         result = await app_state.agent_service.respond(
             session_id="mcp", query=question, user_name="an agent", company=(job_info or {}).get("company_name"), job_info=job_info
         )
+        record_tool_tokens(app_state, result)
         verification = await verify_answer(result["response"], app_state.verifier, getattr(app_state, "decision_gate", None))
         return {"job": job_info, "report": result["response"], "verification": verification}
 

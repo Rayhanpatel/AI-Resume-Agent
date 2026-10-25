@@ -15,6 +15,7 @@ from core.ttl_cache import TTLCache
 from api.router import api_router
 from core.origin import OriginSecretMiddleware
 from core.session_tokens import SessionTokens
+from core.mcp_limits import MCPLimits
 from services import (
     IntentClassifier,
     AgentService,
@@ -199,7 +200,8 @@ async def http_exception_handler(request: Request, exc: HTTPException):
 app.include_router(api_router, prefix="/api/v1")
 
 # MCP interface (Streamable HTTP, stateless). Built at import time; its session manager runs in the lifespan above.
-app.mount("/mcp", mcp_app)
+# Wrapped so the per-IP limits and the daily token budget apply to MCP calls too.
+app.mount("/mcp", MCPLimits(mcp_app, app, requests_per_minute=settings.rate_limit_rpm))
 
 if __name__ == "__main__":
     import uvicorn

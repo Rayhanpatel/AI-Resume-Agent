@@ -53,3 +53,29 @@ def test_tools_list_is_stateless_and_read_only():
         body = r2.json()["result"]
         assert "OPT" in str(body)
         assert "+1 (" not in str(body)  # the profile holds no phone number
+
+
+def test_mcp_calls_count_toward_the_daily_limits():
+    from core.mcp_limits import MCPLimits
+    from services.quotas import QuotaService
+
+    sub = mcp_server.build_asgi_app()
+
+    @contextlib.asynccontextmanager
+    async def lifespan(app):
+        async with mcp_server.mcp.session_manager.run():
+            yield
+
+    app = FastAPI(lifespan=lifespan)
+    app.state.quotas = QuotaService(None, messages_per_session=2, messages_per_ip_per_day=99,
+                                    sessions_per_ip_per_day=99, daily_token_budget=10_000, salt="s")
+    app.mount("/mcp", MCPLimits(sub, app, requests_per_minute=99))
+    call = {"jsonrpc": "2.0", "id": 1, "method": "tools/list", "params": {"_meta": ENVELOPE}}
+    with TestClient(app) as client:
+        for _ in range(2):
+            assert client.post("/mcp/", headers={**HEADERS, "mcp-method": "tools/list"}, json=call).status_code == 200
+        assert client.post("/mcp/", headers={**HEADERS, "mcp-method": "tools/list"}, json=call).status_code == 429
+
+        app.state.quotas.messages_per_session = 99
+        app.state.quotas.record_memory("tokens", "all", 10_000)  # global budget spent
+        assert client.post("/mcp/", headers={**HEADERS, "mcp-method": "tools/list"}, json=call).status_code == 429
