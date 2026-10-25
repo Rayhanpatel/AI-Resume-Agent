@@ -36,6 +36,16 @@ class SupabaseService:
         
         return instance
 
+    async def ping(self) -> str:
+        """"ok", "unreachable" or "off": a real query, because "configured" is not "working"."""
+        if not self.enabled:
+            return "off"
+        response = await safe_timeout(
+            self.client.table("events").select("id").limit(1).execute(),
+            timeout=4.0, label="supabase.ping"
+        )
+        return "ok" if response is not None else "unreachable"
+
     async def close(self):
         """No-op for sync client cleanup"""
         pass

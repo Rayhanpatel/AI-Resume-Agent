@@ -27,3 +27,9 @@ jobs:
         run: |
           curl -sf -m 30 -o /dev/null https://rayhanpatel.com/
           curl -sf -m 30 -o /dev/null https://chat.rayhanpatel.com/
+
+      - name: Database answers (quotas, history and lead logging depend on it)
+        run: |
+          curl -s -m 60 https://rayhan-ai-resume-production-6239.up.railway.app/api/v1/health/llm -o db.json || true
+          cat db.json; echo
+          grep -q '"database":"ok"' db.json || { echo "::error::Supabase is not answering; quotas have fallen back to in-memory counts"; exit 1; }

@@ -114,6 +114,8 @@ async def lifespan(app: FastAPI):
     else:
         logger.error(f"❌ Gemini API ({llm_check['api_mode']}, {settings.gemini_model}) FAILED: {llm_check['error']}")
     
+    database = await app.state.supabase_service.ping()
+
     # Log service status for debugging
     logger.warning("=" * 50)
     logger.warning("SERVICE STATUS:")
@@ -121,11 +123,11 @@ async def lifespan(app: FastAPI):
     logger.warning(f"  ✓ Intent Classifier: Ready")
     logger.warning(f"  ✓ Agent Service: Ready")
     logger.warning(f"  {'✓' if settings.session_secret else '✗'} Session secret: {'set' if settings.session_secret else 'random (set SESSION_SECRET)'}")
-    logger.warning(f"  {'✓' if app.state.quotas.persistent else '✗'} Quotas: {'persistent (events table)' if app.state.quotas.persistent else 'in memory'}")
+    logger.warning(f"  {'✓' if database == 'ok' else '✗'} Quotas: {'persistent (events table)' if database == 'ok' else 'in memory (database ' + database + ')'}")
     logger.warning(f"  {'✓' if settings.origin_secret else '✗'} Origin secret: {'enforced' if settings.origin_secret else 'off (API reachable directly)'}")
     logger.warning(f"  {'✓' if app.state.decision_gate else '✗'} Decision gate: {settings.decision_model if app.state.decision_gate else 'off (set OPENROUTER_API_KEY)'}")
     logger.warning(f"  {'✓' if app.state.tracing_service.enabled else '✗'} Tracing (Langfuse): {'Enabled' if app.state.tracing_service.enabled else 'Disabled'}")
-    logger.warning(f"  {'✓' if app.state.supabase_service.enabled else '✗'} Database (Supabase): {'Enabled' if app.state.supabase_service.enabled else 'Disabled'}")
+    logger.warning(f"  {'✓' if database == 'ok' else '✗'} Database (Supabase): {database}")
     logger.warning("=" * 50)
     
     logger.info("All services initialized and attached to state")

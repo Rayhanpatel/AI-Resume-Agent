@@ -35,8 +35,9 @@ async def health_check(request: Request):
 @router.get("/health/llm")
 async def llm_health_check(request: Request):
     """
-    Readiness check: does the answer model actually respond?
-    Returns 503 when it doesn't, so an uptime monitor can alert.
+    Readiness check: does the answer model actually respond, and does the database?
+    Returns 503 when the model doesn't, so an uptime monitor can alert; the
+    database state is reported in the body (the uptime workflow checks it).
     Cached so the public endpoint can't be used to run up the bill.
     """
     state = request.app.state
@@ -47,6 +48,8 @@ async def llm_health_check(request: Request):
     else:
         settings = get_settings()
         result = await check_llm(state.http_client, state.vertex_auth, settings.google_api_key, settings.gemini_model)
+        # Quotas, history and lead logging depend on the database; the chat still answers without it
+        result["database"] = await state.supabase_service.ping() if hasattr(state, "supabase_service") else "off"
         result["checked_at"] = time.time()
         state.llm_check_cache = result
         if not result["ok"]:
@@ -57,6 +60,7 @@ async def llm_health_check(request: Request):
         "model": result["model"],
         "api_mode": result["api_mode"],
         "latency_ms": result["latency_ms"],
+        "database": result.get("database", "off"),
         "checked_seconds_ago": int(time.time() - result["checked_at"]),
     }
     if not result["ok"]:

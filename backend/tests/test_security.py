@@ -112,6 +112,29 @@ def test_persistent_quotas_count_from_events_table():
     asyncio.run(q.check_message("new-sess", ip))  # under every limit
 
 
+def test_unreachable_database_falls_back_to_memory_counts():
+    # Oct 2026: the Supabase host stopped resolving and every count read 0, so no limit applied
+    class _Down(_FakeSupabase):
+        class _Client:
+            def table(self, name): raise OSError("[Errno -2] Name or service not known")
+        @property
+        def client(self): return self._Client()
+
+    q = _quotas(_Down([]))
+    ip = hash_ip("7.7.7.7", "s")
+    for _ in range(2):
+        asyncio.run(q.check_message("sess", ip)); q.record_memory("messages_session", "sess"); q.record_memory("messages_ip", ip)
+    with pytest.raises(QuotaExceeded) as e:
+        asyncio.run(q.check_message("sess", ip))
+    assert e.value.scope == "session"
+
+    q = _quotas(_Down([]), messages_per_session=99, messages_per_ip_per_day=99)
+    q.record_memory("tokens", "all", 100)
+    with pytest.raises(QuotaExceeded) as e:
+        asyncio.run(q.check_message("other", ip))
+    assert e.value.scope == "budget"
+
+
 def test_ip_hash_is_salted_and_short():
     a, b = hash_ip("1.2.3.4", "salt-a"), hash_ip("1.2.3.4", "salt-b")
     assert a != b and len(a) == 24 and "1.2.3.4" not in a
