@@ -11,6 +11,7 @@ from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_excep
 from typing import TYPE_CHECKING
 
 from .gemini import get_endpoint, generation_config, extract_text
+from core import telemetry
 
 if TYPE_CHECKING:
     from .vertex_auth import VertexAuthService
@@ -79,12 +80,15 @@ Respond ONLY with valid JSON in this exact format:
 
             url, headers = await get_endpoint(self.vertex_auth, self.api_key, self.model)
 
-            response = await self.http_client.post(
-                url,
-                json=payload,
-                headers=headers,
-                timeout=10.0
-            )
+            provider = telemetry.provider_for(self.vertex_auth)
+            with telemetry.gen_ai_span(self.model, "intent", provider) as span:
+                response = await self.http_client.post(
+                    url,
+                    json=payload,
+                    headers=headers,
+                    timeout=10.0
+                )
+                telemetry.record_response(span, self.model, "intent", response, provider)
 
             # Check for HTTP errors
             if response.status_code != 200:

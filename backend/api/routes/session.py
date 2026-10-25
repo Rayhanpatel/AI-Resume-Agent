@@ -11,6 +11,7 @@ from services.job_parser import parse_job_description
 from services.prompt_generator import generate_prompts, DEFAULT_PROMPTS
 from services.quotas import QuotaExceeded, hash_ip
 from core.config import get_settings
+from core import telemetry
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -151,8 +152,8 @@ async def create_session(
             session_id=session_id, event_type="session_start", metadata={"ip_hash": ip_hash, "has_job": bool(job_info)}
         ))
 
-    # --- Lead Capture (structured fields and the URL; not the raw page) ---
-    if (job_info or job_url) and hasattr(state, "http_client"):
+    # --- Lead Capture (structured fields and the URL; not the raw page). Probe traffic is not a lead. ---
+    if (job_info or job_url) and hasattr(state, "http_client") and not telemetry.is_synthetic():
         asyncio.create_task(submit_recruiter_lead(
             http_client,
             name=body.user_name,
@@ -173,7 +174,8 @@ async def create_session(
                 "company": company_name,
                 "has_job_posting": bool(job_info),
                 "from_url": bool(job_url),
-                "extraction_error": extraction_error
+                "extraction_error": extraction_error,
+                "synthetic": telemetry.is_synthetic()
             }
         )
 

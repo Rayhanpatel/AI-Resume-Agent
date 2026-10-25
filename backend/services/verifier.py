@@ -25,6 +25,7 @@ from typing import List, Optional
 
 import httpx
 
+from core import telemetry
 from core.prompts import PROFILE, PROFILE_TEXT
 from services.gemini import get_endpoint, generation_config, extract_text
 
@@ -109,7 +110,10 @@ class GeminiJsonVerifier:
             "contents": [{"role": "user", "parts": [{"text": VERIFY_PROMPT.format(profile=PROFILE_TEXT, sentences=numbered)}]}],
             "generationConfig": generation_config(max_output_tokens=4096, json_mode=True),
         }
-        response = await self.http_client.post(url, json=payload, headers=headers, timeout=30.0)
+        provider = telemetry.provider_for(self.vertex_auth)
+        with telemetry.gen_ai_span(self.model, "verify", provider) as span:
+            response = await self.http_client.post(url, json=payload, headers=headers, timeout=30.0)
+            telemetry.record_response(span, self.model, "verify", response, provider)
         if response.status_code != 200:
             raise RuntimeError(f"verifier HTTP {response.status_code}: {response.text[:200]}")
         text = extract_text(response.json()).strip()
@@ -144,12 +148,15 @@ class DecisionsGate:
             }
             for i, s in enumerate(sentences)
         }
-        response = await self.http_client.post(
-            "https://openrouter.ai/api/alpha/decisions",
-            headers={"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"},
-            json={"model": self.model, "state": "PROFILE (JSON):\n" + PROFILE_TEXT, "questions": questions},
-            timeout=20.0,
-        )
+        with telemetry.gen_ai_span(self.model, "decision", telemetry.PROVIDER_OPENROUTER) as span:
+            response = await self.http_client.post(
+                "https://openrouter.ai/api/alpha/decisions",
+                headers={"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"},
+                json={"model": self.model, "state": "PROFILE (JSON):\n" + PROFILE_TEXT, "questions": questions},
+                timeout=20.0,
+            )
+            if response.status_code != 200:
+                telemetry.mark_error(span, str(response.status_code))
         if response.status_code != 200:
             raise RuntimeError(f"decisions HTTP {response.status_code}: {response.text[:200]}")
         answers = response.json().get("answers", {})
@@ -215,4 +222,5 @@ async def verify_answer(answer: str, verifier: GeminiJsonVerifier, gate: Optiona
             result["summary"]["numbers_unverified"] += 1
 
     result["latency_ms"] = int((time.time() - start) * 1000)
+    telemetry.record_stamps(result["summary"])
     return result

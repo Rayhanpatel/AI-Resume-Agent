@@ -4,12 +4,13 @@ from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
 
 from core.config import get_settings
+from core import telemetry
 from services.gemini import check_llm
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
-APP_VERSION = "2.6.0"
+APP_VERSION = "2.7.0"
 LLM_CHECK_TTL_SECONDS = 600         # a passing check is reused for 10 minutes
 LLM_CHECK_FAILURE_TTL_SECONDS = 60  # a failing one is retried after a minute
 
@@ -27,7 +28,8 @@ async def health_check(request: Request):
             "agent": getattr(state, "agent_service", None) is not None,
             "quotas_persistent": hasattr(state, "quotas") and state.quotas.persistent,
             "tracing": hasattr(state, "tracing_service") and state.tracing_service.enabled,
-            "supabase": hasattr(state, "supabase_service") and state.supabase_service.enabled
+            "supabase": hasattr(state, "supabase_service") and state.supabase_service.enabled,
+            "telemetry": telemetry.enabled()
         }
     }
 

@@ -10,9 +10,11 @@ from fastapi.responses import JSONResponse
 from dotenv import load_dotenv
 
 from core.config import get_settings
+from core import telemetry
 from core.middleware import RequestIDMiddleware
 from core.ttl_cache import TTLCache
 from api.router import api_router
+from api.routes.health import APP_VERSION
 from core.origin import OriginSecretMiddleware
 from core.session_tokens import SessionTokens
 from core.mcp_limits import MCPLimits
@@ -45,6 +47,7 @@ async def lifespan(app: FastAPI):
         limits=httpx.Limits(max_keepalive_connections=20, max_connections=100),
         http2=True,
     )
+    telemetry.instrument_http_client(app.state.http_client)
     
     # Initialize Vertex AI Auth (production) - falls back to AI Studio if not configured
     app.state.vertex_auth = init_vertex_auth(
@@ -58,6 +61,7 @@ async def lifespan(app: FastAPI):
         url=settings.supabase_url or "",
         key=settings.supabase_key or ""
     )
+    telemetry.watch_database(app.state.supabase_service)
     app.state.intent_classifier = IntentClassifier(
         api_key=settings.google_api_key,
         http_client=app.state.http_client,
@@ -129,6 +133,7 @@ async def lifespan(app: FastAPI):
     logger.warning(f"  {'✓' if app.state.decision_gate else '✗'} Decision gate: {settings.decision_model if app.state.decision_gate else 'off (set OPENROUTER_API_KEY)'}")
     logger.warning(f"  {'✓' if app.state.tracing_service.enabled else '✗'} Tracing (Langfuse): {'Enabled' if app.state.tracing_service.enabled else 'Disabled'}")
     logger.warning(f"  {'✓' if database == 'ok' else '✗'} Database (Supabase): {database}")
+    logger.warning(f"  {'✓' if telemetry.enabled() else '✗'} Telemetry (OpenTelemetry): {'exporting over OTLP' if telemetry.enabled() else 'off (set OTEL_EXPORTER_OTLP_ENDPOINT)'}")
     logger.warning("=" * 50)
     
     logger.info("All services initialized and attached to state")
@@ -144,15 +149,19 @@ async def lifespan(app: FastAPI):
     
     if hasattr(app.state, "http_client"):
         await app.state.http_client.aclose()
-        
+
     logger.info("Services shut down")
+    telemetry.shutdown()  # last, so the shutdown logs and final spans go out
+
+# OpenTelemetry: off unless OTEL_EXPORTER_OTLP_ENDPOINT is set (see core/telemetry.py)
+telemetry.setup(version=APP_VERSION, environment=get_settings().environment)
 
 mcp_app = mcp_server.build_asgi_app()
 
 app = FastAPI(
     title="Rayhan's AI Resume Chatbot",
     description="Production-grade modular API for AI resume interactions",
-    version="2.6.0",
+    version=APP_VERSION,
     lifespan=lifespan
 )
 
@@ -173,6 +182,8 @@ if FRONTEND_URL:
 
 logger.info(f"CORS Allowed Origins: {allowed_origins}")
 
+# Innermost, so it only sees requests the origin lock and CORS let through
+app.add_middleware(telemetry.TelemetryMiddleware)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,
@@ -183,6 +194,7 @@ app.add_middleware(
 )
 app.add_middleware(RequestIDMiddleware)
 app.add_middleware(OriginSecretMiddleware, secret=settings.origin_secret)
+telemetry.instrument_app(app)
 
 # Exception Handlers
 @app.exception_handler(HTTPException)

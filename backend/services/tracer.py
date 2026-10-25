@@ -4,6 +4,7 @@ Observability for LLM calls using OpenTelemetry-based SDK
 Includes prompt management and cost tracking
 """
 from langfuse import Langfuse
+from core import telemetry
 from typing import Optional, Any, Dict
 import logging
 import os
@@ -168,8 +169,8 @@ class TracingService:
                 full_metadata["trace_name"] = trace.name
                 full_metadata["session_id"] = trace.session_id
             
-            # Create generation observation
-            with self.client.start_as_current_observation(
+            # Create generation observation (detached: a root trace in Langfuse, as before OpenTelemetry was added)
+            with telemetry.detached(), self.client.start_as_current_observation(
                 as_type="generation",
                 name=name,
                 model=model,
@@ -208,7 +209,7 @@ class TracingService:
             return None
             
         try:
-            with self.client.start_as_current_observation(
+            with telemetry.detached(), self.client.start_as_current_observation(
                 as_type="span",
                 name=name,
                 input=input_text,

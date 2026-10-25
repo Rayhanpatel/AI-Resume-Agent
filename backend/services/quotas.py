@@ -15,6 +15,7 @@ from collections import defaultdict
 from datetime import datetime, timezone
 from typing import Optional
 
+from core import telemetry
 from core.timeout import safe_timeout
 
 logger = logging.getLogger(__name__)
@@ -95,15 +96,20 @@ class QuotaService:
         """
         self._memory[(scope, key, _day_start())] += amount
 
+    @staticmethod
+    def _reject(scope: str, message: str) -> QuotaExceeded:
+        telemetry.record_quota_rejection(scope)
+        return QuotaExceeded(scope, message)
+
     async def check_new_session(self, ip_hash: str):
         if await self._count("sessions_ip", ip_hash, event_type="session_start", ip_hash=ip_hash) >= self.sessions_per_ip_per_day:
-            raise QuotaExceeded("ip_sessions", "You've started a lot of chats today. Please come back tomorrow, or email rayhanbp@umd.edu.")
+            raise self._reject("ip_sessions", "You've started a lot of chats today. Please come back tomorrow, or email rayhanbp@umd.edu.")
 
     async def check_message(self, session_id: str, ip_hash: str):
         if await self._count("messages_session", session_id, session_id=session_id) >= self.messages_per_session:
-            raise QuotaExceeded("session", "This chat has reached its message limit. Start a new chat, or email rayhanbp@umd.edu.")
+            raise self._reject("session", "This chat has reached its message limit. Start a new chat, or email rayhanbp@umd.edu.")
         if await self._count("messages_ip", ip_hash, ip_hash=ip_hash) >= self.messages_per_ip_per_day:
-            raise QuotaExceeded("ip", "You've reached today's message limit. Please come back tomorrow, or email rayhanbp@umd.edu.")
+            raise self._reject("ip", "You've reached today's message limit. Please come back tomorrow, or email rayhanbp@umd.edu.")
         if await self._tokens_today() >= self.daily_token_budget:
             logger.error("Daily token budget reached; refusing new messages until tomorrow UTC")
-            raise QuotaExceeded("budget", "The agent has reached its daily budget. Please try again tomorrow, or email rayhanbp@umd.edu.")
+            raise self._reject("budget", "The agent has reached its daily budget. Please try again tomorrow, or email rayhanbp@umd.edu.")

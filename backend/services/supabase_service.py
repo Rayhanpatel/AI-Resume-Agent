@@ -16,6 +16,7 @@ class SupabaseService:
     
     client: AsyncClient | None = None
     enabled: bool = False
+    last_ping: str | None = None
     
     @classmethod
     async def create(cls, url: str, key: str) -> "SupabaseService":
@@ -39,12 +40,18 @@ class SupabaseService:
     async def ping(self) -> str:
         """"ok", "unreachable" or "off": a real query, because "configured" is not "working"."""
         if not self.enabled:
+            self.last_ping = "off"
             return "off"
-        response = await safe_timeout(
-            self.client.table("events").select("id").limit(1).execute(),
-            timeout=4.0, label="supabase.ping"
-        )
-        return "ok" if response is not None else "unreachable"
+        try:
+            response = await safe_timeout(
+                self.client.table("events").select("id").limit(1).execute(),
+                timeout=4.0, label="supabase.ping"
+            )
+        except Exception as e:  # building the query can fail too, not only running it
+            logger.warning(f"supabase.ping failed: {e}")
+            response = None
+        self.last_ping = "ok" if response is not None else "unreachable"  # read by the chat.database.up metric
+        return self.last_ping
 
     async def close(self):
         """No-op for sync client cleanup"""

@@ -16,6 +16,7 @@ from .vertex_auth import VertexAuthService
 from .gemini import get_endpoint, generation_config, extract_text
 from core.prompts import get_system_prompt
 from core.timeout import safe_timeout
+from core import telemetry
 
 logger = logging.getLogger(__name__)
 
@@ -54,6 +55,7 @@ class AgentService:
         self.attempts = [(m, first_token_timeout * (1 + i * 0.5)) for i, m in enumerate(self.models)]
         self.attempts.append((self.models[-1], 45.0))
 
+        self.provider = telemetry.provider_for(vertex_auth)
         api_mode = "Vertex AI (production)" if vertex_auth and vertex_auth.enabled else "AI Studio (fallback)"
         logger.info(f"AgentService using {api_mode} with {' -> '.join(self.models)}")
 
@@ -113,20 +115,22 @@ class AgentService:
             if i == len(self.attempts) - 1:
                 await asyncio.sleep(0.5)  # brief backoff before the last try
             try:
-                url, headers = await get_endpoint(self.vertex_auth, self.api_key, model)
-                response = await self.http_client.post(
-                    url, json=payload, headers=headers,
-                    timeout=wait_s + 15.0  # whole answer, not just the first token
-                )
-                if response.status_code != 200:
-                    raise Exception(f"Gemini API Error {response.status_code}: {response.text[:300]}")
+                with telemetry.gen_ai_span(model, "answer", self.provider, attempt=i + 1) as span:
+                    url, headers = await get_endpoint(self.vertex_auth, self.api_key, model)
+                    response = await self.http_client.post(
+                        url, json=payload, headers=headers,
+                        timeout=wait_s + 15.0  # whole answer, not just the first token
+                    )
+                    if response.status_code != 200:
+                        raise Exception(f"Gemini API Error {response.status_code}: {response.text[:300]}")
 
-                data = response.json()
-                response_text = extract_text(data)
-                if not response_text:
-                    candidates = data.get("candidates", [])
-                    finish_reason = candidates[0].get("finishReason", "UNKNOWN") if candidates else "NO_CANDIDATES"
-                    raise Exception(f"Gemini returned no text (finishReason={finish_reason})")
+                    data = response.json()
+                    telemetry.record_usage(span, model, "answer", data.get("usageMetadata"), self.provider)
+                    response_text = extract_text(data)
+                    if not response_text:
+                        candidates = data.get("candidates", [])
+                        finish_reason = candidates[0].get("finishReason", "UNKNOWN") if candidates else "NO_CANDIDATES"
+                        raise Exception(f"Gemini returned no text (finishReason={finish_reason})")
             except Exception as e:
                 last_error = e
                 logger.warning(f"[AGENT] {model} failed ({type(e).__name__}: {e}); "
@@ -149,10 +153,14 @@ class AgentService:
                     tokens_in=tokens_in,
                     tokens_out=tokens_out,
                     latency_ms=latency_ms,
-                    metadata={"session_id": session_id, "user_name": user_name, "attempt": i + 1}
+                    metadata={"session_id": session_id, "user_name": user_name, "attempt": i + 1,
+                              "synthetic": telemetry.is_synthetic()}
                 )
                 cost_usd = trace_result.get("cost_usd", 0.0) if trace_result else 0.0
 
+            telemetry.record_answer("ok", model)
+            if model != self.model:
+                telemetry.record_fallback(self.model, model)
             return {
                 "response": response_text,
                 "model": model,
@@ -162,6 +170,7 @@ class AgentService:
                 "cost_usd": cost_usd
             }
 
+        telemetry.record_answer(telemetry.answer_outcome(APOLOGY, str(last_error), APOLOGY))
         return {
             "response": APOLOGY,
             "error": str(last_error),
@@ -196,44 +205,57 @@ class AgentService:
                 await asyncio.sleep(0.5)  # brief backoff before the last try
             # A model that stays silent for wait_s seconds is abandoned for the next attempt
             timeout = httpx.Timeout(60.0, connect=10.0, read=wait_s)
-            try:
-                url, headers = await get_endpoint(self.vertex_auth, self.api_key, model, stream=True)
-                async with self.http_client.stream("POST", url, json=payload, headers=headers, timeout=timeout) as response:
-                    if response.status_code != 200:
-                        body = (await response.aread()).decode(errors="replace")[:300]
-                        raise Exception(f"Gemini API Error {response.status_code}: {body}")
+            attempt_start = time.time()
+            # Not the current span: it stays open across `yield`, which current spans can't
+            with telemetry.gen_ai_span(model, "answer", self.provider, attempt=i + 1, current=False) as span:
+                try:
+                    url, headers = await get_endpoint(self.vertex_auth, self.api_key, model, stream=True)
+                    async with self.http_client.stream("POST", url, json=payload, headers=headers, timeout=timeout) as response:
+                        if response.status_code != 200:
+                            body = (await response.aread()).decode(errors="replace")[:300]
+                            raise Exception(f"Gemini API Error {response.status_code}: {body}")
 
-                    async for line in response.aiter_lines():
-                        if not line.startswith("data:"):
-                            continue
-                        data_str = line[5:].strip()
-                        if not data_str:
-                            continue
-                        try:
-                            data = json.loads(data_str)
-                        except json.JSONDecodeError:
-                            logger.warning(f"Failed to decode stream chunk: {data_str[:200]}")
-                            continue
+                        async for line in response.aiter_lines():
+                            if not line.startswith("data:"):
+                                continue
+                            data_str = line[5:].strip()
+                            if not data_str:
+                                continue
+                            try:
+                                data = json.loads(data_str)
+                            except json.JSONDecodeError:
+                                logger.warning(f"Failed to decode stream chunk: {data_str[:200]}")
+                                continue
 
-                        usage = data.get("usageMetadata", usage)
-                        for cand in data.get("candidates", []):
-                            finish_reason = cand.get("finishReason", finish_reason)
-                        chunk_text = extract_text(data)  # thought parts are skipped
-                        if chunk_text:
-                            chunks.append(chunk_text)
-                            used_model = model
-                            yield chunk_text
-                if chunks:
-                    break
-                logger.warning(f"[AGENT STREAM] {model} returned no text (finishReason={finish_reason})")
-            except Exception as e:
-                logger.warning(f"[AGENT STREAM] {model} failed ({type(e).__name__}: {e})")
-                if chunks:
-                    break
+                            usage = data.get("usageMetadata", usage)
+                            for cand in data.get("candidates", []):
+                                finish_reason = cand.get("finishReason", finish_reason)
+                            chunk_text = extract_text(data)  # thought parts are skipped
+                            if chunk_text:
+                                if not chunks:
+                                    telemetry.record_first_chunk(model, time.time() - attempt_start, self.provider)
+                                chunks.append(chunk_text)
+                                used_model = model
+                                yield chunk_text
+                    if chunks:
+                        telemetry.record_usage(span, model, "answer", usage, self.provider)
+                        break
+                    telemetry.mark_error(span, "empty_response", f"finishReason={finish_reason}")
+                    logger.warning(f"[AGENT STREAM] {model} returned no text (finishReason={finish_reason})")
+                except Exception as e:
+                    telemetry.mark_error(span, type(e).__name__, str(e))
+                    logger.warning(f"[AGENT STREAM] {model} failed ({type(e).__name__}: {e})")
+                    if chunks:
+                        break
 
         if not chunks:
+            telemetry.record_answer("apology")
             yield APOLOGY
             return
+
+        telemetry.record_answer("ok", used_model)
+        if used_model != self.model:
+            telemetry.record_fallback(self.model, used_model)
 
         full_response = "".join(chunks)
         latency_ms = int((time.time() - start_time) * 1000)
@@ -255,7 +277,7 @@ class AgentService:
                 tokens_out=tokens_out,
                 latency_ms=latency_ms,
                 metadata={"session_id": session_id, "user_name": user_name, "streaming": True,
-                          "fallback": used_model != self.model}
+                          "fallback": used_model != self.model, "synthetic": telemetry.is_synthetic()}
             )
 
         logger.info(f"Streamed response from {used_model} in {latency_ms}ms (Tokens: {tokens_in} in / {tokens_out} out)")

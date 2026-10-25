@@ -8,6 +8,7 @@ from typing import Optional
 from dataclasses import dataclass, field
 
 from .gemini import get_endpoint, generation_config, extract_text
+from core import telemetry
 
 logger = logging.getLogger(__name__)
 
@@ -78,7 +79,10 @@ async def parse_job_description(
             "generationConfig": generation_config(max_output_tokens=1024, json_mode=True)
         }
 
-        response = await http_client.post(url, json=payload, headers=headers, timeout=10.0)
+        provider = telemetry.provider_for(vertex_auth)
+        with telemetry.gen_ai_span(model, "job_parse", provider) as span:
+            response = await http_client.post(url, json=payload, headers=headers, timeout=10.0)
+            telemetry.record_response(span, model, "job_parse", response, provider)
         
         if response.status_code != 200:
             logger.warning(f"Job parsing API error: {response.status_code}")

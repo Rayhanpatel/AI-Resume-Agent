@@ -10,6 +10,7 @@ from api.deps import get_agent_service, get_intent_classifier, get_tracing_servi
 from services.quotas import QuotaExceeded, hash_ip
 from services.verifier import verify_answer
 from core.config import get_settings
+from core import telemetry
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -253,6 +254,7 @@ async def stream_chat(
 
     async def generate_stream():
         stats = {}
+        first_word = True
         try:
             async for chunk in agent_service.respond_stream(
                 session_id=session_id,
@@ -264,6 +266,10 @@ async def stream_chat(
                 history=prefs.get("history") or [],
                 stats=stats
             ):
+                if first_word:
+                    # What the visitor waits for: request in → first word out (intent check included)
+                    telemetry.record_first_word(time.time() - start_time)
+                    first_word = False
                 yield f"data: {json.dumps({'chunk': chunk})}\n\n"
 
             # The answer is complete; now stamp it. The client shows "checking" meanwhile.
@@ -290,6 +296,7 @@ async def stream_chat(
 
         except Exception as e:
             logger.error(f"Streaming error: {e}")
+            telemetry.record_answer("error", stats.get("model"))
             yield f"data: {json.dumps({'chunk': 'Sorry, an error occurred. Please try again.'})}\n\n"
             yield "data: [DONE]\n\n"
 
