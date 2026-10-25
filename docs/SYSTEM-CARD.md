@@ -57,6 +57,13 @@ No cookies beyond the frontend's localStorage copy of the visitor's own session.
 
 - **Jun–Oct 2026:** total outage, invisible to monitoring (retired model plus a closed billing account). See `docs/POSTMORTEM-2026-10-chatbot-outage.md`.
 
+## Added Oct 25, 2026 (version 2.6)
+
+- **Verification stamps.** Every sentence is marked checked (verbatim profile quote, confirmed in code), inferred, unknown or n/a; numbers are checked against the profile. First measured run: 52 claims, 83% checked, 0 unknown, 0 unverified numbers, p50 1.2 s. The stamps stream after the answer and are shown under it.
+- **MCP interface** at `/mcp` (protocol 2026-07-28, stateless): read-only `get_profile`, `ask` (with stamps), `fit_report`. No tool takes an action.
+- **On-device tier.** On Chrome desktop with the built-in model, a visitor can answer on their own machine from the same profile; the browser verifies quotes and numbers and falls back to the cloud, visibly, when it can't. Only timing and counts are reported back, never text.
+- **Eval gate workflow** (weekly and on pull requests, once Vertex credentials are added to the repository secrets).
+
 ## Roadmap (what this card does not yet claim)
 
-Per-claim verification stamps; a judge from a different model family, calibrated against hand labels; an on-device mode (Chrome's built-in model) with a cloud fallback; an MCP interface; a published eval report with per-version pass rates.
+A judge from a different model family, calibrated against hand labels; the decision-model second opinion (needs an OpenRouter key) and the 200-pair study; multi-turn pressure cases in the golden set; OpenTelemetry GenAI traces; the origin lock (needs the API behind Cloudflare).
