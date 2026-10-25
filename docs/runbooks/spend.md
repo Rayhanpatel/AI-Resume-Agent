@@ -15,7 +15,7 @@ Something is using the model far more than a few visitors a day would: a scraper
 ## Fix
 
 - Abuse through the web chat: the quotas (40 messages per session, 80 per IP per day, 3M tokens per day) should hold. If they don't, check that the database answers (`database-down.md`), because without it the limits fall back to in-memory counts that reset on deploy.
-- Abuse through `/mcp`: as of Oct 25, 2026 it has **no** rate limit or quota. The rate limiter and the quotas are dependencies of the chat routes, not middleware, despite what the `mcp_server.py` docstring says. Turn the MCP mount off (`app.mount("/mcp", ...)` in `main.py`) and deploy, until it has its own limit.
+- Abuse through `/mcp`: since `0fa047e` every POST passes `core/mcp_limits.py` (per-minute limiter, per-IP daily limit, global token budget). Per-IP limits trust `cf-connecting-ip`/`x-forwarded-for`, which a caller can forge while the API is reachable directly, so the global token budget and the GCP cap are the real ceilings until the origin lock is on. To stop it outright, remove the `/mcp` mount in `main.py` and deploy.
 - A runaway probe: pause the Synthetics check in Grafana.
 - Last resort: the Google Cloud budget's hard cap stops all model calls; the chat then shows the apology.
 
