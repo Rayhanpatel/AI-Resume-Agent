@@ -9,7 +9,7 @@ from services.gemini import check_llm
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
-APP_VERSION = "2.5.0"
+APP_VERSION = "2.6.0"
 LLM_CHECK_TTL_SECONDS = 600         # a passing check is reused for 10 minutes
 LLM_CHECK_FAILURE_TTL_SECONDS = 60  # a failing one is retried after a minute
 

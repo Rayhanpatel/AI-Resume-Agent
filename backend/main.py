@@ -24,6 +24,8 @@ from services import (
 )
 from services.gemini import check_llm
 from services.quotas import QuotaService
+from services.verifier import GeminiJsonVerifier, DecisionsGate
+import mcp_server
 
 # Load environment variables
 load_dotenv()
@@ -92,6 +94,18 @@ async def lifespan(app: FastAPI):
         salt=settings.session_secret or "no-secret",
     )
 
+    # Verification stamps: fast-model verdicts + code checks, optional decision-model second opinion
+    app.state.verifier = GeminiJsonVerifier(
+        app.state.http_client, app.state.vertex_auth, settings.google_api_key, settings.gemini_fast_model
+    )
+    app.state.decision_gate = (
+        DecisionsGate(app.state.http_client, settings.openrouter_api_key, settings.decision_model)
+        if settings.openrouter_api_key else None
+    )
+
+    # MCP tools that need the running services
+    mcp_server.attach_agent_tools(app.state)
+
     # Test Gemini API connection at startup (uses active API mode)
     logger.warning("Testing Gemini API connection...")
     llm_check = await check_llm(app.state.http_client, app.state.vertex_auth, settings.google_api_key, settings.gemini_model)
@@ -109,12 +123,14 @@ async def lifespan(app: FastAPI):
     logger.warning(f"  {'✓' if settings.session_secret else '✗'} Session secret: {'set' if settings.session_secret else 'random (set SESSION_SECRET)'}")
     logger.warning(f"  {'✓' if app.state.quotas.persistent else '✗'} Quotas: {'persistent (events table)' if app.state.quotas.persistent else 'in memory'}")
     logger.warning(f"  {'✓' if settings.origin_secret else '✗'} Origin secret: {'enforced' if settings.origin_secret else 'off (API reachable directly)'}")
+    logger.warning(f"  {'✓' if app.state.decision_gate else '✗'} Decision gate: {settings.decision_model if app.state.decision_gate else 'off (set OPENROUTER_API_KEY)'}")
     logger.warning(f"  {'✓' if app.state.tracing_service.enabled else '✗'} Tracing (Langfuse): {'Enabled' if app.state.tracing_service.enabled else 'Disabled'}")
     logger.warning(f"  {'✓' if app.state.supabase_service.enabled else '✗'} Database (Supabase): {'Enabled' if app.state.supabase_service.enabled else 'Disabled'}")
     logger.warning("=" * 50)
     
     logger.info("All services initialized and attached to state")
-    yield
+    async with mcp_server.mcp.session_manager.run():
+        yield
     
     # Cleanup
     if hasattr(app.state, "tracing_service") and app.state.tracing_service:
@@ -128,10 +144,12 @@ async def lifespan(app: FastAPI):
         
     logger.info("Services shut down")
 
+mcp_app = mcp_server.build_asgi_app()
+
 app = FastAPI(
     title="Rayhan's AI Resume Chatbot",
     description="Production-grade modular API for AI resume interactions",
-    version="2.5.0",
+    version="2.6.0",
     lifespan=lifespan
 )
 
@@ -177,6 +195,9 @@ async def http_exception_handler(request: Request, exc: HTTPException):
 
 # Include Routers
 app.include_router(api_router, prefix="/api/v1")
+
+# MCP interface (Streamable HTTP, stateless). Built at import time; its session manager runs in the lifespan above.
+app.mount("/mcp", mcp_app)
 
 if __name__ == "__main__":
     import uvicorn

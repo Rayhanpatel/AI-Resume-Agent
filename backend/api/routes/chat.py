@@ -8,6 +8,8 @@ from core.timeout import safe_timeout
 from models.schemas import ChatRequest, ChatResponse
 from api.deps import get_agent_service, get_intent_classifier, get_tracing_service, get_supabase_service, get_rate_limiter
 from services.quotas import QuotaExceeded, hash_ip
+from services.verifier import verify_answer
+from core.config import get_settings
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -79,6 +81,24 @@ async def gate(request: Request, body: ChatRequest, session: dict, rate_limiter)
     except QuotaExceeded as e:
         raise HTTPException(status_code=429, detail={"error": e.message, "scope": e.scope})
     return ip_hash
+
+
+async def _verify(request: Request, answer: str):
+    """Stamp the answer's sentences; None when verification is off or the answer is the apology"""
+    state = request.app.state
+    if not get_settings().verify_answers or not answer or "trouble responding right now" in answer:
+        return None
+    return await verify_answer(answer, state.verifier, getattr(state, "decision_gate", None))
+
+
+def _verification_metadata(verification) -> dict:
+    if not verification:
+        return {}
+    s = verification["summary"]
+    claims = s["checked"] + s["inferred"] + s["unknown"] + s["unverified"]
+    return {"claims": claims, "checked": s["checked"], "inferred": s["inferred"], "unknown": s["unknown"],
+            "numbers_unverified": s["numbers_unverified"], "verify_ms": verification["latency_ms"],
+            "quote_support_rate": round(s["checked"] / claims, 3) if claims else None}
 
 
 def _count_in_memory(request: Request, session_id: str, ip_hash: str, tokens: int = 0):
@@ -158,8 +178,10 @@ async def chat(
 
     if tracing_service: tracing_service.log_generation(trace=trace, name="response", model=agent_result.get("model", agent_service.model), input_text=body.query, output_text=agent_result["response"])
 
+    verification = None
     if "error" not in agent_result:
         background_tasks.add_task(remember_turn, request, session, body.query, agent_result["response"])
+        verification = await _verify(request, agent_result["response"])
 
     tokens = (agent_result.get("tokens_in") or 0) + (agent_result.get("tokens_out") or 0)
     if supabase_service and supabase_service.enabled:
@@ -171,7 +193,8 @@ async def chat(
             tokens_in=agent_result.get("tokens_in"),
             tokens_out=agent_result.get("tokens_out"),
             latency_ms=agent_result.get("latency_ms"),
-            metadata={"cost_usd": agent_result.get("cost_usd", 0.0), "model": agent_result.get("model"), "ip_hash": ip_hash}
+            metadata={"cost_usd": agent_result.get("cost_usd", 0.0), "model": agent_result.get("model"), "ip_hash": ip_hash,
+                      **_verification_metadata(verification)}
         )
     else:
         _count_in_memory(request, body.session_id, ip_hash, tokens)
@@ -181,7 +204,8 @@ async def chat(
         response=agent_result["response"],
         intent="job_related",
         session_id=body.session_id,
-        latency_ms=agent_result.get("latency_ms")
+        latency_ms=agent_result.get("latency_ms"),
+        verification=verification
     )
 
 
@@ -244,6 +268,14 @@ async def stream_chat(
                 stats=stats
             ):
                 yield f"data: {json.dumps({'chunk': chunk})}\n\n"
+
+            # The answer is complete; now stamp it. The client shows "checking" meanwhile.
+            verification = None
+            if stats.get("response"):
+                yield f"data: {json.dumps({'status': 'verifying'})}\n\n"
+                verification = await _verify(request, stats["response"])
+                if verification:
+                    yield f"data: {json.dumps({'verification': verification})}\n\n"
             yield "data: [DONE]\n\n"
 
             latency_ms = int((time.time() - start_time) * 1000)
@@ -254,7 +286,7 @@ async def stream_chat(
                 asyncio.create_task(supabase_service.log_event(
                     session_id=session_id, event_type="chat_stream", intent="job_related",
                     tokens_in=stats.get("tokens_in"), tokens_out=stats.get("tokens_out"), latency_ms=latency_ms,
-                    metadata={"model": stats.get("model"), "ip_hash": ip_hash}
+                    metadata={"model": stats.get("model"), "ip_hash": ip_hash, **_verification_metadata(verification)}
                 ))
             else:
                 _count_in_memory(request, session_id, ip_hash, tokens)

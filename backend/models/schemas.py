@@ -94,6 +94,7 @@ class ChatResponse(BaseModel):
     intent: str
     session_id: str
     latency_ms: Optional[int] = None
+    verification: Optional[Dict[str, Any]] = None  # per-sentence stamps (see services/verifier.py)
 
 
 class SessionResponse(BaseModel):

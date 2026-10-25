@@ -192,8 +192,7 @@ export function useChatSession() {
 
         if (!sid || !token) {
             // No session means no chat: the backend issues the token every message needs
-            setError(welcome || 'The agent is unavailable right now. Please try again in a minute, or email rayhanbp@umd.edu.')
-            return
+            return { ok: false, message: welcome || 'The agent is unavailable right now. Please try again in a minute, or email rayhanbp@umd.edu.' }
         }
 
         setSessionId(sid)
@@ -205,6 +204,7 @@ export function useChatSession() {
             content: welcome
         }])
         setHasStarted(true)
+        return { ok: true }
     }, [])
 
     /**
@@ -274,6 +274,15 @@ export function useChatSession() {
                                     ? { ...msg, content: msg.content + parsed.chunk }
                                     : msg
                             ))
+                        } else if (parsed.status === 'verifying') {
+                            // The answer is complete; the backend is checking it against the profile
+                            setMessages(prev => prev.map(msg =>
+                                msg.id === aiMessageId ? { ...msg, verifying: true } : msg
+                            ))
+                        } else if (parsed.verification) {
+                            setMessages(prev => prev.map(msg =>
+                                msg.id === aiMessageId ? { ...msg, verifying: false, verification: parsed.verification } : msg
+                            ))
                         }
                     } catch {
                         // Ignore parse errors for partial chunks
@@ -299,6 +308,7 @@ export function useChatSession() {
                     : msg
             ))
         } finally {
+            setMessages(prev => prev.map(msg => msg.id === aiMessageId && msg.verifying ? { ...msg, verifying: false } : msg))
             setIsLoading(false)
             isLoadingRef.current = false
         }

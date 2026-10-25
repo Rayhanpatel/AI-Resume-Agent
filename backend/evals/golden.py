@@ -24,6 +24,7 @@ os.environ.setdefault("GOOGLE_API_KEY", "unused")
 from core.config import get_settings  # noqa: E402
 from services.agent import AgentService  # noqa: E402
 from services.vertex_auth import VertexAuthService  # noqa: E402
+from services.verifier import GeminiJsonVerifier, verify_answer  # noqa: E402
 from tests.test_profile import BANNED  # noqa: E402
 
 EVORANK_HISTORY = [
@@ -72,6 +73,8 @@ async def main() -> int:
             fallback_model=settings.gemini_fallback_model,
             first_token_timeout=settings.gemini_first_token_timeout,
         )
+        verifier = GeminiJsonVerifier(client, auth, "unused", settings.gemini_fast_model)
+        totals = {"claims": 0, "checked": 0, "inferred": 0, "unknown": 0, "unverified": 0, "numbers_unverified": 0, "verify_ms": []}
         print("models:", " -> ".join(agent.models))
         for question, history, must, must_not in CASES:
             start, first, chunks = time.time(), None, []
@@ -88,7 +91,23 @@ async def main() -> int:
             status = "FAIL" if problems else "ok  "
             print(f"\n### {status} {question}  (first words {first:.1f}s, total {time.time() - start:.1f}s) {problems}\n{answer}")
 
+            # Stamp the answer the way the live service does, and tally the stamps
+            v = await verify_answer(answer, verifier)
+            s = v["summary"]; claims = [c for c in v["claims"] if c["status"] != "n/a"]
+            totals["claims"] += len(claims); totals["verify_ms"].append(v["latency_ms"])
+            for k in ("checked", "inferred", "unknown", "unverified", "numbers_unverified"):
+                totals[k] += s[k]
+            print("    stamps:", ", ".join(f"{c['status']}" + (f" [{', '.join(c['numbers_unverified'])}]" if c["numbers_unverified"] else "") for c in claims), f"({v['latency_ms']} ms)")
+            for c in claims:
+                if c["status"] in ("unknown", "unverified") or c["numbers_unverified"]:
+                    print(f"      - {c['status']}: {c['text'][:140]}")
+
+    ms = sorted(totals["verify_ms"]); p50 = ms[len(ms) // 2] if ms else 0; p95 = ms[int(len(ms) * 0.95) - 1] if ms else 0
+    rate = totals["checked"] / totals["claims"] if totals["claims"] else 0
     print(f"\n== {len(CASES) - failures}/{len(CASES)} passed")
+    print(f"== stamps over {totals['claims']} claims: checked {totals['checked']} ({rate:.0%}), inferred {totals['inferred']}, "
+          f"unknown {totals['unknown']}, unverified {totals['unverified']}, claims with unverified numbers {totals['numbers_unverified']}; "
+          f"verify latency p50 {p50} ms, p95 {p95} ms")
     return 1 if failures else 0
 
 

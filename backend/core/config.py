@@ -71,6 +71,13 @@ class Settings(BaseSettings):
     quota_sessions_per_ip_per_day: int = 15
     quota_daily_token_budget: int = 3_000_000  # all conversations, input + output, per UTC day
 
+    # Verification stamps on every answer (a fast-model JSON pass plus code checks)
+    verify_answers: bool = True
+    # Optional second opinion from a decision model on OpenRouter's Decisions API.
+    # Pinned to a dated snapshot: probabilities drift between versions, so thresholds are per model.
+    openrouter_api_key: Optional[str] = None
+    decision_model: str = "typesafe/jev-1.14-20261014"
+
     # When set, every request except /health* must carry X-Origin-Secret with this value.
     # Cloudflare adds the header once the API is proxied through it, so direct hits are refused.
     origin_secret: Optional[str] = None

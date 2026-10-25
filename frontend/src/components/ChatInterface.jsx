@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, memo } from 'react'
 import { Send, RotateCcw, Bot, User, AlertCircle, Linkedin, Mail, Github, Globe, Copy, Check, Download, Share2, Code } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
+import VerificationPanel from './VerificationPanel'
 import remarkGfm from 'remark-gfm'
 import QuickQuestions from './QuickQuestions'
 import ThemeToggle from './ThemeToggle'
@@ -255,6 +256,11 @@ function ChatInterface({
                                     </span>
                                 )}
                             </div>
+
+                            {/* Verification stamps (assistant answers only) */}
+                            {message.role === 'assistant' && message.content && (message.verification || message.verifying) && (
+                                <VerificationPanel verification={message.verification} verifying={message.verifying} />
+                            )}
 
                             {/* Copy & timestamp for AI messages - hide for empty streaming messages */}
                             {message.role === 'assistant' && message.content && (

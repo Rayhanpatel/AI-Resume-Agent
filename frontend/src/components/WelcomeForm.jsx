@@ -25,6 +25,7 @@ function WelcomeForm({ onStart, defaultValues = {} }) {
     const widgetIdRef = useRef(null)
     const tokenRef = useRef(null)
     const [turnstileReady, setTurnstileReady] = useState(false)
+    const [startError, setStartError] = useState('')
 
     // Render Turnstile widget when API is loaded
     useEffect(() => {
@@ -94,8 +95,20 @@ function WelcomeForm({ onStart, defaultValues = {} }) {
         if (!name.trim()) return
 
         setIsSubmitting(true)
-        // Pass turnstile token (may be null if Turnstile didn't load — backend handles gracefully)
-        await onStart(name.trim(), company.trim(), jobInput.trim(), tokenRef.current)
+        setStartError('')
+        try {
+            // Pass turnstile token (may be null if Turnstile didn't load — backend handles gracefully)
+            const result = await onStart(name.trim(), company.trim(), jobInput.trim(), tokenRef.current)
+            if (result && result.ok === false) {
+                setStartError(result.message || 'Could not start the chat. Please try again.')
+                // A failed Turnstile token is single-use; ask for a fresh one
+                if (window.turnstile && widgetIdRef.current !== null) {
+                    try { window.turnstile.reset(widgetIdRef.current) } catch { /* ignore */ }
+                }
+            }
+        } finally {
+            setIsSubmitting(false)
+        }
     }, [name, company, jobInput, onStart])
 
     // Check if input looks like a URL
@@ -208,6 +221,12 @@ function WelcomeForm({ onStart, defaultValues = {} }) {
 
                 {/* Cloudflare Turnstile Widget */}
                 <div ref={turnstileRef} className="flex justify-center" />
+
+                {startError && (
+                    <p role="alert" className="text-sm text-red-300 bg-red-500/10 border border-red-500/30 rounded-lg px-3 py-2">
+                        {startError}
+                    </p>
+                )}
 
                 {/* Submit Button */}
                 <button
