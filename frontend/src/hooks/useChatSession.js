@@ -2,7 +2,6 @@ import { useState, useCallback, useEffect, useRef } from 'react'
 
 const SESSION_TTL_MS = 24 * 60 * 60 * 1000 // 24 hours
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
-const HISTORY_TURNS = 10 // matches MAX_HISTORY_TURNS in backend/services/agent.py
 
 /**
  * useChatSession Hook
@@ -21,6 +20,7 @@ export function useChatSession() {
     const [company, setCompany] = useState('')
     const [jobPosting, setJobPosting] = useState('')
     const [sessionId, setSessionId] = useState('')
+    const [sessionToken, setSessionToken] = useState('')
     const [hasStarted, setHasStarted] = useState(false)
     const [suggestedPrompts, setSuggestedPrompts] = useState(null)
 
@@ -32,8 +32,6 @@ export function useChatSession() {
     // Refs to avoid stale closures and enable cleanup
     const isLoadingRef = useRef(false)
     const streamAbortRef = useRef(null)
-    const messagesRef = useRef([])
-    useEffect(() => { messagesRef.current = messages }, [messages])
 
     // Session resume modal state
     const [showResumeModal, setShowResumeModal] = useState(false)
@@ -70,12 +68,13 @@ export function useChatSession() {
                 company,
                 jobPosting,
                 sessionId,
+                sessionToken,
                 suggestedPrompts,
                 messages,
                 savedAt: Date.now()
             }))
         }
-    }, [hasStarted, userName, company, jobPosting, messages, sessionId, suggestedPrompts])
+    }, [hasStarted, userName, company, jobPosting, messages, sessionId, sessionToken, suggestedPrompts])
 
     // Clear session from localStorage
     const clearSession = useCallback(() => {
@@ -91,6 +90,7 @@ export function useChatSession() {
             setJobPosting(pendingSession.jobPosting || '')
             setMessages(pendingSession.messages)
             setSessionId(pendingSession.sessionId || '')
+            setSessionToken(pendingSession.sessionToken || '')
             setSuggestedPrompts(pendingSession.suggestedPrompts || null)
             setHasStarted(true)
         }
@@ -114,6 +114,7 @@ export function useChatSession() {
         setCompany('')
         setJobPosting('')
         setSessionId('')
+        setSessionToken('')
         setSuggestedPrompts(null)
         setError(null)
         clearSession()
@@ -144,8 +145,9 @@ export function useChatSession() {
         setCompany(companyName)
         setJobPosting(jobInput)
 
-        let sid = crypto.randomUUID()
-        let welcome = `Hi ${name}! 👋 I'm an AI assistant here to tell you about Rayhan Patel's professional background and qualifications${companyName ? ` for ${companyName}` : ''}. Feel free to ask me anything about his experience, skills, or projects. You can use the quick questions below or type your own!`
+        let sid = ''
+        let token = ''
+        let welcome = ''
         let prompts = null
 
         try {
@@ -171,18 +173,31 @@ export function useChatSession() {
             if (response.ok) {
                 const data = await response.json()
                 sid = data.session_id
+                token = data.session_token
                 welcome = data.welcome_message
                 prompts = data.suggested_prompts || null
 
                 if (data.extraction_error) {
                     console.warn('Job extraction warning:', data.extraction_error)
                 }
+            } else {
+                const errorData = await response.json().catch(() => ({}))
+                // The API wraps structured errors as {error, code, details}
+                const detail = errorData.details ?? errorData.error ?? errorData.detail
+                welcome = typeof detail === 'object' ? (detail.error || detail.message) : detail
             }
         } catch (err) {
-            console.error('Session creation failed, using local fallback:', err)
+            console.error('Session creation failed:', err)
+        }
+
+        if (!sid || !token) {
+            // No session means no chat: the backend issues the token every message needs
+            setError(welcome || 'The agent is unavailable right now. Please try again in a minute, or email rayhanbp@umd.edu.')
+            return
         }
 
         setSessionId(sid)
+        setSessionToken(token)
         setSuggestedPrompts(prompts)
         setMessages([{
             id: Date.now(),
@@ -207,12 +222,6 @@ export function useChatSession() {
         }
         setMessages(prev => [...prev, userMessage])
 
-        // Recent turns go to the backend as real conversation history (it keeps the last 10)
-        const history = messagesRef.current
-            .filter(m => m.content && m.content.trim())
-            .slice(-HISTORY_TURNS)
-            .map(m => ({ role: m.role, content: m.content.slice(0, 4000) }))
-
         const aiMessageId = Date.now() + 1
         setMessages(prev => [...prev, { id: aiMessageId, role: 'assistant', content: '' }])
         setIsLoading(true)
@@ -223,20 +232,18 @@ export function useChatSession() {
             const response = await fetch(`${API_URL}/api/v1/chat/stream`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
+                // Name, company, job and history live in the server-side session
                 body: JSON.stringify({
                     query: messageText,
                     session_id: sessionId,
-                    user_name: userName,
-                    company: company || null,
-                    job_posting: jobPosting || null,
-                    history
+                    session_token: sessionToken
                 }),
                 signal: streamAbortRef.current.signal
             })
 
             if (!response.ok) {
                 const errorData = await response.json().catch(() => ({}))
-                const detail = errorData.detail
+                const detail = errorData.details ?? errorData.error ?? errorData.detail
                 const message = typeof detail === 'object'
                     ? (detail.message || detail.error || JSON.stringify(detail))
                     : (detail || `HTTP error! status: ${response.status}`)
@@ -279,7 +286,9 @@ export function useChatSession() {
             console.error('Stream error:', err)
 
             if (err.status === 429) {
-                setError('Too many requests. Please wait a minute before sending another message.')
+                setError(err.message && !err.message.startsWith('HTTP') ? err.message : 'Too many requests. Please wait a minute before sending another message.')
+            } else if (err.status === 403) {
+                setError('This chat session has expired. Press Escape or Reset to start a new one.')
             } else {
                 setError(err.message || 'Failed to send message. Please try again.')
             }
@@ -293,7 +302,7 @@ export function useChatSession() {
             setIsLoading(false)
             isLoadingRef.current = false
         }
-    }, [userName, company, jobPosting, sessionId])
+    }, [sessionId, sessionToken])
 
     // ── Return Public API ────────────────────────────────────────────
 

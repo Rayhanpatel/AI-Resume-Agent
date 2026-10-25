@@ -2,7 +2,7 @@
 Main Agent Service
 Uses Gemini Flash for responses about Rayhan
 Refactored to use raw HTTP (httpx) to bypass SDK threading issues (Feb 2026)
-Moved to Gemini 3.x with a real systemInstruction (Oct 2026)
+Moved to Gemini 3.x with a real systemInstruction (Oct 2026); Mem0 dropped for server-side history
 """
 import json
 import logging
@@ -11,7 +11,6 @@ import time
 import asyncio
 from typing import List, Optional, AsyncGenerator
 
-from .memory import MemoryService
 from .tracer import TracingService
 from .vertex_auth import VertexAuthService
 from .gemini import get_endpoint, generation_config, extract_text
@@ -34,7 +33,6 @@ class AgentService:
     def __init__(
         self,
         api_key: str,
-        memory: MemoryService,
         tracer: TracingService,
         http_client: httpx.AsyncClient,
         vertex_auth: VertexAuthService = None,
@@ -45,7 +43,6 @@ class AgentService:
     ):
         self.api_key = api_key
         self.http_client = http_client
-        self.memory = memory
         self.tracer = tracer
         self.vertex_auth = vertex_auth
         self.model = model
@@ -62,11 +59,6 @@ class AgentService:
 
         # Thinking tokens count against maxOutputTokens, so leave room for both
         self.generation_config = generation_config(max_output_tokens=2048, thinking_level=thinking_level)
-
-    async def _store_memory(self, session_id: str, query: str, response: str):
-        """Store messages in memory (non-blocking helper)"""
-        await safe_timeout(self.memory.add_message(session_id, "user", query), timeout=3.0, label="mem0.store_user")
-        await safe_timeout(self.memory.add_message(session_id, "assistant", response), timeout=3.0, label="mem0.store_assistant")
 
     @staticmethod
     def _history_contents(history: Optional[List[dict]], query: str) -> List[dict]:
@@ -89,24 +81,11 @@ class AgentService:
             contents.append({"role": "user", "parts": [{"text": query}]})
         return contents
 
-    async def _build_payload(self, session_id, query, user_name, company, job_posting, history=None) -> dict:
-        """Build the request: system prompt + memory as systemInstruction, then the real conversation.
-        Gemini 3.x rejects prefilled model turns, so nothing is put in the model's mouth."""
-        # Get semantically relevant context from Mem0 (with timeout)
-        history_context = await safe_timeout(
-            self.memory.get_semantic_context(session_id, query, limit=5),
-            timeout=5.0,
-            default="",
-            label="mem0.get_context"
-        )
-
-        system_prompt = get_system_prompt(
-            user_name,
-            company or "their company",
-            job_posting
-        )
-        if history_context:
-            system_prompt += f"\n\nEARLIER IN THIS CONVERSATION (for continuity; do not repeat yourself):\n{history_context}"
+    async def _build_payload(self, session_id, query, user_name, company, job_info, history=None) -> dict:
+        """Build the request: the system prompt as systemInstruction, then the real conversation
+        from the server-side session. Gemini 3.x rejects prefilled model turns, so nothing is
+        put in the model's mouth."""
+        system_prompt = get_system_prompt(user_name, company or "their company", job_info)
 
         return {
             "systemInstruction": {"parts": [{"text": system_prompt}]},
@@ -120,13 +99,13 @@ class AgentService:
         query: str,
         user_name: str,
         company: Optional[str] = None,
-        job_posting: Optional[str] = None,
+        job_info: Optional[dict] = None,
         trace = None,
         history: Optional[List[dict]] = None
     ) -> dict:
         """Generate a full response, falling back to the next model if one fails or stalls"""
         start_time = time.time()
-        payload = await self._build_payload(session_id, query, user_name, company, job_posting, history)
+        payload = await self._build_payload(session_id, query, user_name, company, job_info, history)
 
         last_error = None
         for i, (model, wait_s) in enumerate(self.attempts):
@@ -158,9 +137,6 @@ class AgentService:
             usage = data.get("usageMetadata", {})
             tokens_in = usage.get("promptTokenCount", 0)
             tokens_out = usage.get("candidatesTokenCount", 0)
-
-            # Store in memory (fire and forget - don't block response)
-            asyncio.create_task(self._store_memory(session_id, query, response_text))
 
             cost_usd = 0.0
             if trace:
@@ -198,9 +174,10 @@ class AgentService:
         query: str,
         user_name: str,
         company: Optional[str] = None,
-        job_posting: Optional[str] = None,
+        job_info: Optional[dict] = None,
         trace = None,
-        history: Optional[List[dict]] = None
+        history: Optional[List[dict]] = None,
+        stats: Optional[dict] = None
     ) -> AsyncGenerator[str, None]:
         """
         Stream a response over SSE. If the answer model errors or sends nothing within
@@ -208,7 +185,7 @@ class AgentService:
         answer can't be restarted, so a failure mid-answer just ends it.
         """
         start_time = time.time()
-        payload = await self._build_payload(session_id, query, user_name, company, job_posting, history)
+        payload = await self._build_payload(session_id, query, user_name, company, job_info, history)
 
         chunks = []
         usage = {}
@@ -262,9 +239,10 @@ class AgentService:
         latency_ms = int((time.time() - start_time) * 1000)
         tokens_in = usage.get("promptTokenCount", 0)
         tokens_out = usage.get("candidatesTokenCount", 0)
-
-        # Store in memory (fire and forget - don't block)
-        asyncio.create_task(self._store_memory(session_id, query, full_response))
+        if stats is not None:
+            # The route logs these after the stream ends (tokens feed the daily budget)
+            stats.update({"model": used_model, "tokens_in": tokens_in, "tokens_out": tokens_out,
+                          "latency_ms": latency_ms, "response": full_response})
 
         if trace:
             self.tracer.log_generation(

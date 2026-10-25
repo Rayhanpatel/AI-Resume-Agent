@@ -61,17 +61,14 @@ def test_extract_text_empty_cases():
     assert extract_text({"candidates": [{"finishReason": "SAFETY"}]}) == ""
 
 
-class _NoMemory:
-    async def get_semantic_context(self, session_id, query, limit=5):
-        return "- user asked about agent memory"
-
-
 def test_agent_payload_uses_system_instruction_and_no_model_turns():
-    agent = AgentService(api_key="k", memory=_NoMemory(), tracer=None, http_client=None, vertex_auth=None)
-    payload = asyncio.run(agent._build_payload("s", "What did he do at 3E?", "Dana", "Acme", None))
+    agent = AgentService(api_key="k", tracer=None, http_client=None, vertex_auth=None)
+    job = {"role_title": "ML Engineer", "company_name": "Acme", "key_skills": ["evals", "Python"]}
+    payload = asyncio.run(agent._build_payload("s", "What did he do at 3E?", "Dana", "Acme", job))
 
-    assert "Rayhan" in payload["systemInstruction"]["parts"][0]["text"]
-    assert "agent memory" in payload["systemInstruction"]["parts"][0]["text"]  # memory goes in the system text
+    system_text = payload["systemInstruction"]["parts"][0]["text"]
+    assert "Rayhan" in system_text
+    assert "Role: ML Engineer" in system_text  # the job reaches the model only as the schema
     assert [turn["role"] for turn in payload["contents"]] == ["user"]
     assert payload["contents"][-1]["parts"][0]["text"] == "What did he do at 3E?"
 
@@ -147,16 +144,9 @@ def _sse(text):
     return httpx.Response(200, text=body, headers={"content-type": "text/event-stream"})
 
 
-class _NoMemoryStore(_NoMemory):
-    enabled = False
-
-    async def add_message(self, *args, **kwargs):
-        return False
-
-
 def _agent(handler):
     client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
-    return AgentService(api_key="k", memory=_NoMemoryStore(), tracer=None, http_client=client,
+    return AgentService(api_key="k", tracer=None, http_client=client,
                         vertex_auth=None, model="primary-model", fallback_model="fallback-model",
                         first_token_timeout=0.2)
 

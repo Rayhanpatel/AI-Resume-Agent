@@ -3,17 +3,18 @@ import asyncio
 import json
 import logging
 from fastapi import APIRouter, Request, Depends, HTTPException, BackgroundTasks
-from core.timeout import safe_timeout
-
-logger = logging.getLogger(__name__)
 from fastapi.responses import StreamingResponse
+from core.timeout import safe_timeout
 from models.schemas import ChatRequest, ChatResponse
 from api.deps import get_agent_service, get_intent_classifier, get_tracing_service, get_supabase_service, get_rate_limiter
+from services.quotas import QuotaExceeded, hash_ip
 
+logger = logging.getLogger(__name__)
 router = APIRouter()
 
 # Constants
 MAX_MESSAGE_LENGTH = 4000
+HISTORY_TURNS = 10  # recent messages kept per session; matches MAX_HISTORY_TURNS in the agent
 
 # SSE headers for Cloudflare/proxy compatibility
 SSE_HEADERS = {
@@ -22,39 +23,72 @@ SSE_HEADERS = {
     "Connection": "keep-alive",
 }
 
-async def get_or_create_session(
-    request: Request, 
-    session_id: str, 
-    user_name: str = "Guest", 
-    company: str = None,
-    job_posting: str = None
-) -> dict:
-    """Get session from Supabase or memory fallback (Async)"""
+SESSION_INVALID = {"error": "This chat session has expired. Please start a new chat.", "code": "SESSION_INVALID"}
+
+
+async def load_session(request: Request, body: ChatRequest) -> dict:
+    """
+    Return the server-side session, or 403.
+    The token must have been issued by /session for this exact session ID; the
+    old code created a session for any UUID it was handed.
+    """
     state = request.app.state
-    
-    # Try Supabase with timeout
+    if not state.session_tokens.verify(body.session_token, body.session_id):
+        raise HTTPException(status_code=403, detail=SESSION_INVALID)
+
+    session = None
     if hasattr(state, "supabase_service") and state.supabase_service.enabled:
-        session = await safe_timeout(
-            state.supabase_service.get_session(session_id),
-            timeout=3.0,
-            label="supabase.get_session"
-        )
+        session = await safe_timeout(state.supabase_service.get_session(body.session_id), timeout=3.0, label="supabase.get_session")
         if session:
-            asyncio.create_task(state.supabase_service.update_session_activity(session_id))
-            return session
-    
-    # Fallback to memory
-    if session_id in state.sessions:
-        return state.sessions[session_id]
-    
-    # Create new session
-    session_data = {"user_name": user_name, "company": company, "job_posting": job_posting, "id": session_id}
-    
+            asyncio.create_task(state.supabase_service.update_session_activity(body.session_id))
+    if session is None:
+        session = state.sessions.get(body.session_id)
+    if session is None:
+        raise HTTPException(status_code=403, detail=SESSION_INVALID)
+    if not session.get("preferences"):
+        session["preferences"] = {}
+    return session
+
+
+async def remember_turn(request: Request, session: dict, query: str, answer: str):
+    """Append the exchange to the server-side history (last HISTORY_TURNS messages)"""
+    if not answer:
+        return
+    prefs = session.get("preferences") or {}
+    history = list(prefs.get("history") or [])
+    history += [{"role": "user", "content": query[:4000]}, {"role": "assistant", "content": answer[:4000]}]
+    history = history[-HISTORY_TURNS:]
+    prefs["history"] = history
+    session["preferences"] = prefs
+    state = request.app.state
+    if session["id"] in state.sessions:
+        state.sessions[session["id"]]["preferences"] = prefs
     if hasattr(state, "supabase_service") and state.supabase_service.enabled:
-        asyncio.create_task(state.supabase_service.create_session(session_id, user_name, company))
-    
-    state.sessions[session_id] = session_data
-    return session_data
+        await state.supabase_service.update_preferences(session["id"], {"history": history})
+
+
+async def gate(request: Request, body: ChatRequest, session: dict, rate_limiter) -> str:
+    """Rate limit, size check, quotas. Returns the IP hash used in event metadata."""
+    client_ip = rate_limiter.get_client_ip(request)
+    rate_limiter.check(client_ip)
+    if len(body.query) > MAX_MESSAGE_LENGTH:
+        raise HTTPException(400, f"Message too long (max {MAX_MESSAGE_LENGTH} characters)")
+    ip_hash = (session.get("preferences") or {}).get("ip_hash") or hash_ip(client_ip, request.app.state.quotas.salt)
+    try:
+        await request.app.state.quotas.check_message(body.session_id, ip_hash)
+    except QuotaExceeded as e:
+        raise HTTPException(status_code=429, detail={"error": e.message, "scope": e.scope})
+    return ip_hash
+
+
+def _count_in_memory(request: Request, session_id: str, ip_hash: str, tokens: int = 0):
+    """Bookkeeping for the quota fallback when Supabase is off"""
+    quotas = request.app.state.quotas
+    quotas.record_memory("messages_session", session_id)
+    quotas.record_memory("messages_ip", ip_hash)
+    if tokens:
+        quotas.record_memory("tokens", "all", tokens)
+
 
 @router.post("/chat", response_model=ChatResponse)
 async def chat(
@@ -67,22 +101,12 @@ async def chat(
     supabase_service = Depends(get_supabase_service),
     rate_limiter = Depends(get_rate_limiter)
 ):
-    """Handle a chat message (Non-streaming) - Standardized"""
-    rate_limiter.check(rate_limiter.get_client_ip(request))
+    """Handle a chat message (Non-streaming)"""
     start_time = time.time()
-    
-    # Input validation
-    if len(body.query) > MAX_MESSAGE_LENGTH:
-        raise HTTPException(400, f"Message too long (max {MAX_MESSAGE_LENGTH} characters)")
-    
-    session = await get_or_create_session(
-        request, 
-        body.session_id, 
-        user_name=body.user_name or "Guest", 
-        company=body.company,
-        job_posting=body.job_posting
-    )
-    
+    session = await load_session(request, body)
+    ip_hash = await gate(request, body, session, rate_limiter)
+    prefs = session.get("preferences") or {}
+
     trace = None
     if tracing_service:
         trace = tracing_service.trace(
@@ -90,7 +114,7 @@ async def chat(
             session_id=body.session_id,
             metadata={"query": body.query[:100]}
         )
-    
+
     # Intent classification with timeout fallback
     intent_result = await safe_timeout(
         intent_classifier.classify(body.query),
@@ -98,39 +122,46 @@ async def chat(
         default={"intent": "job_related", "confidence": 0.5, "reasoning": "Timeout fallback"},
         label="intent_classification"
     )
-    
+
     if intent_result["intent"] == "off_topic":
-        response_text = intent_result.get("decline_message") or "I'm just Rayhan's AI assistant..."
+        response_text = intent_result.get("decline_message") or "I'm Rayhan's AI assistant. How can I help you learn about his work?"
         latency_ms = int((time.time() - start_time) * 1000)
-        
+
         if supabase_service and supabase_service.enabled:
             background_tasks.add_task(
                 supabase_service.log_event,
                 session_id=body.session_id,
                 event_type="chat",
                 intent="off_topic",
-                latency_ms=latency_ms
+                latency_ms=latency_ms,
+                metadata={"ip_hash": ip_hash}
             )
-        
+        else:
+            _count_in_memory(request, body.session_id, ip_hash)
+
         return ChatResponse(
             response=response_text,
             intent="off_topic",
             session_id=body.session_id,
             latency_ms=latency_ms
         )
-    
+
     agent_result = await agent_service.respond(
         session_id=body.session_id,
         query=body.query,
         user_name=session.get("user_name", "Guest"),
         company=session.get("company"),
-        job_posting=session.get("job_posting") or body.job_posting,
+        job_info=prefs.get("job_info"),
         trace=trace,
-        history=[turn.model_dump() for turn in body.history]
+        history=prefs.get("history") or []
     )
-    
+
     if tracing_service: tracing_service.log_generation(trace=trace, name="response", model=agent_result.get("model", agent_service.model), input_text=body.query, output_text=agent_result["response"])
-    
+
+    if "error" not in agent_result:
+        background_tasks.add_task(remember_turn, request, session, body.query, agent_result["response"])
+
+    tokens = (agent_result.get("tokens_in") or 0) + (agent_result.get("tokens_out") or 0)
     if supabase_service and supabase_service.enabled:
         background_tasks.add_task(
             supabase_service.log_event,
@@ -140,9 +171,11 @@ async def chat(
             tokens_in=agent_result.get("tokens_in"),
             tokens_out=agent_result.get("tokens_out"),
             latency_ms=agent_result.get("latency_ms"),
-            metadata={"cost_usd": agent_result.get("cost_usd", 0.0)}
+            metadata={"cost_usd": agent_result.get("cost_usd", 0.0), "model": agent_result.get("model"), "ip_hash": ip_hash}
         )
-    
+    else:
+        _count_in_memory(request, body.session_id, ip_hash, tokens)
+
     if tracing_service: tracing_service.flush()
     return ChatResponse(
         response=agent_result["response"],
@@ -163,94 +196,73 @@ async def stream_chat(
     supabase_service = Depends(get_supabase_service),
     rate_limiter = Depends(get_rate_limiter)
 ):
-    """Stream chat response - FULL FEATURES for Railway deployment"""
+    """Stream chat response over SSE"""
     start_time = time.time()
-    
-    # 1. Rate Limiting
-    rate_limiter.check(rate_limiter.get_client_ip(request))
-    
-    # 2. Input validation
-    if len(body.query) > MAX_MESSAGE_LENGTH:
-        raise HTTPException(400, f"Message too long (max {MAX_MESSAGE_LENGTH} characters)")
-    
+    session = await load_session(request, body)
+    ip_hash = await gate(request, body, session, rate_limiter)
+    prefs = session.get("preferences") or {}
     session_id = body.session_id
-    
-    # 3. Session management
-    try:
-        session = await get_or_create_session(
-            request, session_id, 
-            user_name=body.user_name or "Guest", 
-            company=body.company,
-            job_posting=body.job_posting
-        )
-    except Exception as e:
-        logger.warning(f"Session creation failed: {e}")
-        session = {"id": session_id, "user_name": body.user_name or "Guest", "company": body.company, "job_posting": body.job_posting}
-    
-    # 4. Tracing
+
     trace = None
     if tracing_service:
         trace = tracing_service.trace(name="stream_chat", session_id=session_id)
-    
-    # 5. Intent classification
+
     intent_result = await safe_timeout(
         intent_classifier.classify(body.query),
         timeout=10.0,
         default={"intent": "job_related", "confidence": 0.5, "reasoning": "Timeout fallback"},
         label="stream.intent_classification"
     )
-    
-    # 6. Handle off-topic
+
     if intent_result["intent"] == "off_topic":
         async def off_topic_stream():
             msg = intent_result.get("decline_message", "I'm Rayhan's AI assistant. How can I help you learn about his qualifications?")
             yield f"data: {json.dumps({'chunk': msg})}\n\n"
             yield "data: [DONE]\n\n"
-        # Log off-topic event (matches non-streaming endpoint behavior)
         if supabase_service and supabase_service.enabled:
             latency_ms = int((time.time() - start_time) * 1000)
             asyncio.create_task(supabase_service.log_event(
-                session_id=session_id,
-                event_type="chat_stream",
-                intent="off_topic",
-                latency_ms=latency_ms
+                session_id=session_id, event_type="chat_stream", intent="off_topic",
+                latency_ms=latency_ms, metadata={"ip_hash": ip_hash}
             ))
+        else:
+            _count_in_memory(request, session_id, ip_hash)
         if tracing_service: tracing_service.flush()
         return StreamingResponse(off_topic_stream(), media_type="text/event-stream", headers=SSE_HEADERS)
-    
-    # 7. Stream response using agent service
+
     async def generate_stream():
-        chunks = []
+        stats = {}
         try:
             async for chunk in agent_service.respond_stream(
                 session_id=session_id,
                 query=body.query,
                 user_name=session.get("user_name", "Guest"),
                 company=session.get("company"),
-                job_posting=session.get("job_posting") or body.job_posting,
+                job_info=prefs.get("job_info"),
                 trace=trace,
-                history=[turn.model_dump() for turn in body.history]
+                history=prefs.get("history") or [],
+                stats=stats
             ):
-                chunks.append(chunk)
                 yield f"data: {json.dumps({'chunk': chunk})}\n\n"
             yield "data: [DONE]\n\n"
-            
-            # 8. Background logging
+
             latency_ms = int((time.time() - start_time) * 1000)
-            
+            if stats.get("response"):
+                asyncio.create_task(remember_turn(request, session, body.query, stats["response"]))
+            tokens = (stats.get("tokens_in") or 0) + (stats.get("tokens_out") or 0)
             if supabase_service and supabase_service.enabled:
                 asyncio.create_task(supabase_service.log_event(
-                    session_id=session_id,
-                    event_type="chat_stream",
-                    intent="job_related",
-                    latency_ms=latency_ms
+                    session_id=session_id, event_type="chat_stream", intent="job_related",
+                    tokens_in=stats.get("tokens_in"), tokens_out=stats.get("tokens_out"), latency_ms=latency_ms,
+                    metadata={"model": stats.get("model"), "ip_hash": ip_hash}
                 ))
-            
+            else:
+                _count_in_memory(request, session_id, ip_hash, tokens)
             if tracing_service: tracing_service.flush()
-            
+
         except Exception as e:
             logger.error(f"Streaming error: {e}")
             yield f"data: {json.dumps({'chunk': 'Sorry, an error occurred. Please try again.'})}\n\n"
             yield "data: [DONE]\n\n"
-    
+
     return StreamingResponse(generate_stream(), media_type="text/event-stream", headers=SSE_HEADERS)

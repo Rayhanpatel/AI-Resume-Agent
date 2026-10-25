@@ -60,6 +60,21 @@ class Settings(BaseSettings):
     frontend_url: str = "http://localhost:5173"
     rate_limit_rpm: int = 10
 
+    # Sessions: /session issues a signed token after Turnstile; /chat requires it.
+    # Without SESSION_SECRET a random one is made at startup (tokens die on restart).
+    session_secret: Optional[str] = None
+    session_ttl_hours: int = 24
+
+    # Quotas, counted from the events table so they survive restarts and replicas
+    quota_messages_per_session: int = 40
+    quota_messages_per_ip_per_day: int = 80
+    quota_sessions_per_ip_per_day: int = 15
+    quota_daily_token_budget: int = 3_000_000  # all conversations, input + output, per UTC day
+
+    # When set, every request except /health* must carry X-Origin-Secret with this value.
+    # Cloudflare adds the header once the API is proxied through it, so direct hits are refused.
+    origin_secret: Optional[str] = None
+
 
 @lru_cache()
 def get_settings() -> Settings:

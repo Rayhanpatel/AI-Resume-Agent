@@ -1,10 +1,14 @@
 """
 Job URL Extractor - Fetches and extracts text from any job URL
 """
+import asyncio
+import ipaddress
 import re
 import logging
+import socket
 import httpx
 from typing import Tuple, Optional
+from urllib.parse import urlparse
 
 logger = logging.getLogger(__name__)
 
@@ -33,6 +37,26 @@ def is_blocked_url(url: str) -> bool:
     return any(p.match(url) for p in BLOCKED_PATTERNS)
 
 
+async def resolves_to_private_address(url: str) -> bool:
+    """
+    Resolve the host and refuse if any address is private, loopback, link-local or
+    reserved. The pattern list above only catches literal IPs; a hostname that
+    resolves to 169.254.169.254 would walk straight past it.
+    """
+    host = urlparse(url).hostname
+    if not host:
+        return True
+    try:
+        infos = await asyncio.get_running_loop().getaddrinfo(host, None)
+    except socket.gaierror:
+        return True
+    for info in infos:
+        address = ipaddress.ip_address(info[4][0])
+        if not address.is_global:
+            return True
+    return False
+
+
 async def extract_from_url(
     http_client: httpx.AsyncClient,
     url: str,
@@ -50,27 +74,27 @@ async def extract_from_url(
         Tuple of (extracted_text, error_message) - one will be None
     """
     url = url.strip()
-    
-    if is_blocked_url(url):
+
+    if is_blocked_url(url) or await resolves_to_private_address(url):
         return None, "This URL is not accessible. Please paste the job text."
-    
+
     try:
+        # No redirects: a redirect can point anywhere, including inside the network.
+        # Job boards that redirect are asked for the text instead.
         response = await http_client.get(
             url,
             timeout=timeout,
-            follow_redirects=True,
+            follow_redirects=False,
             headers={
                 "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
                 "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
                 "Accept-Language": "en-US,en;q=0.5",
             }
         )
-        
-        # Validate final URL after redirects (SSRF via open redirect prevention)
-        final_url = str(response.url)
-        if is_blocked_url(final_url):
-            return None, "Redirected to inaccessible URL. Please paste the job text."
-        
+
+        if response.is_redirect:
+            return None, "That link redirects elsewhere. Please paste the job text instead."
+
         if response.status_code == 403:
             return None, "Page requires login. Please paste the job text instead."
         

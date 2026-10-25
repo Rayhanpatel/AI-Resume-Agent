@@ -13,15 +13,17 @@ from core.config import get_settings
 from core.middleware import RequestIDMiddleware
 from core.ttl_cache import TTLCache
 from api.router import api_router
+from core.origin import OriginSecretMiddleware
+from core.session_tokens import SessionTokens
 from services import (
     IntentClassifier,
     AgentService,
-    MemoryService,
     TracingService,
     SupabaseService,
     init_vertex_auth
 )
 from services.gemini import check_llm
+from services.quotas import QuotaService
 
 # Load environment variables
 load_dotenv()
@@ -60,7 +62,6 @@ async def lifespan(app: FastAPI):
         model=settings.gemini_fast_model,
         thinking_level=settings.gemini_thinking_level
     )
-    app.state.memory_service = MemoryService(api_key=settings.mem0_api_key or "")
     app.state.tracing_service = TracingService(
         public_key=settings.langfuse_public_key or "",
         secret_key=settings.langfuse_secret_key or "",
@@ -68,7 +69,6 @@ async def lifespan(app: FastAPI):
     )
     app.state.agent_service = AgentService(
         api_key=settings.google_api_key,
-        memory=app.state.memory_service,
         tracer=app.state.tracing_service,
         http_client=app.state.http_client,
         vertex_auth=app.state.vertex_auth,
@@ -80,6 +80,17 @@ async def lifespan(app: FastAPI):
 
     # In-memory sessions storage with TTL and size limit to prevent memory leaks
     app.state.sessions = TTLCache(ttl_seconds=86400, max_size=10000)  # 24h TTL, 10k max
+
+    # Signed session tokens and quotas that survive restarts (counted from the events table)
+    app.state.session_tokens = SessionTokens(settings.session_secret, settings.session_ttl_hours)
+    app.state.quotas = QuotaService(
+        app.state.supabase_service,
+        messages_per_session=settings.quota_messages_per_session,
+        messages_per_ip_per_day=settings.quota_messages_per_ip_per_day,
+        sessions_per_ip_per_day=settings.quota_sessions_per_ip_per_day,
+        daily_token_budget=settings.quota_daily_token_budget,
+        salt=settings.session_secret or "no-secret",
+    )
 
     # Test Gemini API connection at startup (uses active API mode)
     logger.warning("Testing Gemini API connection...")
@@ -95,7 +106,9 @@ async def lifespan(app: FastAPI):
     logger.warning(f"  {'✓' if app.state.vertex_auth.enabled else '✗'} Vertex AI: {'Enabled (production)' if app.state.vertex_auth.enabled else 'Disabled (using AI Studio)'}")
     logger.warning(f"  ✓ Intent Classifier: Ready")
     logger.warning(f"  ✓ Agent Service: Ready")
-    logger.warning(f"  {'✓' if app.state.memory_service.enabled else '✗'} Memory (Mem0): {'Enabled' if app.state.memory_service.enabled else 'Disabled'}")
+    logger.warning(f"  {'✓' if settings.session_secret else '✗'} Session secret: {'set' if settings.session_secret else 'random (set SESSION_SECRET)'}")
+    logger.warning(f"  {'✓' if app.state.quotas.persistent else '✗'} Quotas: {'persistent (events table)' if app.state.quotas.persistent else 'in memory'}")
+    logger.warning(f"  {'✓' if settings.origin_secret else '✗'} Origin secret: {'enforced' if settings.origin_secret else 'off (API reachable directly)'}")
     logger.warning(f"  {'✓' if app.state.tracing_service.enabled else '✗'} Tracing (Langfuse): {'Enabled' if app.state.tracing_service.enabled else 'Disabled'}")
     logger.warning(f"  {'✓' if app.state.supabase_service.enabled else '✗'} Database (Supabase): {'Enabled' if app.state.supabase_service.enabled else 'Disabled'}")
     logger.warning("=" * 50)
@@ -118,7 +131,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="Rayhan's AI Resume Chatbot",
     description="Production-grade modular API for AI resume interactions",
-    version="2.4.1",
+    version="2.5.0",
     lifespan=lifespan
 )
 
@@ -148,6 +161,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 app.add_middleware(RequestIDMiddleware)
+app.add_middleware(OriginSecretMiddleware, secret=settings.origin_secret)
 
 # Exception Handlers
 @app.exception_handler(HTTPException)

@@ -1,7 +1,6 @@
 """Services module"""
 from .intent import IntentClassifier
 from .agent import AgentService
-from .memory import MemoryService
 from .tracer import TracingService
 from .supabase_service import SupabaseService
 from .vertex_auth import VertexAuthService, init_vertex_auth, get_vertex_auth
@@ -12,7 +11,6 @@ from .prompt_generator import generate_prompts, DEFAULT_PROMPTS
 __all__ = [
     "IntentClassifier", 
     "AgentService", 
-    "MemoryService", 
     "TracingService",
     "SupabaseService",
     "VertexAuthService",

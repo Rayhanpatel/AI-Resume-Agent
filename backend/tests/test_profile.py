@@ -34,7 +34,7 @@ def test_profile_has_no_banned_claims(pattern, reason):
 
 @pytest.mark.parametrize("pattern,reason", BANNED)
 def test_system_prompt_has_no_banned_claims(pattern, reason):
-    prompt = get_system_prompt("Dana", "Acme", "Senior ML Engineer, LLM evaluation")
+    prompt = get_system_prompt("Dana", "Acme", {"role_title": "Senior ML Engineer", "key_skills": ["LLM evaluation"]})
     hits = [m.group(0) for m in re.finditer(pattern, prompt, flags=re.IGNORECASE)]
     assert not hits, f"{reason}: found {hits}"
 

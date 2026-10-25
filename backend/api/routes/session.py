@@ -9,6 +9,7 @@ from services.leads import submit_recruiter_lead
 from services.job_extractor import extract_from_url, is_url
 from services.job_parser import parse_job_description
 from services.prompt_generator import generate_prompts, DEFAULT_PROMPTS
+from services.quotas import QuotaExceeded, hash_ip
 from core.config import get_settings
 
 logger = logging.getLogger(__name__)
@@ -24,16 +25,24 @@ async def create_session(
     rate_limiter = Depends(get_rate_limiter)
 ):
     """Create a new chat session with optional job context extraction"""
-    rate_limiter.check(rate_limiter.get_client_ip(request))
-    
+    client_ip = rate_limiter.get_client_ip(request)
+    rate_limiter.check(client_ip)
+
     settings = get_settings()
-    http_client = request.app.state.http_client
-    
+    state = request.app.state
+    http_client = state.http_client
+    ip_hash = hash_ip(client_ip, state.quotas.salt)
+
+    try:
+        await state.quotas.check_new_session(ip_hash)
+    except QuotaExceeded as e:
+        raise HTTPException(status_code=429, detail={"error": e.message, "scope": e.scope})
+
     # --- Cloudflare Turnstile Verification ---
     if settings.turnstile_secret_key:
         if not body.turnstile_token:
             raise HTTPException(status_code=403, detail="CAPTCHA verification required")
-        
+
         # Check for Test Token (always starts with 1x000...)
         # CRITICAL: Only allow this in non-production environments to prevent bypass
         secret_key = settings.turnstile_secret_key
@@ -47,7 +56,7 @@ async def create_session(
                 data={
                     "secret": secret_key,
                     "response": body.turnstile_token,
-                    "remoteip": rate_limiter.get_client_ip(request),
+                    "remoteip": client_ip,
                 },
                 timeout=5.0,
             )
@@ -60,15 +69,17 @@ async def create_session(
         except Exception as e:
             logger.warning(f"Turnstile verification error: {e}")
             # Fail open — don't block users if Cloudflare is unreachable
-    
+
     session_id = str(uuid.uuid4())
-    vertex_auth = request.app.state.vertex_auth
-    
+    vertex_auth = state.vertex_auth
+
     # --- Job Description Handling ---
+    # The raw text is read once by the extraction call below and then discarded.
+    # Only the extracted schema is kept, so the persona model never sees the page.
     job_text = None
     job_url = None
     extraction_error = None
-    
+
     # Priority: URL > pasted text
     if body.job_url:
         job_text, extraction_error = await extract_from_url(http_client, body.job_url)
@@ -88,11 +99,11 @@ async def create_session(
                 extraction_error = "Could not extract from URL"
         else:
             job_text = body.job_posting
-    
-    # --- Parse Job Info (async LLM call) ---
+
+    # --- Parse Job Info (async LLM call, no tools) ---
     job_info = None
     prompts = DEFAULT_PROMPTS
-    
+
     if job_text:
         try:
             parsed = await parse_job_description(
@@ -111,42 +122,48 @@ async def create_session(
             )
         except Exception as e:
             logger.warning(f"Job parsing/prompt generation failed: {e}")
-    
+        if job_info is None and job_text:
+            extraction_error = extraction_error or "Couldn't read a job post in that text, so the chat won't be tailored to it."
+
     # --- Determine Company Name ---
     company_name = None
     if job_info and job_info.get("company_name"):
         company_name = job_info["company_name"]
     elif body.company:
         company_name = body.company
-    
-    # --- Store Session ---
-    request.app.state.sessions[session_id] = {
+
+    # --- Store Session (server-side; history accumulates here) ---
+    session_record = {
+        "id": session_id,
         "user_name": body.user_name,
         "company": company_name,
-        "job_posting": job_text,
-        "job_info": job_info,
+        "preferences": {"job_info": job_info, "history": [], "ip_hash": ip_hash},
         "created_at": time.time()
     }
-    
+    state.sessions[session_id] = session_record
+
     if supabase_service and supabase_service.enabled:
-        asyncio.create_task(supabase_service.create_session(
-            session_id, body.user_name, company_name
+        created = await supabase_service.create_session(session_id, body.user_name, company_name)
+        if created is not None:
+            await supabase_service.update_preferences(session_id, session_record["preferences"])
+        asyncio.create_task(supabase_service.log_event(
+            session_id=session_id, event_type="session_start", metadata={"ip_hash": ip_hash, "has_job": bool(job_info)}
         ))
-    
-    # --- Lead Capture (with full job intel) ---
-    # Capture lead if we have extracted text OR a URL (even if extraction failed)
-    lead_job_text = job_text or body.job_url or body.job_posting
-    if lead_job_text and hasattr(request.app.state, "http_client"):
+    else:
+        state.quotas.record_memory("sessions_ip", ip_hash)
+
+    # --- Lead Capture (structured fields and the URL; not the raw page) ---
+    if (job_info or job_url) and hasattr(state, "http_client"):
         asyncio.create_task(submit_recruiter_lead(
             http_client,
             name=body.user_name,
             company=company_name or "",
-            job_posting=lead_job_text,
+            job_posting=(job_info or {}).get("summary", ""),
             session_id=session_id,
             job_url=job_url or body.job_url,
             job_info=job_info
         ))
-    
+
     # --- Tracing ---
     if tracing_service:
         tracing_service.trace(
@@ -155,24 +172,25 @@ async def create_session(
             metadata={
                 "user_name": body.user_name,
                 "company": company_name,
-                "has_job_posting": bool(job_text),
+                "has_job_posting": bool(job_info),
                 "from_url": bool(job_url),
                 "extraction_error": extraction_error
             }
         )
-    
-    # --- Build Welcome Message ---
+
+    # --- Build Welcome Message (the AI disclosure is here, at the first interaction) ---
+    disclosure = "You're chatting with an AI that Rayhan built; it answers only from his public profile."
     if job_info and job_info.get("company_name") and job_info.get("role_title"):
-        welcome = f"Hi {body.user_name}! 👋 I see you're exploring the **{job_info['role_title']}** role at **{job_info['company_name']}**. I'll tailor my responses to show how Rayhan's experience aligns with this position. What would you like to know?"
-    elif job_text:
-        company_text = f" from {company_name}" if company_name else ""
-        welcome = f"Hi {body.user_name}{company_text}! 👋 I've reviewed the job description and will highlight relevant experience. What would you like to know?"
+        welcome = f"Hi {body.user_name}! {disclosure} I see you're looking at the **{job_info['role_title']}** role at **{job_info['company_name']}**, so I'll map his experience to it, gaps included. What would you like to know?"
+    elif job_info:
+        welcome = f"Hi {body.user_name}! {disclosure} I've read the job post you shared and will point at the relevant experience. What would you like to know?"
     else:
         company_text = f" from {body.company}" if body.company else ""
-        welcome = f"Hi {body.user_name}{company_text}! 👋 I'm Rayhan's AI assistant. Ask me anything about his skills, experience, or projects!"
-    
+        welcome = f"Hi {body.user_name}{company_text}! {disclosure} Ask about his work, projects or research, or paste a job post and I'll map his experience to it."
+
     return SessionResponse(
         session_id=session_id,
+        session_token=state.session_tokens.issue(session_id),
         welcome_message=welcome,
         suggested_prompts=prompts,
         job_info=job_info,

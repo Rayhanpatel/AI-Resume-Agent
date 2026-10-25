@@ -73,6 +73,7 @@ htmlcov/
 !tsconfig.json
 !railway.json
 !backend/core/profile.json
+!frontend/vercel.json
 
 # Windsurf
 .windsurf/

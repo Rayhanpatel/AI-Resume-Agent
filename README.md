@@ -1,6 +1,6 @@
 # AI Resume Chatbot
 
-A conversational AI agent that answers recruiter questions about Rayhan Patel's professional background — built with observability, security, and graceful degradation in mind. FastAPI, Gemini 3.5 Flash on Vertex AI with automatic model fallback, and React 18. Raw HTTP calls to Gemini (no SDK), real multi-turn history plus Mem0 memory, SSE streaming, LLM-as-a-Judge evaluation, and a golden-question eval that runs against the real model.
+A conversational AI agent that answers recruiter questions about Rayhan Patel's professional background — built with observability, security, and graceful degradation in mind. FastAPI, Gemini 3.5 Flash on Vertex AI with automatic model fallback, and React 18. Raw HTTP calls to Gemini (no SDK), server-side sessions with real multi-turn history, SSE streaming, LLM-as-a-Judge evaluation, and a golden-question eval that runs against the real model.
 
 Its knowledge comes from `backend/core/profile.json`, the same public profile that renders [rayhanpatel.com](https://rayhanpatel.com), so the site and the agent can't drift apart.
 
@@ -77,15 +77,17 @@ The frontend proxies `/api` requests to the backend during development (configur
 | Golden Eval | Checks what the model actually says | `backend/evals/golden.py`: 13 recruiter questions with must-say / must-not-say checks, run against the real model |
 | Truth Tests | Known-wrong claims can't come back | `tests/test_profile.py` fails CI if banned wording appears in the profile or the rendered prompt |
 | Vertex / AI Studio | Vertex AI in production, AI Studio for local runs | Chosen in `vertex_auth.py` from credential availability |
-| Job URL Extraction | Paste LinkedIn/Greenhouse/Lever URLs | 8-layer SSRF-protected fetcher in `job_extractor.py` |
+| Job URL Extraction | Paste LinkedIn/Greenhouse/Lever URLs | SSRF-protected fetcher in `job_extractor.py`: literal-IP blocklist, hostname resolution checked against private ranges, no redirects, size and type limits |
 | LLM-Powered Job Parsing | Structured extraction from job postings | Gemini Flash with `responseMimeType: application/json` in `job_parser.py` |
 | Dynamic Starter Prompts | Context-aware suggested questions | LLM-generated per job description with generic fallback defaults in `prompt_generator.py` |
-| Semantic Memory | Cross-session conversational context | Mem0 Cloud API with vector search in `memory.py` |
+| Server-side Sessions | A client can't forge who it is or what was said | `/session` issues a signed token after Turnstile; `/chat` requires it; name, company, job schema and the last 10 turns live in the session row (`session_tokens.py`, `chat.py`) |
+| Quotas That Survive Restarts | Cost abuse is bounded | Messages per session, messages and sessions per IP per day (salted IP hashes), and a global daily token budget, all counted from the events table (`quotas.py`) |
+| Origin Lock | Direct hits on the Railway URL are refused | `X-Origin-Secret` added by Cloudflare once the API is proxied; health stays open (`core/origin.py`) |
 | Intent Classification | Filters off-topic queries before LLM calls | Gemini Flash gate with fail-safe default to `job_related` |
-| Prompt Injection Defense | Protects against embedded instructions in job descriptions | `<<<JOB_DESCRIPTION_START>>>` markers with explicit ignore instructions in `prompts.py` |
+| Prompt Injection Defense | A job page never reaches the persona model as text | A separate tool-less call extracts a fixed schema (title, level, skills, location, summary); only the bounded schema is rendered into the prompt (`render_job_context` in `prompts.py`) |
 | Observability | Full LLM tracing, cost tracking, and automated quality evaluation | Langfuse SDK v3 with per-model pricing in `tracer.py` + 5 LLM-as-a-Judge evaluators (Hallucination, Relevance, Conciseness, Helpfulness, Toxicity) via Gemini 2.5 Flash |
 | Rate Limiting | Per-IP sliding window throttle | Cloudflare-aware IP extraction (`CF-Connecting-IP` → `X-Forwarded-For`) |
-| Session Persistence | Backend: Supabase PostgreSQL, Frontend: localStorage | 24h TTL, in-memory `TTLCache` fallback if DB is down |
+| Session Persistence | Backend: Supabase PostgreSQL, Frontend: localStorage | 24h TTL, in-memory `TTLCache` fallback if DB is down; the AI disclosure is in the first message |
 | Session Resume | "Welcome back" modal for returning users | `localStorage` check on mount in `useChatSession.js` |
 | Dark/Light Theme | Full theme toggle with OS preference detection | `ThemeToggle.jsx` + 150 lines of CSS overrides in `index.css` |
 | Share Conversation | Copy full chat transcript to clipboard | `shareChat()` in `ChatInterface.jsx` with attribution link |
@@ -95,7 +97,7 @@ The frontend proxies `/api` requests to the backend during development (configur
 | Error Recovery | Graceful crash handling | React `ErrorBoundary` (class component) with dev-only stack traces |
 | SEO | Social sharing optimization | Open Graph + Twitter Card meta tags in `index.html` |
 | Mobile Polish | iOS-specific fixes | `font-size: 16px` (prevents auto-zoom), `overscroll-behavior-y: none` |
-| Graceful Degradation | Every external service fails silently | Each service has an `enabled` flag; if Mem0/Supabase/Langfuse is down, chat continues in ephemeral mode |
+| Graceful Degradation | Every external service fails silently | Each service has an `enabled` flag; if Supabase/Langfuse is down, chat continues in ephemeral mode |
 | Bot Protection | Smart CAPTCHA that challenges bots but passes humans | Cloudflare Turnstile (Managed Mode) in `WelcomeForm.jsx` + server-side validation in `session.py` (Fails open if Cloudflare is down) |
 | Visitor Analytics | Privacy-friendly page view & visitor tracking | Vercel Analytics (`@vercel/analytics/react`) in `main.jsx` |
 | Performance Monitoring | Real User Metrics (Core Web Vitals) | Vercel Speed Insights (`@vercel/speed-insights/react`) in `main.jsx` |
@@ -105,7 +107,7 @@ The frontend proxies `/api` requests to the backend during development (configur
 
 ## Architecture
 
-The system follows a **Service-Oriented Architecture**: thin FastAPI route handlers delegate to rich domain services. Every external dependency (Mem0, Supabase, Langfuse) is wrapped in a service class that degrades gracefully if unavailable.
+The system follows a **Service-Oriented Architecture**: thin FastAPI route handlers delegate to rich domain services. Every external dependency (Supabase, Langfuse) is wrapped in a service class that degrades gracefully if unavailable.
 
 ```mermaid
 flowchart LR
@@ -128,7 +130,6 @@ flowchart LR
 
     subgraph Ext["External Services"]
         Gemini["Gemini 3.5<br/>Flash"]
-        Mem0["Mem0<br/>Cloud"]
         LF["Langfuse<br/>+ Evaluators"]
         Supa[("Supabase<br/>PostgreSQL")]
         Sheets["Google<br/>Sheets"]
@@ -139,7 +140,6 @@ flowchart LR
     React -->|"SSE"| API
     API --> IC -->|"job_related"| Agent --> VA
     VA ==>|"HTTP/2"| Gemini
-    Agent -.->|"memory"| Mem0
     Agent -.->|"traces"| LF
     API -.->|"sessions"| Supa
     API -.->|"leads"| Sheets
@@ -149,7 +149,7 @@ flowchart LR
     classDef be fill:#d1fae5,stroke:#059669
     classDef fe fill:#dbeafe,stroke:#3b82f6
 
-    class Gemini,Mem0,LF,Supa,Sheets,Turn ext
+    class Gemini,LF,Supa,Sheets,Turn ext
     class API,IC,Agent,VA be
     class React fe
 ```
@@ -180,7 +180,6 @@ sequenceDiagram
     participant RL as RateLimiter
     participant IC as IntentClassifier
     participant AG as AgentService
-    participant M as Mem0
     participant G as Gemini API
     participant L as Langfuse
     participant S as Supabase
@@ -194,8 +193,10 @@ sequenceDiagram
     API->>RL: Check IP rate limit
     RL-->>API: OK (or 429)
 
+    API->>API: Verify the signed session token (403 if missing or forged)
     API->>S: Get session (3s timeout)
     S-->>API: Session data (or fallback to TTLCache)
+    API->>S: Check quotas (session, IP, daily token budget)
 
     API->>L: Create trace
 
@@ -211,9 +212,7 @@ sequenceDiagram
     else intent = job_related
         API->>AG: respond_stream()
         activate AG
-        AG->>M: get_semantic_context(session, query)
-        M-->>AG: Relevant memories
-        AG->>AG: Build system prompt + resume + job context + memory
+        AG->>AG: Build system prompt + profile + job schema + session history
         AG->>G: POST streamGenerateContent?alt=sse
 
         loop For each SSE chunk
@@ -228,7 +227,7 @@ sequenceDiagram
         deactivate AG
 
         par Fire-and-forget background tasks
-            AG->>M: Store user + assistant messages
+            API->>S: Append the turn to the session history
             AG->>L: Log generation (model, tokens, cost)
         end
     end
@@ -325,7 +324,6 @@ All variables loaded via Pydantic `BaseSettings` from `backend/.env`.
 | `GEMINI_THINKING_LEVEL` | No | `low`, `medium` or `high` (default: `low`) |
 | `GEMINI_LOCATION` | No | Vertex location (default: `global`, where Gemini 3.x is served) |
 | `GOOGLE_APPLICATION_CREDENTIALS_JSON` | No | Service account JSON for Vertex AI |
-| `MEM0_API_KEY` | No | Mem0 Cloud API key (memory disabled if absent) |
 | `ADMIN_API_KEY` | No | Secret key for `/admin` endpoints |
 | `LANGFUSE_PUBLIC_KEY` | No | Langfuse public key (tracing disabled if absent) |
 | `LANGFUSE_SECRET_KEY` | No | Langfuse secret key |
@@ -335,6 +333,9 @@ All variables loaded via Pydantic `BaseSettings` from `backend/.env`.
 | `GOOGLE_SHEET_WEBHOOK` | No | Google Apps Script webhook URL for lead capture |
 | `TURNSTILE_SECRET_KEY` | No | Cloudflare Turnstile Secret Key (bot protection disabled if absent) |
 | `FRONTEND_URL` | No | Frontend origin for CORS (default: `http://localhost:5173`) |
+| `SESSION_SECRET` | No | Signs session tokens; without it a random secret is used and sessions die on restart |
+| `QUOTA_*` | No | `MESSAGES_PER_SESSION` 40, `MESSAGES_PER_IP_PER_DAY` 80, `SESSIONS_PER_IP_PER_DAY` 15, `DAILY_TOKEN_BUDGET` 3000000 |
+| `ORIGIN_SECRET` | No | When set, requests must carry `X-Origin-Secret` (added by Cloudflare); health stays open |
 | `RATE_LIMIT_RPM` | No | Max requests per minute per IP (default: `10`) |
 | `ENVIRONMENT` | No | `development` or `production` |
 
@@ -359,6 +360,8 @@ Only `GOOGLE_API_KEY` is required. All other services degrade gracefully when th
 │   │   ├── prompts.py             # System prompt + technical context
 │   │   ├── profile.json           # Public profile, synced from the rayhanpatel.com repo
 │   │   ├── ttl_cache.py           # Thread-safe TTL cache (OrderedDict + Lock)
+│   │   ├── session_tokens.py      # Signed session tokens
+│   │   ├── origin.py              # Origin-secret middleware
 │   │   ├── middleware.py          # Pure ASGI Request ID middleware
 │   │   └── timeout.py            # Safe async timeout (asyncio.wait)
 │   ├── infra/
@@ -372,7 +375,7 @@ Only `GOOGLE_API_KEY` is required. All other services degrade gracefully when th
 │   │   ├── gemini.py              # Endpoint, generation config, response parsing, health probe
 │   │   ├── intent.py              # Intent classifier (job_related/off_topic)
 │   │   ├── vertex_auth.py         # Vertex AI OAuth2 + AI Studio fallback
-│   │   ├── memory.py              # Mem0 semantic memory wrapper
+│   │   ├── quotas.py              # Persistent quotas from the events table
 │   │   ├── tracer.py              # Langfuse tracing + cost calculation + evaluator integration
 │   │   ├── supabase_service.py    # Async Supabase client (sessions + events)
 │   │   ├── job_extractor.py       # SSRF-protected URL fetcher
@@ -444,7 +447,7 @@ Off-topic queries are classified and declined *before* the expensive agent call.
 
 ### Graceful degradation via service flags
 
-Every external service wrapper (`MemoryService`, `SupabaseService`, `TracingService`) carries an `enabled` boolean set during initialization. If credentials are missing or the initial connection fails, `enabled` is set to `False` and all methods become no-ops returning safe defaults (`None`, `[]`, `False`). This means the chat always works — even if every external service is down, the agent still responds using only Gemini + the system prompt.
+Every external service wrapper (`SupabaseService`, `TracingService`) carries an `enabled` boolean set during initialization. If credentials are missing or the initial connection fails, `enabled` is set to `False` and all methods become no-ops returning safe defaults (`None`, `[]`, `False`). This means the chat always works — even if every external service is down, the agent still responds using only Gemini + the system prompt.
 
 ### Input sanitization before type validation
 
@@ -484,7 +487,6 @@ Traditional metrics (BLEU, ROUGE) measure surface-level text overlap and fail on
 | httpx | ≥0.28 | HTTP/2 client for Gemini API |
 | pydantic | ≥2.10 | Request/response validation + input sanitization |
 | pydantic-settings | ≥2.7 | Environment variable loading |
-| mem0ai | ≥1.0.2 | Semantic memory API client |
 | langfuse | ≥3.12 | LLM observability + LLM-as-a-Judge evaluation |
 | supabase | ≥2.27 | Async PostgreSQL client |
 | tenacity | ≥8.2 | Retry with exponential backoff |

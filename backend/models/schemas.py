@@ -3,7 +3,7 @@ Pydantic Request/Response Schemas
 Validates and sanitizes all API input/output
 """
 from pydantic import BaseModel, field_validator, Field
-from typing import Optional, List, Dict, Any, Literal
+from typing import Optional, List, Dict, Any
 import re
 import uuid
 
@@ -20,7 +20,7 @@ class SessionRequest(BaseModel):
     job_posting: Optional[str] = Field(None, max_length=15000)  # Increased for extracted content
     job_url: Optional[str] = Field(None, max_length=2000)  # NEW: job posting URL
     turnstile_token: Optional[str] = Field(None, max_length=4096)  # Cloudflare Turnstile
-    
+
     @field_validator('user_name')
     @classmethod
     def sanitize_name(cls, v: str) -> str:
@@ -29,7 +29,7 @@ class SessionRequest(BaseModel):
         if not v:
             raise ValueError('Name cannot be empty')
         return v
-    
+
     @field_validator('company')
     @classmethod
     def sanitize_company(cls, v: Optional[str]) -> Optional[str]:
@@ -38,7 +38,7 @@ class SessionRequest(BaseModel):
         v = _strip_html(v)
         v = ' '.join(v.split())
         return v if v else None
-    
+
     @field_validator('job_posting')
     @classmethod
     def sanitize_job_posting(cls, v: Optional[str]) -> Optional[str]:
@@ -47,7 +47,7 @@ class SessionRequest(BaseModel):
         v = _strip_html(v)
         v = v.strip()
         return v if v else None
-    
+
     @field_validator('job_url')
     @classmethod
     def validate_job_url(cls, v: Optional[str]) -> Optional[str]:
@@ -59,25 +59,15 @@ class SessionRequest(BaseModel):
         return v if v else None
 
 
-class HistoryTurn(BaseModel):
-    """One earlier message in the conversation, sent by the frontend"""
-    role: Literal["user", "assistant"]
-    content: str = Field(..., min_length=1, max_length=4000)
-
-    @field_validator('content')
-    @classmethod
-    def sanitize_content(cls, v: str) -> str:
-        return _strip_html(v).strip()
-
-
 class ChatRequest(BaseModel):
-    """Request to send a chat message"""
+    """
+    Request to send a chat message.
+    Everything else about the conversation (name, company, job, history) lives in
+    the server-side session, so a client can't forge it or pad it.
+    """
     session_id: str = Field(..., min_length=36, max_length=36)
+    session_token: str = Field(..., min_length=36, max_length=200)
     query: str = Field(..., min_length=1, max_length=4000)
-    user_name: Optional[str] = Field(None, min_length=1, max_length=100)
-    company: Optional[str] = Field(None, max_length=100)
-    job_posting: Optional[str] = Field(None, max_length=10000)
-    history: List[HistoryTurn] = Field(default_factory=list, max_length=12)  # recent turns, oldest first
 
     @field_validator('session_id')
     @classmethod
@@ -87,7 +77,7 @@ class ChatRequest(BaseModel):
         except ValueError:
             raise ValueError('Invalid session ID format')
         return v
-    
+
     @field_validator('query')
     @classmethod
     def sanitize_query(cls, v: str) -> str:
@@ -96,33 +86,6 @@ class ChatRequest(BaseModel):
         if not v:
             raise ValueError('Query cannot be empty')
         return v
-    
-    @field_validator('user_name')
-    @classmethod
-    def sanitize_name(cls, v: Optional[str]) -> Optional[str]:
-        if v is None:
-            return v
-        v = _strip_html(v)
-        v = ' '.join(v.split())
-        return v if v else None
-    
-    @field_validator('company')
-    @classmethod
-    def sanitize_company(cls, v: Optional[str]) -> Optional[str]:
-        if v is None:
-            return v
-        v = _strip_html(v)
-        v = ' '.join(v.split())
-        return v if v else None
-    
-    @field_validator('job_posting')
-    @classmethod
-    def sanitize_job_posting(cls, v: Optional[str]) -> Optional[str]:
-        if v is None:
-            return v
-        v = _strip_html(v)
-        v = v.strip()
-        return v if v else None
 
 
 class ChatResponse(BaseModel):
@@ -136,8 +99,8 @@ class ChatResponse(BaseModel):
 class SessionResponse(BaseModel):
     """Response from session creation"""
     session_id: str
+    session_token: str  # signed; required on every chat call
     welcome_message: str
     suggested_prompts: Optional[List[str]] = None  # Dynamic prompts based on job
     job_info: Optional[Dict[str, Any]] = None  # Extracted company/role/skills
     extraction_error: Optional[str] = None  # Error message if URL extraction failed
-

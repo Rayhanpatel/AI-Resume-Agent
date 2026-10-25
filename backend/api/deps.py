@@ -36,9 +36,6 @@ def get_agent_service(request: Request):
 def get_intent_classifier(request: Request):
     return request.app.state.intent_classifier
 
-def get_memory_service(request: Request):
-    return request.app.state.memory_service
-
 def get_tracing_service(request: Request):
     return request.app.state.tracing_service
 

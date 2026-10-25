@@ -234,11 +234,17 @@ function WelcomeForm({ onStart, defaultValues = {} }) {
             </form>
 
             {/* Footer */}
-            <div className="flex items-center justify-center gap-2 mt-6 pt-6 border-t border-white/10">
-                <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
-                <p className="text-gray-500 text-xs">
-                    Built by Rayhan Patel
+            <div className="mt-6 pt-6 border-t border-white/10 space-y-2">
+                <p className="text-gray-500 text-xs leading-relaxed">
+                    You're chatting with an AI that Rayhan built. It answers only from his public profile.
+                    Your name, company and anything you paste are stored to run the chat and reviewed for quality
+                    (Supabase, Langfuse and Google services). Nothing is sold. To have it deleted, email{' '}
+                    <a href="mailto:rayhanbp@umd.edu" className="text-gray-400 underline underline-offset-2">rayhanbp@umd.edu</a>.
                 </p>
+                <div className="flex items-center justify-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
+                    <p className="text-gray-500 text-xs">Built by Rayhan Patel</p>
+                </div>
             </div>
         </div>
     )

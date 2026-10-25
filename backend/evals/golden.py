@@ -51,16 +51,6 @@ CASES = [
 ]
 
 
-class _NoMemory:
-    enabled = False
-
-    async def get_semantic_context(self, *args, **kwargs):
-        return ""
-
-    async def add_message(self, *args, **kwargs):
-        return False
-
-
 class _GcloudAuth(VertexAuthService):
     """Uses a gcloud access token from $TOKEN instead of a service account."""
 
@@ -76,7 +66,7 @@ async def main() -> int:
     failures = 0
     async with httpx.AsyncClient(http2=True, timeout=60) as client:
         agent = AgentService(
-            "unused", _NoMemory(), None, client, auth,
+            "unused", None, client, auth,
             model=settings.gemini_model,
             thinking_level=settings.gemini_thinking_level,
             fallback_model=settings.gemini_fallback_model,

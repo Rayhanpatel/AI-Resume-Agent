@@ -9,7 +9,7 @@ from services.gemini import check_llm
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
-APP_VERSION = "2.4.1"
+APP_VERSION = "2.5.0"
 LLM_CHECK_TTL_SECONDS = 600         # a passing check is reused for 10 minutes
 LLM_CHECK_FAILURE_TTL_SECONDS = 60  # a failing one is retried after a minute
 
@@ -25,7 +25,7 @@ async def health_check(request: Request):
             "vertex_ai": hasattr(state, "vertex_auth") and state.vertex_auth.enabled,
             "intent": getattr(state, "intent_classifier", None) is not None,
             "agent": getattr(state, "agent_service", None) is not None,
-            "memory": hasattr(state, "memory_service") and state.memory_service.enabled,
+            "quotas_persistent": hasattr(state, "quotas") and state.quotas.persistent,
             "tracing": hasattr(state, "tracing_service") and state.tracing_service.enabled,
             "supabase": hasattr(state, "supabase_service") and state.supabase_service.enabled
         }
