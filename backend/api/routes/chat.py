@@ -5,7 +5,7 @@ import logging
 from fastapi import APIRouter, Request, Depends, HTTPException, BackgroundTasks
 from fastapi.responses import StreamingResponse
 from core.timeout import safe_timeout
-from models.schemas import ChatRequest, ChatResponse
+from models.schemas import ChatRequest, ChatResponse, DeviceEventRequest
 from api.deps import get_agent_service, get_intent_classifier, get_tracing_service, get_supabase_service, get_rate_limiter
 from services.quotas import QuotaExceeded, hash_ip
 from services.verifier import verify_answer
@@ -298,3 +298,29 @@ async def stream_chat(
             yield "data: [DONE]\n\n"
 
     return StreamingResponse(generate_stream(), media_type="text/event-stream", headers=SSE_HEADERS)
+
+
+@router.post("/chat/device-event")
+async def device_event(
+    request: Request,
+    body: DeviceEventRequest,
+    supabase_service = Depends(get_supabase_service),
+    rate_limiter = Depends(get_rate_limiter)
+):
+    """
+    The browser reports an answer it produced on the visitor's own machine (or a
+    fallback to the cloud and why). Nothing about the question or answer is sent,
+    only timing and verification counts, so the on-device share can be measured.
+    """
+    rate_limiter.check(rate_limiter.get_client_ip(request))
+    state = request.app.state
+    if not state.session_tokens.verify(body.session_token, body.session_id):
+        raise HTTPException(status_code=403, detail=SESSION_INVALID)
+    if supabase_service and supabase_service.enabled:
+        asyncio.create_task(supabase_service.log_event(
+            session_id=body.session_id, event_type="chat_device", intent="job_related",
+            latency_ms=body.latency_ms,
+            metadata={"outcome": body.outcome, "reason": body.reason, "quotes": body.quotes,
+                      "quotes_verified": body.quotes_verified, "blocks": body.blocks, "chars": body.chars}
+        ))
+    return {"ok": True}

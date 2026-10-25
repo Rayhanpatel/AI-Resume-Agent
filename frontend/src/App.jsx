@@ -27,6 +27,9 @@ function App() {
         handleReset,
         handleContinueSession,
         handleStartFresh,
+        device,
+        enableOnDevice,
+        disableOnDevice,
     } = useChatSession()
 
     // Read URL params for QR-code deep-link pre-fill
@@ -75,6 +78,9 @@ function App() {
                         onSendMessage={sendMessage}
                         onReset={handleReset}
                         suggestedPrompts={suggestedPrompts}
+                        device={device}
+                        onEnableDevice={enableOnDevice}
+                        onDisableDevice={disableOnDevice}
                     />
                 </div>
             )}

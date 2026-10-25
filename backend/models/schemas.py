@@ -3,7 +3,7 @@ Pydantic Request/Response Schemas
 Validates and sanitizes all API input/output
 """
 from pydantic import BaseModel, field_validator, Field
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, Literal
 import re
 import uuid
 
@@ -105,3 +105,22 @@ class SessionResponse(BaseModel):
     suggested_prompts: Optional[List[str]] = None  # Dynamic prompts based on job
     job_info: Optional[Dict[str, Any]] = None  # Extracted company/role/skills
     extraction_error: Optional[str] = None  # Error message if URL extraction failed
+
+
+class DeviceEventRequest(BaseModel):
+    """Telemetry for an on-device answer: counts and timing only, never text"""
+    session_id: str = Field(..., min_length=36, max_length=36)
+    session_token: str = Field(..., min_length=36, max_length=200)
+    outcome: Literal["answered", "fallback"]
+    reason: Optional[str] = Field(None, max_length=40)
+    latency_ms: Optional[int] = Field(None, ge=0, le=600000)
+    quotes: int = Field(0, ge=0, le=50)
+    quotes_verified: int = Field(0, ge=0, le=50)
+    blocks: int = Field(0, ge=0, le=200)
+    chars: int = Field(0, ge=0, le=100000)
+
+    @field_validator('session_id')
+    @classmethod
+    def validate_session_id(cls, v: str) -> str:
+        uuid.UUID(v)
+        return v

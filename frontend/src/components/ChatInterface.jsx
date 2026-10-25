@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, memo } from 'react'
 import { Send, RotateCcw, Bot, User, AlertCircle, Linkedin, Mail, Github, Globe, Copy, Check, Download, Share2, Code } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import VerificationPanel from './VerificationPanel'
+import OnDeviceToggle from './OnDeviceToggle'
 import remarkGfm from 'remark-gfm'
 import QuickQuestions from './QuickQuestions'
 import ThemeToggle from './ThemeToggle'
@@ -20,7 +21,10 @@ function ChatInterface({
     error,
     onSendMessage,
     onReset,
-    suggestedPrompts  // NEW: LLM-generated prompts from session
+    suggestedPrompts,  // LLM-generated prompts from session
+    device,
+    onEnableDevice,
+    onDisableDevice
 }) {
     const [inputValue, setInputValue] = useState('')
     const [copiedId, setCopiedId] = useState(null)
@@ -121,6 +125,7 @@ function ChatInterface({
 
                     {/* Actions */}
                     <div className="flex items-center gap-1 sm:gap-2">
+                        <OnDeviceToggle device={device} onEnable={onEnableDevice} onDisable={onDisableDevice} />
                         {/* Contact Links — hidden on mobile, visible on sm+ */}
                         <a
                             href="https://www.linkedin.com/in/rayhan-patel-cs/"
@@ -256,6 +261,13 @@ function ChatInterface({
                                     </span>
                                 )}
                             </div>
+
+                            {message.deviceFallback && (
+                                <p className="mt-2 text-[11px] text-gray-500">Answered in the cloud: the on-device model couldn't verify an answer ({String(message.deviceFallback).replace(/_/g, ' ')}).</p>
+                            )}
+                            {message.onDevice && (
+                                <p className="mt-2 text-[11px] text-emerald-300/80">Answered on your device · your question never left this computer</p>
+                            )}
 
                             {/* Verification stamps (assistant answers only) */}
                             {message.role === 'assistant' && message.content && (message.verification || message.verifying) && (

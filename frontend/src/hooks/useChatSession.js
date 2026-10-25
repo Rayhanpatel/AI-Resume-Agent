@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
+import { isSupported, availability, createSession, answerOnDevice } from '../lib/onDevice'
 
 const SESSION_TTL_MS = 24 * 60 * 60 * 1000 // 24 hours
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
@@ -23,6 +24,34 @@ export function useChatSession() {
     const [sessionToken, setSessionToken] = useState('')
     const [hasStarted, setHasStarted] = useState(false)
     const [suggestedPrompts, setSuggestedPrompts] = useState(null)
+
+    // On-device tier (Chrome's built-in model); 'unknown' until checked
+    const [device, setDevice] = useState({ availability: 'unknown', status: 'off', progress: 0 })
+    const deviceSessionRef = useRef(null)
+
+    useEffect(() => {
+        let cancelled = false
+        if (!isSupported()) { setDevice(d => ({ ...d, availability: 'unavailable' })); return }
+        availability().then(a => { if (!cancelled) setDevice(d => ({ ...d, availability: a })) })
+        return () => { cancelled = true }
+    }, [])
+
+    const enableOnDevice = useCallback(async () => {
+        setDevice(d => ({ ...d, status: 'downloading', progress: 0 }))
+        try {
+            deviceSessionRef.current = await createSession(p => setDevice(d => ({ ...d, progress: p })))
+            setDevice(d => ({ ...d, status: 'ready', progress: 1 }))
+        } catch (e) {
+            console.warn('On-device model unavailable:', e)
+            setDevice(d => ({ ...d, status: 'off', availability: 'unavailable' }))
+        }
+    }, [])
+
+    const disableOnDevice = useCallback(() => {
+        try { deviceSessionRef.current?.destroy?.() } catch { /* ignore */ }
+        deviceSessionRef.current = null
+        setDevice(d => ({ ...d, status: 'off' }))
+    }, [])
 
     // Chat state
     const [messages, setMessages] = useState([])
@@ -228,6 +257,32 @@ export function useChatSession() {
         isLoadingRef.current = true
         streamAbortRef.current = new AbortController()
 
+        // On-device first, when the visitor turned it on. The cloud is the fallback,
+        // decided by verification: an answer with no verified profile quote never ships.
+        if (deviceSessionRef.current) {
+            let result
+            try { result = await answerOnDevice(deviceSessionRef.current, messageText) }
+            catch (e) { result = { ok: false, reason: 'error:' + (e?.name || 'unknown') } }
+            const report = {
+                session_id: sessionId, session_token: sessionToken,
+                outcome: result.ok ? 'answered' : 'fallback', reason: result.ok ? null : String(result.reason).slice(0, 40),
+                latency_ms: result.timing || 0, quotes: (result.quotes || []).length,
+                quotes_verified: (result.quotes || []).filter(q => q.verified).length, blocks: result.blocks || 0, chars: result.chars || 0,
+            }
+            fetch(`${API_URL}/api/v1/chat/device-event`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(report) }).catch(() => {})
+            if (result.ok) {
+                const claims = result.quotes.map(q => ({ text: q.text, status: q.verified ? 'checked' : 'inferred', evidence: { quote: q.text, verified: q.verified }, numbers_unverified: [] }))
+                const verification = { origin: 'device', latency_ms: result.timing, claims,
+                    summary: { checked: claims.filter(c => c.status === 'checked').length, inferred: claims.filter(c => c.status === 'inferred').length, unknown: 0, unverified: 0, numbers_unverified: 0 } }
+                setMessages(prev => prev.map(msg => msg.id === aiMessageId ? { ...msg, content: result.answer, verification, onDevice: true } : msg))
+                setIsLoading(false)
+                isLoadingRef.current = false
+                return
+            }
+            // fall through to the cloud with a visible note
+            setMessages(prev => prev.map(msg => msg.id === aiMessageId ? { ...msg, deviceFallback: result.reason } : msg))
+        }
+
         try {
             const response = await fetch(`${API_URL}/api/v1/chat/stream`, {
                 method: 'POST',
@@ -331,6 +386,11 @@ export function useChatSession() {
         // Session resume
         showResumeModal,
         pendingSession,
+
+        // On-device tier
+        device,
+        enableOnDevice,
+        disableOnDevice,
 
         // Actions
         handleStart,
