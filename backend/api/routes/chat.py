@@ -136,7 +136,7 @@ async def chat(
             "latency_ms": int((time.time() - start_time) * 1000)
         }
     
-    if tracing_service: tracing_service.log_generation(trace=trace, name="response", model="gemini-2.0-flash", input_text=body.query, output_text=agent_result["response"])
+    if tracing_service: tracing_service.log_generation(trace=trace, name="response", model=agent_service.model, input_text=body.query, output_text=agent_result["response"])
     
     if supabase_service and supabase_service.enabled:
         background_tasks.add_task(

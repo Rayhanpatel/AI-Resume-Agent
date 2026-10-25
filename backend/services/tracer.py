@@ -10,27 +10,25 @@ import os
 
 logger = logging.getLogger(__name__)
 
-# Gemini 2.0 Flash pricing (per 1M tokens)
-# Source: https://ai.google.dev/pricing
+# Gemini pricing (USD per 1M tokens; output includes thinking tokens)
+# Source: https://ai.google.dev/gemini-api/docs/pricing (checked Oct 2026)
 MODEL_PRICING = {
-    "gemini-2.0-flash": {
-        "input": 0.075,   # $0.075 per 1M input tokens
-        "output": 0.30    # $0.30 per 1M output tokens
+    "gemini-3.8-flash": {
+        "input": 1.50,    # standard from Jan 1 2027 (introductory $0.75 until then)
+        "output": 7.50    # standard from Jan 1 2027 (introductory $3.75 until then)
     },
-    "gemini-1.5-flash": {
-        "input": 0.075,
-        "output": 0.30
+    "gemini-3.5-flash-lite": {
+        "input": 0.30,
+        "output": 2.50
     },
-    "gemini-1.5-pro": {
-        "input": 1.25,
-        "output": 5.00
-    }
 }
 
 
 def calculate_cost(model: str, tokens_in: int, tokens_out: int) -> float:
-    """Calculate cost in USD for a generation"""
-    pricing = MODEL_PRICING.get(model, MODEL_PRICING["gemini-2.0-flash"])
+    """Calculate cost in USD for a generation (0.0 for a model not in the table, rather than a wrong guess)"""
+    pricing = MODEL_PRICING.get(model)
+    if not pricing:
+        return 0.0
     
     input_cost = (tokens_in / 1_000_000) * pricing["input"]
     output_cost = (tokens_out / 1_000_000) * pricing["output"]

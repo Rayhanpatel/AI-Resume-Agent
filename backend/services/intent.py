@@ -10,6 +10,8 @@ from typing import Optional
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 from typing import TYPE_CHECKING
 
+from .gemini import get_endpoint, generation_config, extract_text
+
 if TYPE_CHECKING:
     from .vertex_auth import VertexAuthService
 
@@ -36,21 +38,22 @@ Respond ONLY with valid JSON in this exact format:
   "decline_message": "only if off_topic - a witty redirect to claude.ai"
 }"""
 
-    def __init__(self, api_key: str, http_client: httpx.AsyncClient, vertex_auth: "VertexAuthService" = None):
+    def __init__(
+        self,
+        api_key: str,
+        http_client: httpx.AsyncClient,
+        vertex_auth: "VertexAuthService" = None,
+        model: str = "gemini-3.5-flash-lite",
+        thinking_level: str = "low"
+    ):
         self.api_key = api_key
         self.http_client = http_client
         self.vertex_auth = vertex_auth
-        self.model = "gemini-2.0-flash"
-        
-        # Determine which API to use
-        if vertex_auth and vertex_auth.enabled:
-            self.use_vertex = True
-            logger.info("IntentClassifier using Vertex AI (production)")
-        else:
-            self.use_vertex = False
-            self.headers = {"x-goog-api-key": api_key, "Content-Type": "application/json"}
-            self.api_url = f"https://generativelanguage.googleapis.com/v1beta/models/{self.model}:generateContent"
-            logger.info("IntentClassifier using AI Studio (fallback)")
+        self.model = model
+        self.thinking_level = thinking_level
+
+        api_mode = "Vertex AI (production)" if vertex_auth and vertex_auth.enabled else "AI Studio (fallback)"
+        logger.info(f"IntentClassifier using {api_mode} with {model}")
 
     @retry(
         stop=stop_after_attempt(3),
@@ -69,22 +72,13 @@ Respond ONLY with valid JSON in this exact format:
                     "role": "user",
                     "parts": [{"text": prompt}]
                 }],
-                "generationConfig": {
-                    "temperature": 0.1,
-                    "topP": 0.95,
-                    "maxOutputTokens": 256,
-                    "responseMimeType": "application/json"
-                }
+                "generationConfig": generation_config(
+                    max_output_tokens=1024, thinking_level=self.thinking_level, json_mode=True
+                )
             }
-            
-            # Get URL and headers based on API mode
-            if self.use_vertex:
-                url = self.vertex_auth.get_generate_url(self.model)
-                headers = await self.vertex_auth.get_headers()
-            else:
-                url = self.api_url
-                headers = self.headers
-            
+
+            url, headers = await get_endpoint(self.vertex_auth, self.api_key, self.model)
+
             response = await self.http_client.post(
                 url,
                 json=payload,
@@ -101,9 +95,8 @@ Respond ONLY with valid JSON in this exact format:
             
             # Extract text from response structure
             # { "candidates": [ { "content": { "parts": [ { "text": "..." } ] } } ] }
-            try:
-                text_response = data["candidates"][0]["content"]["parts"][0]["text"]
-            except (KeyError, IndexError):
+            text_response = extract_text(data)
+            if not text_response:
                 logger.error(f"[INTENT] Unexpected response format: {data}")
                 raise Exception("Invalid response format from Gemini")
 

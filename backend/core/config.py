@@ -21,8 +21,15 @@ class Settings(BaseSettings):
     
     # Vertex AI (Production)
     google_cloud_project: Optional[str] = None
-    google_cloud_location: str = "us-central1"
     google_application_credentials_json: Optional[str] = None
+
+    # Gemini models (Google retires model IDs; change these, not the code)
+    # gemini-2.0-flash was retired on Vertex Jun 1 2026, gemini-2.5-* on Oct 20 2026.
+    gemini_model: str = "gemini-3.8-flash"            # answers recruiters
+    gemini_fast_model: str = "gemini-3.5-flash-lite"  # intent, job parsing, starter prompts
+    gemini_thinking_level: str = "low"                # low | medium | high
+    # Gemini 3.x models are served from the global endpoint, not us-central1
+    gemini_location: str = "global"
     
     # Supabase
     supabase_url: Optional[str] = None

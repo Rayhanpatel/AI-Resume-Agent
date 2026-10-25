@@ -96,16 +96,18 @@ async def create_session(
     if job_text:
         try:
             parsed = await parse_job_description(
-                http_client, vertex_auth, settings.google_api_key, job_text
+                http_client, vertex_auth, settings.google_api_key, job_text,
+                model=settings.gemini_fast_model
             )
             job_info = parsed.to_dict() if parsed.company_name or parsed.role_title else None
-            
+
             # Generate dynamic prompts
             prompts = await generate_prompts(
                 http_client, vertex_auth, settings.google_api_key,
                 parsed.company_name or body.company or "",
                 parsed.role_title,
-                parsed.key_skills or []
+                parsed.key_skills or [],
+                model=settings.gemini_fast_model
             )
         except Exception as e:
             logger.warning(f"Job parsing/prompt generation failed: {e}")

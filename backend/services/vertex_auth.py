@@ -23,7 +23,7 @@ class VertexAuthService:
         self,
         credentials_json: Optional[str] = None,
         project_id: Optional[str] = None,
-        location: str = "us-central1"
+        location: str = "global"
     ):
         self.project_id = project_id
         self.location = location
@@ -48,19 +48,21 @@ class VertexAuthService:
         else:
             logger.info("Vertex AI credentials not provided - using AI Studio fallback")
     
-    def get_base_url(self, model: str = "gemini-2.0-flash") -> str:
+    def get_base_url(self, model: str) -> str:
         """Get the Vertex AI API base URL for a model"""
+        # The global endpoint has no region prefix on the host
+        host = "aiplatform.googleapis.com" if self.location == "global" else f"{self.location}-aiplatform.googleapis.com"
         return (
-            f"https://{self.location}-aiplatform.googleapis.com/v1/"
+            f"https://{host}/v1/"
             f"projects/{self.project_id}/locations/{self.location}/"
             f"publishers/google/models/{model}"
         )
-    
-    def get_streaming_url(self, model: str = "gemini-2.0-flash") -> str:
+
+    def get_streaming_url(self, model: str) -> str:
         """Get the streaming endpoint URL"""
         return f"{self.get_base_url(model)}:streamGenerateContent?alt=sse"
-    
-    def get_generate_url(self, model: str = "gemini-2.0-flash") -> str:
+
+    def get_generate_url(self, model: str) -> str:
         """Get the non-streaming endpoint URL"""
         return f"{self.get_base_url(model)}:generateContent"
     
@@ -111,7 +113,7 @@ _vertex_auth: Optional[VertexAuthService] = None
 def init_vertex_auth(
     credentials_json: Optional[str],
     project_id: Optional[str],
-    location: str = "us-central1"
+    location: str = "global"
 ) -> VertexAuthService:
     """Initialize the global Vertex AI auth service"""
     global _vertex_auth

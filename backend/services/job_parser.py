@@ -7,6 +7,8 @@ import httpx
 from typing import Optional
 from dataclasses import dataclass, field
 
+from .gemini import get_endpoint, generation_config, extract_text
+
 logger = logging.getLogger(__name__)
 
 
@@ -46,76 +48,53 @@ async def parse_job_description(
     http_client: httpx.AsyncClient,
     vertex_auth,
     api_key: str,
-    job_text: str
+    job_text: str,
+    model: str = "gemini-3.5-flash-lite"
 ) -> JobInfo:
     """
     Parse job description text into structured JobInfo using LLM.
-    
+
     Args:
         http_client: Async HTTP client
         vertex_auth: Vertex AI auth service (or None for AI Studio)
         api_key: Google API key (fallback)
         job_text: Raw job description text
-        
+        model: Gemini model ID (the fast model from settings)
+
     Returns:
         JobInfo dataclass with extracted fields
     """
     if not job_text or len(job_text) < 50:
         return JobInfo()
-    
+
     try:
-        # Build request based on API mode
-        if vertex_auth and vertex_auth.enabled:
-            url = vertex_auth.get_generate_url("gemini-2.0-flash")
-            headers = await vertex_auth.get_headers()
-        else:
-            url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent"
-            headers = {"x-goog-api-key": api_key, "Content-Type": "application/json"}
-        
+        url, headers = await get_endpoint(vertex_auth, api_key, model)
+
         payload = {
             "contents": [{
-                "role": "user", 
+                "role": "user",
                 "parts": [{"text": PARSE_PROMPT.format(job_text=job_text[:3000])}]
             }],
-            "generationConfig": {
-                "temperature": 0.1,
-                "maxOutputTokens": 400,
-                "responseMimeType": "application/json"
-            }
+            "generationConfig": generation_config(max_output_tokens=1024, json_mode=True)
         }
-        
-        response = await http_client.post(url, json=payload, headers=headers, timeout=8.0)
+
+        response = await http_client.post(url, json=payload, headers=headers, timeout=10.0)
         
         if response.status_code != 200:
             logger.warning(f"Job parsing API error: {response.status_code}")
             return JobInfo()
         
         data = response.json()
-        
-        # Handle response - with responseMimeType: application/json, 
-        # Gemini returns JSON in text field as string
-        part = data["candidates"][0]["content"]["parts"][0]
-        
-        if isinstance(part, dict) and "text" in part:
-            text = part["text"]
-            
-            if isinstance(text, dict):
-                parsed = text
-            elif isinstance(text, str):
-                # Clean and parse JSON from string
-                text = text.strip()
-                if text.startswith("```"):
-                    text = text.split("```")[1]
-                    if text.startswith("json"):
-                        text = text[4:]
-                text = text.strip()
-                parsed = json.loads(text)
-            else:
-                return JobInfo()
-        elif isinstance(part, dict):
-            parsed = part
-        else:
+
+        # With responseMimeType: application/json, Gemini returns JSON as a string in the text parts
+        text = extract_text(data).strip()
+        if not text:
             return JobInfo()
+        if text.startswith("```"):
+            text = text.split("```")[1]
+            if text.startswith("json"):
+                text = text[4:]
+        parsed = json.loads(text.strip())
         
         # Handle list response (Gemini sometimes returns [{}])
         if isinstance(parsed, list) and len(parsed) > 0:

@@ -14,13 +14,14 @@ from core.middleware import RequestIDMiddleware
 from core.ttl_cache import TTLCache
 from api.router import api_router
 from services import (
-    IntentClassifier, 
-    AgentService, 
-    MemoryService, 
-    TracingService, 
+    IntentClassifier,
+    AgentService,
+    MemoryService,
+    TracingService,
     SupabaseService,
     init_vertex_auth
 )
+from services.gemini import check_llm
 
 # Load environment variables
 load_dotenv()
@@ -44,7 +45,7 @@ async def lifespan(app: FastAPI):
     app.state.vertex_auth = init_vertex_auth(
         credentials_json=settings.google_application_credentials_json,
         project_id=settings.google_cloud_project,
-        location=settings.google_cloud_location
+        location=settings.gemini_location
     )
     
     # Initialize Services
@@ -55,7 +56,9 @@ async def lifespan(app: FastAPI):
     app.state.intent_classifier = IntentClassifier(
         api_key=settings.google_api_key,
         http_client=app.state.http_client,
-        vertex_auth=app.state.vertex_auth
+        vertex_auth=app.state.vertex_auth,
+        model=settings.gemini_fast_model,
+        thinking_level=settings.gemini_thinking_level
     )
     app.state.memory_service = MemoryService(api_key=settings.mem0_api_key or "")
     app.state.tracing_service = TracingService(
@@ -68,33 +71,21 @@ async def lifespan(app: FastAPI):
         memory=app.state.memory_service,
         tracer=app.state.tracing_service,
         http_client=app.state.http_client,
-        vertex_auth=app.state.vertex_auth
+        vertex_auth=app.state.vertex_auth,
+        model=settings.gemini_model,
+        thinking_level=settings.gemini_thinking_level
     )
-    
+
     # In-memory sessions storage with TTL and size limit to prevent memory leaks
     app.state.sessions = TTLCache(ttl_seconds=86400, max_size=10000)  # 24h TTL, 10k max
-    
+
     # Test Gemini API connection at startup (uses active API mode)
     logger.warning("Testing Gemini API connection...")
-    try:
-        if app.state.vertex_auth.enabled:
-            url = app.state.vertex_auth.get_generate_url("gemini-2.0-flash")
-            headers = await app.state.vertex_auth.get_headers()
-            api_mode = "Vertex AI"
-        else:
-            url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent"
-            headers = {"x-goog-api-key": settings.google_api_key}
-            api_mode = "AI Studio"
-        
-        payload = {"contents": [{"role": "user", "parts": [{"text": "Say hello in 3 words"}]}]}
-        response = await app.state.http_client.post(url, json=payload, headers=headers, timeout=10.0)
-        if response.status_code == 200:
-            text = response.json()['candidates'][0]['content']['parts'][0]['text']
-            logger.warning(f"✅ Gemini API ({api_mode}) works: {text}")
-        else:
-            logger.error(f"❌ Gemini API ({api_mode}) Error: {response.status_code} {response.text}")
-    except Exception as e:
-        logger.error(f"❌ Gemini API FAILED at startup: {str(e)}")
+    llm_check = await check_llm(app.state.http_client, app.state.vertex_auth, settings.google_api_key, settings.gemini_model)
+    if llm_check["ok"]:
+        logger.warning(f"✅ Gemini API ({llm_check['api_mode']}, {settings.gemini_model}) works")
+    else:
+        logger.error(f"❌ Gemini API ({llm_check['api_mode']}, {settings.gemini_model}) FAILED: {llm_check['error']}")
     
     # Log service status for debugging
     logger.warning("=" * 50)
@@ -125,7 +116,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="Rayhan's AI Resume Chatbot",
     description="Production-grade modular API for AI resume interactions",
-    version="2.3.1-vertex",
+    version="2.4.0",
     lifespan=lifespan
 )
 

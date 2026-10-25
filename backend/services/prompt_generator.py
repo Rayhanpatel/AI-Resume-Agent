@@ -6,6 +6,8 @@ import logging
 import httpx
 from typing import List
 
+from .gemini import get_endpoint, generation_config, extract_text
+
 logger = logging.getLogger(__name__)
 
 DEFAULT_PROMPTS = [
@@ -30,11 +32,12 @@ async def generate_prompts(
     api_key: str,
     company: str,
     role: str,
-    skills: List[str]
+    skills: List[str],
+    model: str = "gemini-3.5-flash-lite"
 ) -> List[str]:
     """
     Generate 4 role-specific starter prompts using LLM.
-    
+
     Args:
         http_client: Async HTTP client
         vertex_auth: Vertex AI auth service (or None)
@@ -42,22 +45,17 @@ async def generate_prompts(
         company: Company name
         role: Job role/title
         skills: List of required skills
-        
+        model: Gemini model ID (the fast model from settings)
+
     Returns:
         List of 4 prompt strings
     """
     if not role and not company:
         return DEFAULT_PROMPTS
-    
+
     try:
-        # Build request
-        if vertex_auth and vertex_auth.enabled:
-            url = vertex_auth.get_generate_url("gemini-2.0-flash")
-            headers = await vertex_auth.get_headers()
-        else:
-            url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent"
-            headers = {"x-goog-api-key": api_key, "Content-Type": "application/json"}
-        
+        url, headers = await get_endpoint(vertex_auth, api_key, model)
+
         skills_str = ", ".join(skills[:5]) if skills else "various technical skills"
         
         payload = {
@@ -69,42 +67,24 @@ async def generate_prompts(
                     skills=skills_str
                 )}]
             }],
-            "generationConfig": {
-                "temperature": 0.4,
-                "maxOutputTokens": 200,
-                "responseMimeType": "application/json"
-            }
+            "generationConfig": generation_config(max_output_tokens=1024, json_mode=True)
         }
-        
-        response = await http_client.post(url, json=payload, headers=headers, timeout=5.0)
-        
+
+        response = await http_client.post(url, json=payload, headers=headers, timeout=8.0)
+
         if response.status_code != 200:
             logger.warning(f"Prompt generation API error: {response.status_code} - {response.text[:200]}")
             return DEFAULT_PROMPTS
-        
+
         data = response.json()
-        
-        # Handle response - with responseMimeType: application/json,
-        # Gemini may return JSON object directly, not as string in "text"
-        part = data["candidates"][0]["content"]["parts"][0]
-        
-        if "text" in part:
-            # Standard response: JSON is in text field as string
-            text = part["text"]
-            if isinstance(text, list):
-                prompts = text
-            else:
-                # Clean and parse JSON from string
-                text = text.strip()
-                if text.startswith("```"):
-                    text = text.split("```")[1]
-                    if text.startswith("json"):
-                        text = text[4:]
-                text = text.strip()
-                prompts = json.loads(text)
-        else:
-            # responseMimeType: application/json returns object directly
-            prompts = list(part.values()) if isinstance(part, dict) else part
+
+        # With responseMimeType: application/json, the JSON array is a string in the text parts
+        text = extract_text(data).strip()
+        if text.startswith("```"):
+            text = text.split("```")[1]
+            if text.startswith("json"):
+                text = text[4:]
+        prompts = json.loads(text.strip())
         
         # Validate
         if isinstance(prompts, list) and len(prompts) >= 4:
