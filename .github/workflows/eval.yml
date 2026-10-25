@@ -1,0 +1,61 @@
+name: Eval gate
+
+# The golden eval asks the real model the questions recruiters ask most and checks
+# what it must and must not say, then stamps every answer against the profile.
+# It runs on pull requests that touch the agent, and weekly, so a model or prompt
+# change can't ship a wrong answer. Needs a Vertex service account in secrets:
+#   GCP_SA_KEY   service-account JSON with "Vertex AI User" on the project
+#   GCP_PROJECT  the project id
+# Without them the job reports "skipped" instead of failing.
+
+on:
+  pull_request:
+    paths:
+      - "backend/core/**"
+      - "backend/services/**"
+      - "backend/evals/**"
+  schedule:
+    - cron: "41 14 * * 1"  # Mondays, 10:41 a.m. ET
+  workflow_dispatch:
+
+jobs:
+  golden:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check for Vertex credentials
+        id: creds
+        env:
+          HAS_KEY: ${{ secrets.GCP_SA_KEY != '' && secrets.GCP_PROJECT != '' }}
+        run: echo "present=$HAS_KEY" >> "$GITHUB_OUTPUT"
+
+      - name: Skip (no credentials)
+        if: steps.creds.outputs.present != 'true'
+        run: echo "::notice::GCP_SA_KEY / GCP_PROJECT not set; the golden eval was skipped."
+
+      - uses: actions/setup-python@v5
+        if: steps.creds.outputs.present == 'true'
+        with:
+          python-version: "3.11"
+
+      - uses: google-github-actions/auth@v2
+        if: steps.creds.outputs.present == 'true'
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Install
+        if: steps.creds.outputs.present == 'true'
+        run: pip install -r backend/requirements.txt
+
+      - name: Run the golden eval against the live model
+        if: steps.creds.outputs.present == 'true'
+        env:
+          GOOGLE_CLOUD_PROJECT: ${{ secrets.GCP_PROJECT }}
+          GOOGLE_API_KEY: unused
+        run: |
+          cd backend
+          export TOKEN="$(gcloud auth print-access-token)"
+          python evals/golden.py | tee eval.log
+          echo "## Golden eval" >> "$GITHUB_STEP_SUMMARY"
+          grep -E "^== " eval.log >> "$GITHUB_STEP_SUMMARY"

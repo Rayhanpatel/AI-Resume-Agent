@@ -70,6 +70,8 @@ The frontend proxies `/api` requests to the backend during development (configur
 | Feature | Description | Implementation |
 |---------|-------------|----------------|
 | Real-time Streaming | Token-by-token response delivery | SSE with `X-Accel-Buffering: no` to bypass Cloudflare/nginx buffering |
+| Verification Stamps | Every sentence is marked checked / inferred / unknown, with the profile quote | A fast-model JSON pass proposes verdicts and verbatim quotes; code confirms each quote and checks every number against the profile (`verifier.py`); streamed after the answer, shown in a panel |
+| MCP Interface | Other agents can call the same agent | `/mcp` (protocol 2026-07-28, stateless): read-only `get_profile`, `ask` (with stamps), `fit_report` (`mcp_server.py`) |
 | Model Fallback | A slow or failing model never takes the chat down | Answer model → fallback model if it errors, returns nothing, or stays silent past `GEMINI_FIRST_TOKEN_TIMEOUT`; the fallback gets one patient retry (`agent.py`) |
 | Models as Config | Google retires model IDs; changing one is an env var | `GEMINI_MODEL`, `GEMINI_FALLBACK_MODEL`, `GEMINI_FAST_MODEL` in `config.py`; one request helper in `services/gemini.py` |
 | Real Health Check | Catches a dead model, not just a dead process | `/api/v1/health/llm` makes a real model call (cached 10 min, failures retried after 60 s) and returns 503 when it fails |
@@ -306,6 +308,7 @@ erDiagram
 | `/api/v1/chat/stream` | POST | None | SSE streaming chat response |
 | `/api/v1/admin/analytics` | GET | `X-Admin-Key` | Aggregated usage stats over N days |
 | `/api/v1/admin/sessions` | GET | `X-Admin-Key` | Recent sessions list |
+| `/mcp` | POST | None | MCP Streamable HTTP, stateless; tools `get_profile`, `ask`, `fit_report` |
 
 ---
 
@@ -336,6 +339,9 @@ All variables loaded via Pydantic `BaseSettings` from `backend/.env`.
 | `SESSION_SECRET` | No | Signs session tokens; without it a random secret is used and sessions die on restart |
 | `QUOTA_*` | No | `MESSAGES_PER_SESSION` 40, `MESSAGES_PER_IP_PER_DAY` 80, `SESSIONS_PER_IP_PER_DAY` 15, `DAILY_TOKEN_BUDGET` 3000000 |
 | `ORIGIN_SECRET` | No | When set, requests must carry `X-Origin-Secret` (added by Cloudflare); health stays open |
+| `VERIFY_ANSWERS` | No | Stamp every answer (default `true`) |
+| `OPENROUTER_API_KEY` | No | Enables the decision-model second opinion on stamps |
+| `DECISION_MODEL` | No | Pinned decision model on OpenRouter (default `typesafe/jev-1.14-20261014`) |
 | `RATE_LIMIT_RPM` | No | Max requests per minute per IP (default: `10`) |
 | `ENVIRONMENT` | No | `development` or `production` |
 
@@ -376,13 +382,16 @@ Only `GOOGLE_API_KEY` is required. All other services degrade gracefully when th
 │   │   ├── intent.py              # Intent classifier (job_related/off_topic)
 │   │   ├── vertex_auth.py         # Vertex AI OAuth2 + AI Studio fallback
 │   │   ├── quotas.py              # Persistent quotas from the events table
+│   │   ├── verifier.py            # Verification stamps: verdicts + quote and number checks
 │   │   ├── tracer.py              # Langfuse tracing + cost calculation + evaluator integration
 │   │   ├── supabase_service.py    # Async Supabase client (sessions + events)
 │   │   ├── job_extractor.py       # SSRF-protected URL fetcher
 │   │   ├── job_parser.py          # LLM-powered job description parser
 │   │   ├── prompt_generator.py    # Dynamic starter question generator
 │   │   └── leads.py               # Google Sheets lead capture
-│   ├── main.py                    # FastAPI app, lifespan manager, CORS
+│   ├── main.py                    # FastAPI app, lifespan manager, CORS, /mcp mount
+│   ├── mcp_server.py              # MCP tools over the same agent
+│   ├── evals/golden.py            # Golden eval against the live model, with stamp metrics
 │   ├── Dockerfile                 # python:3.11-slim container
 │   ├── start.sh                   # Uvicorn entrypoint (exec, h11, PORT var)
 │   ├── railway.json               # Railway deploy config (healthcheck, restart)
@@ -504,6 +513,12 @@ Traditional metrics (BLEU, ROUGE) measure surface-level text overlap and fail on
 | remark-gfm | 4.0 | GitHub Flavored Markdown support |
 
 ---
+
+## Documents
+
+- [System card](docs/SYSTEM-CARD.md): what it is, what data it touches, how it is evaluated, known failures.
+- [Eval report](docs/EVAL-REPORT.md): the numbers, with dates.
+- [Post-mortem](docs/POSTMORTEM-2026-10-chatbot-outage.md): four months of silent outage and what changed.
 
 ## Author
 
