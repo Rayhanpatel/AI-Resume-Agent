@@ -1,0 +1,30 @@
+name: Model lifecycle
+
+# Google retires Gemini model IDs on a published schedule, and a retired ID returns
+# 404. In 2026 that went unnoticed for four months. This reads Google's model-versions
+# page weekly and fails (GitHub emails the repo owner) when a model the backend is
+# configured to use has a retirement date within 60 days. No credentials needed.
+# Runbook: docs/runbooks/model-retiring.md
+
+on:
+  schedule:
+    - cron: "23 14 * * 1"  # Mondays, 10:23 a.m. ET
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "backend/core/config.py"
+      - "monitoring/model_lifecycle.py"
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Configured models are not about to retire
+        run: python monitoring/model_lifecycle.py --config backend/core/config.py --days 60
