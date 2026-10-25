@@ -102,7 +102,7 @@ def _verification_metadata(verification) -> dict:
 
 
 def _count_in_memory(request: Request, session_id: str, ip_hash: str, tokens: int = 0):
-    """Bookkeeping for the quota fallback when Supabase is off"""
+    """Bookkeeping for the quota fallback, done on every message: Supabase can be configured and still not answer"""
     quotas = request.app.state.quotas
     quotas.record_memory("messages_session", session_id)
     quotas.record_memory("messages_ip", ip_hash)
@@ -147,6 +147,7 @@ async def chat(
         response_text = intent_result.get("decline_message") or "I'm Rayhan's AI assistant. How can I help you learn about his work?"
         latency_ms = int((time.time() - start_time) * 1000)
 
+        _count_in_memory(request, body.session_id, ip_hash)
         if supabase_service and supabase_service.enabled:
             background_tasks.add_task(
                 supabase_service.log_event,
@@ -156,8 +157,6 @@ async def chat(
                 latency_ms=latency_ms,
                 metadata={"ip_hash": ip_hash}
             )
-        else:
-            _count_in_memory(request, body.session_id, ip_hash)
 
         return ChatResponse(
             response=response_text,
@@ -184,6 +183,7 @@ async def chat(
         verification = await _verify(request, agent_result["response"])
 
     tokens = (agent_result.get("tokens_in") or 0) + (agent_result.get("tokens_out") or 0)
+    _count_in_memory(request, body.session_id, ip_hash, tokens)
     if supabase_service and supabase_service.enabled:
         background_tasks.add_task(
             supabase_service.log_event,
@@ -196,8 +196,6 @@ async def chat(
             metadata={"cost_usd": agent_result.get("cost_usd", 0.0), "model": agent_result.get("model"), "ip_hash": ip_hash,
                       **_verification_metadata(verification)}
         )
-    else:
-        _count_in_memory(request, body.session_id, ip_hash, tokens)
 
     if tracing_service: tracing_service.flush()
     return ChatResponse(
@@ -243,14 +241,13 @@ async def stream_chat(
             msg = intent_result.get("decline_message", "I'm Rayhan's AI assistant. How can I help you learn about his qualifications?")
             yield f"data: {json.dumps({'chunk': msg})}\n\n"
             yield "data: [DONE]\n\n"
+        _count_in_memory(request, session_id, ip_hash)
         if supabase_service and supabase_service.enabled:
             latency_ms = int((time.time() - start_time) * 1000)
             asyncio.create_task(supabase_service.log_event(
                 session_id=session_id, event_type="chat_stream", intent="off_topic",
                 latency_ms=latency_ms, metadata={"ip_hash": ip_hash}
             ))
-        else:
-            _count_in_memory(request, session_id, ip_hash)
         if tracing_service: tracing_service.flush()
         return StreamingResponse(off_topic_stream(), media_type="text/event-stream", headers=SSE_HEADERS)
 
@@ -282,14 +279,13 @@ async def stream_chat(
             if stats.get("response"):
                 asyncio.create_task(remember_turn(request, session, body.query, stats["response"]))
             tokens = (stats.get("tokens_in") or 0) + (stats.get("tokens_out") or 0)
+            _count_in_memory(request, session_id, ip_hash, tokens)
             if supabase_service and supabase_service.enabled:
                 asyncio.create_task(supabase_service.log_event(
                     session_id=session_id, event_type="chat_stream", intent="job_related",
                     tokens_in=stats.get("tokens_in"), tokens_out=stats.get("tokens_out"), latency_ms=latency_ms,
                     metadata={"model": stats.get("model"), "ip_hash": ip_hash, **_verification_metadata(verification)}
                 ))
-            else:
-                _count_in_memory(request, session_id, ip_hash, tokens)
             if tracing_service: tracing_service.flush()
 
         except Exception as e:

@@ -142,6 +142,7 @@ async def create_session(
     }
     state.sessions[session_id] = session_record
 
+    state.quotas.record_memory("sessions_ip", ip_hash)  # the fallback count, kept even when Supabase is configured
     if supabase_service and supabase_service.enabled:
         created = await supabase_service.create_session(session_id, body.user_name, company_name)
         if created is not None:
@@ -149,8 +150,6 @@ async def create_session(
         asyncio.create_task(supabase_service.log_event(
             session_id=session_id, event_type="session_start", metadata={"ip_hash": ip_hash, "has_job": bool(job_info)}
         ))
-    else:
-        state.quotas.record_memory("sessions_ip", ip_hash)
 
     # --- Lead Capture (structured fields and the URL; not the raw page) ---
     if (job_info or job_url) and hasattr(state, "http_client"):
