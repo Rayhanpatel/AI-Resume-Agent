@@ -1,0 +1,68 @@
+# Alert rules for chat.rayhanpatel.com and rayhanpatel.com (design: MONITORING PLAN, Oct 25 2026).
+# Tool-agnostic definitions; monitoring/README.md has the click-path to create each one in
+# Grafana Cloud. Two levels: "page" = phone push + email (the chat is broken or money is at
+# risk), "email" = something is degrading. Every rule links its runbook.
+#
+# Metric names are as Grafana Cloud's OTLP gateway writes them from core/telemetry.py:
+# dots become underscores, counters get _total, seconds get _seconds, attributes become
+# labels (app.synthetic -> app_synthetic). Confirm each in Explore before saving a rule.
+
+runbook_base: https://github.com/Rayhanpatel/AI-Resume-Agent/blob/main/docs/runbooks
+
+rules:
+  - name: Chat broken
+    severity: page
+    runbook: chat-broken.md
+    source: Synthetic Monitoring per-check alert ("Failed executions"), on each of B1, A1, A2
+    condition:
+      B1 chat page: 2 failed executions in 35 minutes   # runs every 15 min
+      A1 health: 2 failed executions in 12 minutes      # runs every 5 min
+      A2 real answer: 2 failed executions in 125 minutes # runs every 60 min
+    promql_alternative: |
+      # failed executions per check over the window; fire at >= 2
+      sum by (job) (increase(probe_all_success_count{job="B1 chat page"}[35m]))
+        - sum by (job) (increase(probe_all_success_sum{job="B1 chat page"}[35m])) >= 2
+    note: A1 also asserts database ok, so a database outage trips this rule as well as "Database down".
+
+  - name: Spend
+    severity: page
+    runbook: spend.md
+    source: Google Cloud Billing budget on project gen-lang-client-0814894727 (the source of truth for money)
+    condition: actual spend passes 90% of the monthly budget (thresholds 50%, 90%, 100%)
+    early_warning_promql: |
+      # tokens in the last 24 h against the backend's own daily budget (3M); fire above 90%
+      sum(increase(gen_ai_client_token_usage_sum[24h])) > 2700000
+
+  - name: Database down
+    severity: email
+    runbook: database-down.md
+    promql: |
+      max(chat_database_up) == 0
+    pending_period: 1h
+    note: the gauge refreshes with each real check (startup, and /health/llm at most every 10 min under A1).
+
+  - name: Degrading answers
+    severity: email
+    runbook: degrading-answers.md
+    promql: |
+      # fallback model on more than 20% of answers in 6 h
+      sum(increase(chat_model_fallbacks_total[6h]))
+        / clamp_min(sum(increase(chat_answers_total{outcome="ok"}[6h])), 1) > 0.2
+      # or, as a second rule: more than 2 apology or error answers in 24 h
+      sum(increase(chat_answers_total{outcome=~"apology|error"}[24h])) > 2
+
+  - name: Model retiring
+    severity: email
+    runbook: model-retiring.md
+    source: GitHub Actions workflow .github/workflows/model-lifecycle.yml (weekly); GitHub emails on failure
+    condition: a configured model has a scheduled retirement date within 60 days
+
+  - name: Slow
+    severity: email
+    runbook: slow.md
+    promql: |
+      # 95th percentile time to first word for real visitors over 24 h, against the 6 s goal
+      histogram_quantile(0.95,
+        sum by (le) (rate(chat_time_to_first_word_seconds_bucket{app_synthetic="false"}[24h]))) > 6
+    pending_period: 1h
+    note: with a few visitors a day this is coarse; A2's 15 s limit is the steady signal.

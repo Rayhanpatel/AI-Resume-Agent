@@ -193,8 +193,9 @@ def watch_database(supabase_service):
             return []
         return [metrics.Observation(1 if status == "ok" else 0, {"db.system.name": "postgresql"})]
 
-    _meter.create_observable_gauge("chat.database.up", callbacks=[observe], unit="1",
-                                   description="Whether the database answered its last check")
+    # No unit: Prometheus naming would turn "1" into a _ratio suffix
+    _meter.create_observable_gauge("chat.database.up", callbacks=[observe],
+                                   description="Whether the database answered its last check (1 or 0)")
 
 
 def shutdown():
