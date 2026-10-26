@@ -55,7 +55,7 @@ jobs:
 
       - name: Install
         if: steps.creds.outputs.present == 'true'
-        run: pip install -r backend/requirements.txt
+        run: pip install -r backend/requirements.txt pytest  # golden.py reuses the banned-claim list from tests/
 
       - name: Run the golden eval against the live model
         if: steps.creds.outputs.present == 'true'
