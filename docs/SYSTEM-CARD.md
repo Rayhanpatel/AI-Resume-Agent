@@ -20,9 +20,9 @@ Version 2.7.0, Oct 25, 2026. This card says what the system is, what it can do, 
 
 | Data | Where it goes | Why | Retention |
 |---|---|---|---|
-| Visitor name and company (typed by the visitor) | Supabase `sessions`; Langfuse trace metadata; Google Sheet (lead capture, with the job URL and extracted fields) | to run the chat and let Rayhan follow up | Supabase rows are kept; deletion on request to rayhanbp@umd.edu |
+| Visitor name and company (typed by the visitor) | Supabase `sessions`; Google Sheet (lead capture, with the job URL and extracted fields) | to run the chat and let Rayhan follow up | Supabase rows are kept; deletion on request to rayhanbp@umd.edu |
 | Job post text or URL | fetched once, read by a tool-less extraction call, reduced to a schema (title, level, skills, location, summary); the raw text is not stored | tailoring | raw text discarded after extraction |
-| Messages | Supabase `sessions.preferences.history` (last 10 messages); Langfuse traces (inputs and outputs) | multi-turn context; quality review | as above |
+| Messages | Supabase `sessions.preferences.history` (last 10 messages); Langfuse traces (inputs and outputs, grouped by session; the Langfuse user ID is the salted IP hash) | multi-turn context; quality review | as above |
 | IP address | salted hash in event metadata | per-IP quotas | with the events |
 | Model calls | Google Vertex AI | generation | Google's data-governance terms; not used for training without consent |
 | Operational telemetry: model names, token counts, timings, outcomes, error types; no message text | the OTLP backend (Grafana Cloud), only when `OTEL_EXPORTER_OTLP_ENDPOINT` is set | monitoring and alerts | 14 days (Grafana Cloud Free) |
@@ -41,7 +41,7 @@ No cookies beyond the frontend's localStorage copy of the visitor's own session 
 
 ## Evaluation
 
-- **Unit tests (77):** request shape, model fallback, health probe, session tokens, quotas (including the in-memory fallback with an unreachable database), origin lock, job-schema boundary, SSRF resolver, banned-claim checks on the profile and prompt, verification, MCP, telemetry (off without its variable, the synthetic tag, outcomes, `gen_ai` spans, Langfuse spans never exported) and the model-lifecycle parser.
+- **Unit tests (89):** request shape, model fallback, health probe, session tokens, quotas (including the in-memory fallback with an unreachable database), origin lock, job-schema boundary, SSRF resolver, banned-claim checks on the profile and prompt, verification, MCP, telemetry (off without its variable, the synthetic tag, outcomes, `gen_ai` spans, Langfuse spans never exported), Langfuse v4 tracing (root input and output, propagated session and user on generations, no visitor name, the root ended when a visitor leaves mid-answer) and the model-lifecycle parser.
 - **Golden eval (13 questions, run against the live model):** what the agent must say and must not say on the questions recruiters ask most, including a multi-turn follow-up, an off-topic request, a phone-number request, a question whose honest answer is "the profile doesn't say", and two questions that invite overclaiming. Oct 25, 2026: 13/13 on three consecutive runs after the latest prompt change.
 - **Online judges (Langfuse):** five LLM-as-judge evaluators score traces (hallucination, relevance, conciseness, helpfulness, toxicity). Known limitation: the judge model is from the same family as the answer model and has not been calibrated against human labels; both are planned (see Roadmap).
 - **Latency, measured Oct 25, 2026 from the live service:** first words in 3.7–7.4 s; local runs against the same model 1–5 s. The intent gate runs before the answer and is the main fixed cost.

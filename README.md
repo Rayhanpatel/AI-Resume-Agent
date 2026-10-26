@@ -87,7 +87,7 @@ The frontend proxies `/api` requests to the backend during development (configur
 | Origin Lock | Direct hits on the Railway URL are refused | `X-Origin-Secret` added by Cloudflare once the API is proxied; health stays open (`core/origin.py`) |
 | Intent Classification | Filters off-topic queries before LLM calls | Gemini Flash gate with fail-safe default to `job_related` |
 | Prompt Injection Defense | A job page never reaches the persona model as text | A separate tool-less call extracts a fixed schema (title, level, skills, location, summary); only the bounded schema is rendered into the prompt (`render_job_context` in `prompts.py`) |
-| Observability | Full LLM tracing, cost tracking, and automated quality evaluation | Langfuse SDK v3 with per-model pricing in `tracer.py` + 5 LLM-as-a-Judge evaluators (Hallucination, Relevance, Conciseness, Helpfulness, Toxicity) via Gemini 2.5 Flash |
+| Observability | Full LLM tracing, cost tracking, and automated quality evaluation | Langfuse Python SDK 5 (Langfuse v4 data model: one root observation per turn, generations as children, session and user propagated) with per-model pricing in `tracer.py` + 5 LLM-as-a-Judge evaluators (Hallucination, Relevance, Conciseness, Helpfulness, Toxicity) |
 | Rate Limiting | Per-IP sliding window throttle | Cloudflare-aware IP extraction (`CF-Connecting-IP` → `X-Forwarded-For`) |
 | Session Persistence | Backend: Supabase PostgreSQL, Frontend: localStorage | 24h TTL, in-memory `TTLCache` fallback if DB is down; the AI disclosure is in the first message |
 | Session Resume | "Welcome back" modal for returning users | `localStorage` check on mount in `useChatSession.js` |
@@ -496,7 +496,7 @@ Traditional metrics (BLEU, ROUGE) measure surface-level text overlap and fail on
 | httpx | ≥0.28 | HTTP/2 client for Gemini API |
 | pydantic | ≥2.10 | Request/response validation + input sanitization |
 | pydantic-settings | ≥2.7 | Environment variable loading |
-| langfuse | ≥3.12 | LLM observability + LLM-as-a-Judge evaluation |
+| langfuse | 5.0.4 | LLM observability + LLM-as-a-Judge evaluation (Langfuse v4) |
 | supabase | ≥2.27 | Async PostgreSQL client |
 | tenacity | ≥8.2 | Retry with exponential backoff |
 | google-auth | ≥2.27 | Vertex AI OAuth2 token management |
