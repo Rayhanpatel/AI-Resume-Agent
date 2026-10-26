@@ -17,7 +17,7 @@ rules:
     condition:
       B1 chat page: 2 failed executions in 35 minutes   # runs every 15 min
       A1 health: 2 failed executions in 12 minutes      # runs every 5 min
-      A2 real answer: 2 failed executions in 125 minutes # runs every 60 min
+      A2 real answer: 2 failed executions in 13 hours # runs every 6 h (each run is a ~1-cent model answer)
     promql_alternative: |
       # failed executions per check over the window; fire at >= 2
       sum by (job) (increase(probe_all_success_count{job="B1 chat page"}[35m]))

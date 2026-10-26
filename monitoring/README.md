@@ -6,7 +6,7 @@ Probes, alert rules and the model-lifecycle check for chat.rayhanpatel.com and r
 |---|---|
 | `checks/b1-chat-page.browser.js` | **B1**, browser check, every 15 min: the site and resume load; the chat form renders; the Turnstile widget has no configuration error |
 | `checks/a1-health.k6.js` | **A1**, scripted check, every 5 min: `/health/llm` says the model and the database both answer |
-| `checks/a2-real-answer.k6.js` | **A2**, scripted check, every 60 min: the agent answers a fixed question correctly and with verification stamps, in under 15 s |
+| `checks/a2-real-answer.k6.js` | **A2**, scripted check, every 6 hours (each run costs about a cent under the $10/month spend cap): the agent answers a fixed question correctly and with verification stamps, in under 15 s |
 | `alert-rules.yaml` | the six alert rules: query, condition, severity, runbook |
 | `model_lifecycle.py` | the weekly check that no configured model retires within 60 days (run by `.github/workflows/model-lifecycle.yml`) |
 

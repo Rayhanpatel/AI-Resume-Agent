@@ -24,6 +24,13 @@ logger = logging.getLogger(__name__)
 # Gemini pricing (USD per 1M tokens; output includes thinking tokens)
 # Source: https://ai.google.dev/gemini-api/docs/pricing (checked Oct 2026)
 MODEL_PRICING = {
+    # Vertex global endpoint, per 1M tokens. Cached input is $0.15; implicit caching served
+    # 8,158 of 9,279 prompt tokens from the second call on (measured Oct 25 2026), so this
+    # full-price estimate overstates real cost. Thinking tokens bill as output.
+    "gemini-3.5-flash": {
+        "input": 1.50,
+        "output": 9.00
+    },
     "gemini-3.8-flash": {
         "input": 1.50,    # standard from Jan 1 2027 (introductory $0.75 until then)
         "output": 7.50    # standard from Jan 1 2027 (introductory $3.75 until then)

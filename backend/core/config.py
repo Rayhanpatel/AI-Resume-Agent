@@ -69,7 +69,9 @@ class Settings(BaseSettings):
     quota_messages_per_session: int = 40
     quota_messages_per_ip_per_day: int = 80
     quota_sessions_per_ip_per_day: int = 15
-    quota_daily_token_budget: int = 3_000_000  # all conversations, input + output, per UTC day
+    # All conversations, input + output, per UTC day. About 50 turns: it stops the bot politely
+    # well before the $10/month GCP spend cap would stop it hard until the 1st.
+    quota_daily_token_budget: int = 500_000
 
     # Verification stamps on every answer (a fast-model JSON pass plus code checks)
     verify_answers: bool = True

@@ -33,7 +33,7 @@ No cookies beyond the frontend's localStorage copy of the visitor's own session 
 ## Safety and security controls
 
 - Cloudflare Turnstile on session creation; a signed session token required on every message; sessions the server didn't create are refused.
-- Quotas counted from the events table: 40 messages per session, 80 per IP per day, 15 sessions per IP per day, a global daily token budget of 3M tokens; plus a per-IP per-minute limit. When the database doesn't answer, the quotas fall back to in-memory counts (reset on each deploy) instead of reading zero.
+- Quotas counted from the events table: 40 messages per session, 80 per IP per day, 15 sessions per IP per day, a global daily token budget of 500k tokens (about 50 turns), under a $10/month GCP spend cap; plus a per-IP per-minute limit. When the database doesn't answer, the quotas fall back to in-memory counts (reset on each deploy) instead of reading zero.
 - A spend cap on the Google Cloud project (hard stop) and a model-call health probe with a daily external check.
 - Job pages are fetched with a private-network check on the resolved host, no redirects, and size and type limits; their content reaches the persona model only as a bounded schema.
 - The system prompt is public (this repository). Its rules are enforced in tests, not by secrecy: a build fails if known-wrong wording (an old prize figure, a retired claim, a phone number, family details) appears in the profile or the rendered prompt.
@@ -70,7 +70,7 @@ No cookies beyond the frontend's localStorage copy of the visitor's own session 
 
 - **Monitoring** (`docs/MONITORING.md`), off until configured:
   - OpenTelemetry traces, metrics and logs over OTLP, with a `gen_ai` span around every model call and no message text;
-  - three Grafana Synthetic Monitoring probes: the chat page and bot-check widget, model and database health, and a real verified answer every hour;
+  - three Grafana Synthetic Monitoring probes: the chat page and bot-check widget, model and database health, and a real verified answer every 6 hours;
   - Grafana Faro for browser errors;
   - six alert rules with runbooks;
   - a weekly check of Google's model-retirement dates (GitHub Actions; no credentials).

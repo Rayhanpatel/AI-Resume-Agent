@@ -1,4 +1,4 @@
-// A2 Real answer: Grafana Synthetic Monitoring, Scripted check, every 60 min, 1 location.
+// A2 Real answer: Grafana Synthetic Monitoring, Scripted check, every 6 hours, 1 location.
 // Asks the agent a fixed question through its MCP interface (no session or bot check
 // needed; the same agent and verifier as the web chat) and checks the answer is right
 // and verified: it names 3E, carries stamps, at least one sentence "checked", in under

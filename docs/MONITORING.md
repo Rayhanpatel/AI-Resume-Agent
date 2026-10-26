@@ -12,7 +12,7 @@ Each was visible in a log line or a refused request. This is the setup that watc
 1. **Watch the journey from outside, on a schedule.** The agent gets a few visitors a day, so real-traffic error rates are noise. Three Grafana Synthetic Monitoring probes give a steady signal:
    - **B1** (browser, 15 min): the page, the form and the bot-check widget. It never solves the challenge.
    - **A1** (5 min): `/health/llm`, which makes a real model call and a real database query.
-   - **A2** (60 min): a real question through the MCP `ask` tool. It checks the answer's content, its stamps and its latency.
+   - **A2** (every 6 hours; each run is a real ~1-cent answer): a real question through the MCP `ask` tool. It checks the answer's content, its stamps and its latency.
 2. **Instrument the inside once, with OpenTelemetry** (`backend/core/telemetry.py`). Traces, metrics and logs go over OTLP, and the destination is set by the standard `OTEL_*` variables. With `OTEL_EXPORTER_OTLP_ENDPOINT` unset it does nothing.
    - The providers are private to the module, and Langfuse gets a private provider of its own (`services/tracer.py`), so neither pipeline sees the other's spans.
    - Message text is never exported. Langfuse spans are filtered out of the OTLP export.
