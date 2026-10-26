@@ -25,8 +25,21 @@ jobs:
 
       - name: Site and chat pages load
         run: |
-          curl -sf -m 30 -o /dev/null https://rayhanpatel.com/
-          curl -sf -m 30 -o /dev/null https://chat.rayhanpatel.com/
+          fail=0
+          for url in https://rayhanpatel.com/ https://chat.rayhanpatel.com/; do
+            code=$(curl -s -m 30 -o /dev/null -D headers.txt -w "%{http_code}" "$url" || echo 000)
+            mitigated=$(grep -i '^cf-mitigated:' headers.txt | tr -d '\r' || true)
+            echo "$url -> HTTP $code ${mitigated}"
+            if [ "$code" != "200" ]; then
+              if [ "$code" = "403" ] && [ -n "$mitigated" ]; then
+                # Cloudflare answered with a bot challenge: the edge is up, the page itself is unverified from here
+                echo "::warning::$url answered with a Cloudflare challenge to this runner ($mitigated)"
+              else
+                echo "::error::$url returned HTTP $code"; fail=1
+              fi
+            fi
+          done
+          exit $fail
 
       - name: Database answers (quotas, history and lead logging depend on it)
         run: |
