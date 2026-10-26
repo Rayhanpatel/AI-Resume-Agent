@@ -9,6 +9,7 @@ from models.schemas import ChatRequest, ChatResponse, DeviceEventRequest
 from api.deps import get_agent_service, get_intent_classifier, get_tracing_service, get_supabase_service, get_rate_limiter
 from services.quotas import QuotaExceeded, hash_ip
 from services.verifier import verify_answer
+from services.tracer import visitor_id, trace_tags
 from core.config import get_settings
 from core import telemetry
 
@@ -133,7 +134,9 @@ async def chat(
         trace = tracing_service.trace(
             name="chat_message",
             session_id=body.session_id,
-            metadata={"query": body.query[:100]}
+            user_id=visitor_id(ip_hash),
+            input=body.query,
+            tags=trace_tags("web", synthetic=telemetry.is_synthetic(), stream=False)
         )
 
     # Intent classification with timeout fallback
@@ -158,6 +161,9 @@ async def chat(
                 latency_ms=latency_ms,
                 metadata={"ip_hash": ip_hash}
             )
+        if tracing_service:
+            tracing_service.end_trace(trace, output=response_text, metadata={"intent": "off_topic"})
+            await tracing_service.aflush()
 
         return ChatResponse(
             response=response_text,
@@ -175,8 +181,6 @@ async def chat(
         trace=trace,
         history=prefs.get("history") or []
     )
-
-    if tracing_service: tracing_service.log_generation(trace=trace, name="response", model=agent_result.get("model", agent_service.model), input_text=body.query, output_text=agent_result["response"])
 
     verification = None
     if "error" not in agent_result:
@@ -198,7 +202,11 @@ async def chat(
                       **_verification_metadata(verification)}
         )
 
-    if tracing_service: tracing_service.flush()
+    if tracing_service:
+        tracing_service.end_trace(trace, output=agent_result["response"],
+                                  metadata={"intent": "job_related", **_verification_metadata(verification)},
+                                  error=agent_result.get("error"))
+        await tracing_service.aflush()
     return ChatResponse(
         response=agent_result["response"],
         intent="job_related",
@@ -228,7 +236,13 @@ async def stream_chat(
 
     trace = None
     if tracing_service:
-        trace = tracing_service.trace(name="stream_chat", session_id=session_id)
+        trace = tracing_service.trace(
+            name="stream_chat",
+            session_id=session_id,
+            user_id=visitor_id(ip_hash),
+            input=body.query,
+            tags=trace_tags("web", synthetic=telemetry.is_synthetic(), stream=True)
+        )
 
     intent_result = await safe_timeout(
         intent_classifier.classify(body.query),
@@ -249,7 +263,9 @@ async def stream_chat(
                 session_id=session_id, event_type="chat_stream", intent="off_topic",
                 latency_ms=latency_ms, metadata={"ip_hash": ip_hash}
             ))
-        if tracing_service: tracing_service.flush()
+        if tracing_service:
+            tracing_service.end_trace(trace, output=intent_result.get("decline_message"), metadata={"intent": "off_topic"})
+            await tracing_service.aflush()
         return StreamingResponse(off_topic_stream(), media_type="text/event-stream", headers=SSE_HEADERS)
 
     async def generate_stream():
@@ -292,13 +308,22 @@ async def stream_chat(
                     tokens_in=stats.get("tokens_in"), tokens_out=stats.get("tokens_out"), latency_ms=latency_ms,
                     metadata={"model": stats.get("model"), "ip_hash": ip_hash, **_verification_metadata(verification)}
                 ))
-            if tracing_service: tracing_service.flush()
+            if tracing_service:
+                tracing_service.end_trace(trace, output=stats.get("response"),
+                                          metadata={"intent": "job_related", **_verification_metadata(verification)})
+                await tracing_service.aflush()
 
         except Exception as e:
             logger.error(f"Streaming error: {e}")
             telemetry.record_answer("error", stats.get("model"))
+            if tracing_service:
+                tracing_service.end_trace(trace, output=stats.get("response"), error=f"{type(e).__name__}: {e}")
             yield f"data: {json.dumps({'chunk': 'Sorry, an error occurred. Please try again.'})}\n\n"
             yield "data: [DONE]\n\n"
+        finally:
+            # The visitor closed the tab mid-answer: still end the root, or Langfuse never gets it
+            if tracing_service:
+                tracing_service.end_trace(trace, output=stats.get("response"), error="client disconnected")
 
     return StreamingResponse(generate_stream(), media_type="text/event-stream", headers=SSE_HEADERS)
 

@@ -11,8 +11,9 @@ so changing vendors is configuration, not code:
 Nothing a visitor typed leaves through here: spans and metrics carry models, token
 counts, outcomes and timings. The conversation traces stay in Langfuse.
 
-The providers are private to this module, not the OpenTelemetry globals, so the
-Langfuse SDK keeps its own provider and its traces look exactly as before.
+The providers are private to this module, not the OpenTelemetry globals, and the
+Langfuse SDK gets a private provider of its own (services/tracer.py), so neither
+pipeline sees the other's spans.
 
 gen_ai.* names follow the OpenTelemetry GenAI semantic conventions as shipped in
 the opentelemetry-semantic-conventions 0.66b1 package. Upstream they are still
@@ -298,7 +299,7 @@ class TelemetryMiddleware:
 
 @contextmanager
 def detached():
-    """Run with no current span, so Langfuse observations stay root traces as before"""
+    """Run with no current span, so a Langfuse turn starts its own trace and gets no telemetry attributes"""
     token = otel_context.attach(otel_context.Context())
     try:
         yield

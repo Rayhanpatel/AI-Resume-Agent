@@ -4,7 +4,7 @@ import asyncio
 import logging
 from fastapi import APIRouter, Request, Depends, HTTPException
 from models.schemas import SessionRequest, SessionResponse
-from api.deps import get_tracing_service, get_supabase_service, get_rate_limiter
+from api.deps import get_supabase_service, get_rate_limiter
 from services.leads import submit_recruiter_lead
 from services.job_extractor import extract_from_url, is_url
 from services.job_parser import parse_job_description
@@ -21,7 +21,6 @@ router = APIRouter()
 async def create_session(
     request: Request,
     body: SessionRequest,
-    tracing_service = Depends(get_tracing_service),
     supabase_service = Depends(get_supabase_service),
     rate_limiter = Depends(get_rate_limiter)
 ):
@@ -164,20 +163,9 @@ async def create_session(
             job_info=job_info
         ))
 
-    # --- Tracing ---
-    if tracing_service:
-        tracing_service.trace(
-            name="session_start",
-            session_id=session_id,
-            metadata={
-                "user_name": body.user_name,
-                "company": company_name,
-                "has_job_posting": bool(job_info),
-                "from_url": bool(job_url),
-                "extraction_error": extraction_error,
-                "synthetic": telemetry.is_synthetic()
-            }
-        )
+    # Langfuse traces start with the first message (chat routes). A session start is not a
+    # trace: the v3 wrapper's session_start trace never reached Langfuse, and a new trace type
+    # here would be scored by every unfiltered trace-level evaluator.
 
     # --- Build Welcome Message (the AI disclosure is here, at the first interaction) ---
     disclosure = "You're chatting with an AI that Rayhan built; it answers only from his public profile."

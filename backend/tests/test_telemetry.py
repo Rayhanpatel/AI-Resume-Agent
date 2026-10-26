@@ -235,7 +235,6 @@ def test_synthetic_session_skips_lead_capture(monkeypatch):
                                     sessions_per_ip_per_day=9, daily_token_budget=9, salt="s")
     app.dependency_overrides[session_route.get_rate_limiter] = lambda: RateLimiter(requests_per_minute=100)
     app.dependency_overrides[session_route.get_supabase_service] = lambda: _NoDb()
-    app.dependency_overrides[session_route.get_tracing_service] = lambda: None
 
     body = {"user_name": "Probe", "company": "Acme", "job_posting": "We are hiring an ML engineer " * 5}
     client = TestClient(app)

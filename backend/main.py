@@ -15,6 +15,7 @@ from core.middleware import RequestIDMiddleware
 from core.ttl_cache import TTLCache
 from api.router import api_router
 from api.routes.health import APP_VERSION
+from services.verifier import PROFILE_VERSION
 from core.origin import OriginSecretMiddleware
 from core.session_tokens import SessionTokens
 from core.mcp_limits import MCPLimits
@@ -72,7 +73,10 @@ async def lifespan(app: FastAPI):
     app.state.tracing_service = TracingService(
         public_key=settings.langfuse_public_key or "",
         secret_key=settings.langfuse_secret_key or "",
-        host=settings.langfuse_host
+        host=settings.langfuse_host,
+        environment=settings.environment,
+        release=APP_VERSION,
+        version=PROFILE_VERSION
     )
     app.state.agent_service = AgentService(
         api_key=settings.google_api_key,
@@ -142,7 +146,7 @@ async def lifespan(app: FastAPI):
     
     # Cleanup
     if hasattr(app.state, "tracing_service") and app.state.tracing_service:
-        app.state.tracing_service.flush()
+        app.state.tracing_service.shutdown()
 
     if hasattr(app.state, "supabase_service") and app.state.supabase_service:
         await app.state.supabase_service.close()

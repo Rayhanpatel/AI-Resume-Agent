@@ -153,8 +153,8 @@ class AgentService:
                     tokens_in=tokens_in,
                     tokens_out=tokens_out,
                     latency_ms=latency_ms,
-                    metadata={"session_id": session_id, "user_name": user_name, "attempt": i + 1,
-                              "synthetic": telemetry.is_synthetic()}
+                    # session and user IDs come from the turn's propagated attributes, not metadata
+                    metadata={"attempt": i + 1, "fallback": model != self.model}
                 )
                 cost_usd = trace_result.get("cost_usd", 0.0) if trace_result else 0.0
 
@@ -276,8 +276,7 @@ class AgentService:
                 tokens_in=tokens_in,
                 tokens_out=tokens_out,
                 latency_ms=latency_ms,
-                metadata={"session_id": session_id, "user_name": user_name, "streaming": True,
-                          "fallback": used_model != self.model, "synthetic": telemetry.is_synthetic()}
+                metadata={"streaming": True, "fallback": used_model != self.model}
             )
 
         logger.info(f"Streamed response from {used_model} in {latency_ms}ms (Tokens: {tokens_in} in / {tokens_out} out)")
