@@ -3,10 +3,14 @@ name: Eval gate
 # The golden eval asks the real model the questions recruiters ask most and checks
 # what it must and must not say, then stamps every answer against the profile.
 # It runs on pull requests that touch the agent, and weekly, so a model or prompt
-# change can't ship a wrong answer. Needs a Vertex service account in secrets:
-#   GCP_SA_KEY   service-account JSON with "Vertex AI User" on the project
-#   GCP_PROJECT  the project id
-# Without them the job reports "skipped" instead of failing.
+# change can't ship a wrong answer. It signs in to Google with Workload Identity
+# Federation (GitHub's OIDC token, no key file) as a service account that only has
+# "Vertex AI User". Repository variables (identifiers, not secrets):
+#   GCP_PROJECT          the project id
+#   GCP_WIF_PROVIDER     projects/<number>/locations/global/workloadIdentityPools/github/providers/ai-resume-agent
+#   GCP_SERVICE_ACCOUNT  golden-eval@<project>.iam.gserviceaccount.com
+# Without them the job reports "skipped" instead of failing. Pull requests from forks
+# get no OIDC token, so they can't reach the model.
 
 on:
   pull_request:
@@ -18,6 +22,10 @@ on:
     - cron: "41 14 * * 1"  # Mondays, 10:41 a.m. ET
   workflow_dispatch:
 
+permissions:
+  contents: read
+  id-token: write  # lets the job request GitHub's OIDC token for Google
+
 jobs:
   golden:
     runs-on: ubuntu-latest
@@ -27,12 +35,12 @@ jobs:
       - name: Check for Vertex credentials
         id: creds
         env:
-          HAS_KEY: ${{ secrets.GCP_SA_KEY != '' && secrets.GCP_PROJECT != '' }}
+          HAS_KEY: ${{ vars.GCP_WIF_PROVIDER != '' && vars.GCP_SERVICE_ACCOUNT != '' && vars.GCP_PROJECT != '' }}
         run: echo "present=$HAS_KEY" >> "$GITHUB_OUTPUT"
 
       - name: Skip (no credentials)
         if: steps.creds.outputs.present != 'true'
-        run: echo "::notice::GCP_SA_KEY / GCP_PROJECT not set; the golden eval was skipped."
+        run: echo "::notice::GCP_WIF_PROVIDER / GCP_SERVICE_ACCOUNT / GCP_PROJECT not set; the golden eval was skipped."
 
       - uses: actions/setup-python@v5
         if: steps.creds.outputs.present == 'true'
@@ -42,7 +50,8 @@ jobs:
       - uses: google-github-actions/auth@v2
         if: steps.creds.outputs.present == 'true'
         with:
-          credentials_json: ${{ secrets.GCP_SA_KEY }}
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+          service_account: ${{ vars.GCP_SERVICE_ACCOUNT }}
 
       - name: Install
         if: steps.creds.outputs.present == 'true'
@@ -51,7 +60,7 @@ jobs:
       - name: Run the golden eval against the live model
         if: steps.creds.outputs.present == 'true'
         env:
-          GOOGLE_CLOUD_PROJECT: ${{ secrets.GCP_PROJECT }}
+          GOOGLE_CLOUD_PROJECT: ${{ vars.GCP_PROJECT }}
           GOOGLE_API_KEY: unused
         run: |
           cd backend
