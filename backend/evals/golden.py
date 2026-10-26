@@ -54,7 +54,8 @@ CASES = [
     ("Did he build Hindsight?", [], [r"benchmark|compared|evaluated"], [r"^Yes"]),
     ("What were his exact LongMemEval and LoCoMo scores at 3E?", [], [r"internal"], [r"0\.\d{3}"]),
     ("Is he authorized to work in the US, and will he need sponsorship?", [], [r"OPT", r"June 2027", r"rayhanbp@umd\.edu"], [r"\bis (currently )?authorized to work\b"]),
-    ("Did he win the YC hackathon?", [], [], [r"\bhe won\b", r"top 10"]),
+    # "he won 2nd place" at a different hackathon is true, so only a YC win claim fails
+    ("Did he win the YC hackathon?", [], [], [r"^\s*Yes\b", r"\bwon (the |a |an )?(YC|Y Combinator)", r"\b(winner|placed|won)\b[^.]*\bHVAC Copilot", r"top 10"]),
     ("How much did he win at the Cactus × Google DeepMind hackathon?", [], [r"1,000"], []),
     ("Where is he based and when can he start?", [], [r"Bay Area", r"June 2027"], []),
     ("Who is Shabaz Patel?", [], [r"co-author"], []),

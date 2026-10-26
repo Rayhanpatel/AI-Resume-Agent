@@ -167,7 +167,7 @@
       "summary": "A FastAPI and React agent that answers questions about my work. It streams over SSE, gates off-topic questions before the expensive call, reads a pasted job post, and keeps chatting when memory, database or tracing are down.",
       "metrics": [
         "83% of claims checked verbatim",
-        "60 tests, CI eval gate"
+        "95 tests, CI eval gate"
       ],
       "highlights": [
         "Every sentence of an answer is stamped checked, inferred or unknown: a fast model proposes a verbatim profile quote, code confirms it and checks every number. First run: 52 claims, 83% checked verbatim, none unknown.",
@@ -188,8 +188,8 @@
         "Supabase"
       ],
       "details": {
-        "architecture": "Frontend on Vercel behind Cloudflare. Backend on Railway, called directly so long streams avoid proxy timeouts. Thin route handlers delegate to services, and every external dependency (Mem0, Supabase, Langfuse) has an enabled flag so the chat degrades instead of failing.",
-        "models": "Answers come from Gemini 3.8 Flash on Vertex AI. A smaller Gemini 3.5 Flash-Lite classifies intent and parses job posts.",
+        "architecture": "Frontend on Vercel behind Cloudflare. Backend on Railway, called directly so long streams avoid proxy timeouts. Thin route handlers delegate to services, and every external dependency (Supabase, Langfuse, the decision model) has an enabled flag so the chat degrades instead of failing.",
+        "models": "Answers come from Gemini 3.5 Flash on Vertex AI, with Gemini 3.5 Flash-Lite as the fallback; Flash-Lite also classifies intent and parses job posts. Model IDs are configuration, because Google retires them.",
         "security": "SSRF-protected job URL fetcher, Cloudflare Turnstile, HTML stripped from every input, constant-time admin auth, and job descriptions fenced off as data so they can't override instructions.",
         "bugs_worth_telling": "A threading.Lock plus overridden dict methods deadlocked every POST endpoint with no errors and no logs. He built diagnostic endpoints to binary-search it, and the fix was one line. Separately, asyncio.wait_for hung on clients that ignore cancellation, so he wrote a timeout helper on asyncio.wait.",
         "data": "Its knowledge comes from the same profile file that renders rayhanpatel.com, so the site and the agent can't drift apart.",
