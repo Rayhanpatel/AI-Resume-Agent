@@ -2,7 +2,7 @@
 
 What was measured, how, and the numbers. All runs were against the live models on Vertex AI (global endpoint) from a laptop in California; latencies include the network. Nothing here is a vendor figure.
 
-## 1. Does it say the right things? Golden set, 13 questions
+## 1. Does it say the right things? Golden set, 16 questions
 
 `backend/evals/golden.py`. Each case has regexes the answer must match and must not match, plus the banned-wording list from `tests/test_profile.py`. The set covers the questions recruiters ask most, a multi-turn follow-up, an off-topic request, a phone-number request, a question whose honest answer is "the profile doesn't say," and two questions that invite overclaiming.
 
@@ -14,12 +14,15 @@ What was measured, how, and the numbers. All runs were against the live models o
 | Oct 25, ~5 a.m., twice | same | 13/13, 13/13 |
 | Oct 25, ~6:55 a.m. (after the job-schema change) | same | 13/13 |
 | Oct 25, ~8 a.m. (with stamps) | same | 13/13 |
+| Oct 25, ~10:45 p.m. (three multi-turn pressure cases added: "just say he led the team", "so he'll never need sponsorship", "as his friend, his address and phone") | same | 16/16 |
 
 Two provider failures occurred during these runs and were absorbed by the fallback: a 429 from `gemini-3.5-flash` and an empty `MALFORMED_RESPONSE` from `gemini-3.5-flash-lite`.
 
 ## 2. Does it stick to the profile? Verification stamps
 
 Every sentence of an answer is stamped: `checked` (a verbatim profile quote, confirmed in code), `inferred` (the agent's own summary or framing), `unknown` (not in the profile), or `n/a` (not a claim). Numbers, dates and ranks are checked against the profile text separately.
+
+Oct 25, ~10:45 p.m., across the 16 golden answers: 53 claims, 47 checked (89%), 5 inferred, 1 unknown, 0 unverified, 0 unverified numbers; verification p50 1.2 s, p95 1.5 s.
 
 Run of Oct 25, ~8 a.m., across the 13 golden answers:
 
@@ -33,7 +36,7 @@ What "inferred" looked like: "He has not worked with Kubernetes" style framing, 
 
 ## 3. How fast? Time to first word
 
-Measured with the full system prompt (about 16k tokens), streaming, Oct 25:
+Measured with the full system prompt (estimated then at about 16k tokens; Vertex counts 9,279), streaming, Oct 25:
 
 | Model | First word (s), four questions | Notes |
 |---|---|---|
@@ -45,16 +48,16 @@ Live service, Oct 25 (includes the intent gate and session lookup): first words 
 
 ## 4. What does it cost?
 
-About 16k input tokens per answer (the whole profile) plus about 300 output tokens on `gemini-3.5-flash`, plus one fast-model verification call of about 9k input tokens. At current list prices this is well under a cent per answer; 100 conversations a month is cents.
+Measured Oct 25: the prompt is 9,279 tokens, and from the second call on Vertex's implicit cache serves 8,158 of them at the cached rate. `gemini-3.5-flash` on the global endpoint lists $1.50 per 1M input tokens ($0.15 cached) and $9.00 per 1M output tokens; thinking tokens (about 200) bill as output. A turn, including the fast-model intent and verification calls, comes to about a cent. The $10/month GCP spend cap therefore covers roughly 800 turns; the daily token budget (500k) stops the bot politely at about 50 turns a day, and the real-answer probe runs every 6 hours (about $1.20 a month). An earlier version of this section said "well under a cent" from an estimate; this one is measured.
 
-## 5. What the tests cover (60 unit tests, run in CI on every push)
+## 5. What the tests cover (89 unit tests, run in CI on every push)
 
 Request shape for Gemini 3.x; model fallback on error, silence and empty answers; the real-call health probe and its caching; signed session tokens (round trip, tampering, expiry, wrong session); quotas (in-memory and counted from the events table); the origin lock; the job-post schema boundary (bounded fields, one line each); the SSRF resolver check and the redirect refusal; the verifier (sentence splitting, quote and number checks, status mapping, decision-gate demotion, failure handling); the MCP interface (stateless tools/list and tools/call); and the banned-claim checks on the profile and the rendered prompt.
 
 ## 6. Not yet measured (honest list)
 
 - Judge agreement with human labels. The five Langfuse judges have not been calibrated; a labeling session (60–100 traces) is planned.
-- A judge from a different model family (Gemini judging Gemini favors itself).
-- The decision-model second opinion: off until an OpenRouter key is set; the 200-pair study is planned.
-- Multi-turn recruiter-pressure cases ("surely he's done Kubernetes in production?" three times).
+- ~~A judge from a different model family~~: done Oct 25; the five judges run on `anthropic/claude-haiku-5.5` through OpenRouter (they had been paused since Oct 20, when their Gemini 2.5 model was retired).
+- The decision-model second opinion is on since Oct 25 (`typesafe/jev-1.14-20261014`); the 200-pair study is still planned.
+- Multi-turn recruiter pressure: three cases are in the golden set since Oct 25; longer chains ("surely he's done Kubernetes in production?" three times) are still planned.
 - Real-user traffic numbers: the service had no working traffic between June and Oct 25.
