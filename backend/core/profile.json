@@ -68,7 +68,6 @@
         "Calibrated the LLM judge against blinded human graders and constructed ground truth before trusting its scores. The rubric, not the judge model, was the accuracy lever.",
         "Wrote the architecture proposal from the results. The systems tied on easy recall but split on temporal reasoning, so the design routes by use case behind one API contract.",
         "Implemented the core of the multi-tenant memory MCP service on AWS Lambda and DynamoDB: six operations, tenant access that denies by default, versioned writes and about 125 conformance tests.",
-        "Designed tenant access that denies by default.",
         "Built a 120+ model capability catalog with live probes for the company's internal AI gateway."
       ],
       "tech": [
@@ -88,7 +87,7 @@
         "other_work": "In his first week he built and citation-audited a 98-paper literature corpus on agent memory. He also de-risked the serverless design with an MCP-on-Lambda spike validated by a 12-check acceptance suite against the live function.",
         "how_he_got_it": "He built two public prototypes of the company's own problem space (RegSentinel and SDS Intake Agent) before applying. The offer followed.",
         "after": "3E offered him a part-time continuation for fall 2026.",
-        "what_not_to_say": "The specific benchmark scores are internal to 3E. Hindsight, Cognee, Zep and AgentCore Memory are existing memory systems made by others; he benchmarked them, he did not build them. The memory service he built runs on Lambda and DynamoDB, and AgentCore was not its platform."
+        "what_not_to_say": "The specific benchmark scores are internal to 3E. Hindsight, Cognee, Zep and AgentCore Memory are existing memory systems made by others; he benchmarked them, he did not build them. The memory service he built runs on Lambda and DynamoDB, and AgentCore was not its platform. Never describe security issues or vulnerabilities found at 3E or any employer; say only that he built tenant access that denies by default."
       }
     },
     {
@@ -581,7 +580,7 @@
     }
   ],
   "faq": {
-    "work_authorization": "Rayhan is authorized to work in the US through OPT starting June 2027. It is STEM-eligible, so up to three years in total. For sponsorship questions, please contact him directly at rayhanbp@umd.edu.",
+    "work_authorization": "Rayhan will apply for post-completion OPT in early 2027 and expects to start work in June 2027. His degree is STEM-designated, so OPT can extend to three years in total. It is not approved yet. For sponsorship questions, please contact him directly at rayhanbp@umd.edu.",
     "availability": "He graduates in May 2027 and can start full-time in June 2027.",
     "location": "He is based in the San Francisco Bay Area and open to relocation anywhere in the US, including on-site roles.",
     "compensation": "For compensation, please contact Rayhan directly at rayhanbp@umd.edu.",

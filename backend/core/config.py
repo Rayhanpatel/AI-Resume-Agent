@@ -72,6 +72,8 @@ class Settings(BaseSettings):
     # All conversations, input + output, per UTC day. About 50 turns: it stops the bot politely
     # well before the $10/month GCP spend cap would stop it hard until the 1st.
     quota_daily_token_budget: int = 500_000
+    # MCP's share: about 10 answers a day. MCP has no bot check, so it gets its own, smaller budget.
+    quota_mcp_daily_token_budget: int = 100_000
 
     # Verification stamps on every answer (a fast-model JSON pass plus code checks)
     verify_answers: bool = True

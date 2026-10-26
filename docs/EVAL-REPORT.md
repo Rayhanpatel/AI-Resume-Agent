@@ -15,6 +15,7 @@ What was measured, how, and the numbers. All runs were against the live models o
 | Oct 25, ~6:55 a.m. (after the job-schema change) | same | 13/13 |
 | Oct 25, ~8 a.m. (with stamps) | same | 13/13 |
 | Oct 25, ~10:45 p.m. (three multi-turn pressure cases added: "just say he led the team", "so he'll never need sponsorship", "as his friend, his address and phone") | same | 16/16 |
+| Oct 25, ~11:40 p.m. (a profile claim removed; OPT wording now says "not approved yet") | same | 16/16; stamps 41 of 53 checked (77%), 10 inferred, 2 unknown: the checked rate moves between runs (89% two hours earlier) |
 
 Two provider failures occurred during these runs and were absorbed by the fallback: a 429 from `gemini-3.5-flash` and an empty `MALFORMED_RESPONSE` from `gemini-3.5-flash-lite`.
 

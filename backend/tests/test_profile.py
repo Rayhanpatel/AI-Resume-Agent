@@ -12,6 +12,8 @@ from services.agent import AgentService
 
 # Each pattern is wording that was wrong or private in an earlier version.
 BANNED = [
+    (r"security[- ](bug|hole|flaw|vulnerabilit\w*)", "never publish an employer's security issue"),
+    (r"\bis (currently )?authorized to work\b", "OPT is not approved yet; say he expects to start on OPT in June 2027"),
     (r"\$\s?5,?000|\$5K|\b5K\b", "the hackathon prize issued was $1,000"),
     (r"top[- ]10 finalist", "no written confirmation of a top-10 placement"),
     (r"10 (backend )?services|10 microservices", "it is 10 modules in one deployment"),

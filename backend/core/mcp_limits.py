@@ -37,7 +37,7 @@ class MCPLimits:
         caller = f"mcp:{ip_hash}"
         try:
             self.limiter.check(ip)
-            await state.quotas.check_message(caller, ip_hash)
+            await state.quotas.check_mcp(caller, ip_hash)
         except HTTPException as e:
             return await JSONResponse(status_code=e.status_code, content={"error": "Rate limit exceeded"})(scope, receive, send)
         except QuotaExceeded as e:
@@ -56,6 +56,7 @@ def record_tool_tokens(app_state, result: dict):
     """Count an MCP tool's model tokens toward the global daily budget"""
     tokens_in, tokens_out = result.get("tokens_in") or 0, result.get("tokens_out") or 0
     app_state.quotas.record_memory("tokens", "all", tokens_in + tokens_out)
+    app_state.quotas.record_memory("tokens", "mcp_tokens", tokens_in + tokens_out)
     supabase = getattr(app_state, "supabase_service", None)
     if supabase and supabase.enabled:
         asyncio.create_task(supabase.log_event(session_id="mcp", event_type="mcp_tokens", tokens_in=tokens_in, tokens_out=tokens_out))

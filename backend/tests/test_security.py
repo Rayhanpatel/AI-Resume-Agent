@@ -205,3 +205,30 @@ def test_redirects_are_not_followed(monkeypatch):
     client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
     text, error = asyncio.run(job_extractor.extract_from_url(client, "https://jobs.example.com/123"))
     assert text is None and "redirect" in error.lower()
+
+
+# ── Client address: only Railway's X-Real-IP counts ──────────────────
+
+def test_client_ip_ignores_caller_supplied_headers():
+    from starlette.requests import Request
+    from middleware.rate_limiter import RateLimiter
+
+    def req(headers):
+        return Request({"type": "http", "method": "GET", "path": "/", "client": ("100.64.0.9", 1234),
+                        "headers": [(k.lower().encode(), v.encode()) for k, v in headers.items()]})
+
+    limiter = RateLimiter(requests_per_minute=10)
+    spoofed = {"CF-Connecting-IP": "198.51.100.7", "X-Forwarded-For": "203.0.113.7", "X-Real-IP": "8.8.4.4"}
+    assert limiter.get_client_ip(req(spoofed)) == "8.8.4.4"
+    assert limiter.get_client_ip(req({"CF-Connecting-IP": "198.51.100.7"})) == "100.64.0.9"
+
+
+def test_mcp_has_its_own_daily_budget():
+    q = _quotas(messages_per_session=99, messages_per_ip_per_day=99, daily_token_budget=10_000, mcp_daily_token_budget=500)
+    ip = hash_ip("7.7.7.7", "s")
+    asyncio.run(q.check_mcp("mcp:x", ip))
+    q.record_memory("tokens", "all", 500); q.record_memory("tokens", "mcp_tokens", 500)
+    with pytest.raises(QuotaExceeded) as e:
+        asyncio.run(q.check_mcp("mcp:x", ip))
+    assert e.value.scope == "mcp_budget"
+    asyncio.run(q.check_message("chat-session", ip))  # the chat still has budget left

@@ -38,12 +38,14 @@ class QuotaExceeded(Exception):
 
 class QuotaService:
     def __init__(self, supabase, *, messages_per_session: int, messages_per_ip_per_day: int,
-                 sessions_per_ip_per_day: int, daily_token_budget: int, salt: str):
+                 sessions_per_ip_per_day: int, daily_token_budget: int, salt: str,
+                 mcp_daily_token_budget: int = 0):
         self.supabase = supabase
         self.messages_per_session = messages_per_session
         self.messages_per_ip_per_day = messages_per_ip_per_day
         self.sessions_per_ip_per_day = sessions_per_ip_per_day
         self.daily_token_budget = daily_token_budget
+        self.mcp_daily_token_budget = mcp_daily_token_budget  # 0 = no separate MCP budget
         self.salt = salt
         self._memory = defaultdict(int)  # fallback counters, keyed by (scope, key, day)
         if not (supabase and supabase.enabled):
@@ -74,19 +76,22 @@ class QuotaService:
             logger.warning(f"Quota count failed ({scope}), using the in-memory count: {e}")
             return self._memory[(scope, key, _day_start())]
 
-    async def _tokens_today(self) -> int:
+    async def _tokens_today(self, event_type: Optional[str] = None) -> int:
+        """Tokens spent today, by everything or by one event type (e.g. "mcp_tokens")"""
+        key = ("tokens", event_type or "all", _day_start())
         if not self.persistent:
-            return self._memory[("tokens", "all", _day_start())]
+            return self._memory[key]
         try:
-            response = await safe_timeout(
-                self.supabase.client.table("events").select("tokens_in,tokens_out").gte("created_at", _day_start()).execute(),
-                timeout=4.0, label="quota.tokens")
+            query = self.supabase.client.table("events").select("tokens_in,tokens_out").gte("created_at", _day_start())
+            if event_type:
+                query = query.eq("event_type", event_type)
+            response = await safe_timeout(query.execute(), timeout=4.0, label="quota.tokens")
             if response is None:
-                return self._memory[("tokens", "all", _day_start())]
+                return self._memory[key]
             return sum((row.get("tokens_in") or 0) + (row.get("tokens_out") or 0) for row in response.data)
         except Exception as e:
             logger.warning(f"Quota token sum failed, using the in-memory count: {e}")
-            return self._memory[("tokens", "all", _day_start())]
+            return self._memory[key]
 
     def record_memory(self, scope: str, key: str, amount: int = 1):
         """
@@ -104,6 +109,12 @@ class QuotaService:
     async def check_new_session(self, ip_hash: str):
         if await self._count("sessions_ip", ip_hash, event_type="session_start", ip_hash=ip_hash) >= self.sessions_per_ip_per_day:
             raise self._reject("ip_sessions", "You've started a lot of chats today. Please come back tomorrow, or email rayhanbp@umd.edu.")
+
+    async def check_mcp(self, caller: str, ip_hash: str):
+        """The chat limits, plus a separate daily MCP budget so MCP traffic can't use up the chat's"""
+        await self.check_message(caller, ip_hash)
+        if self.mcp_daily_token_budget and await self._tokens_today("mcp_tokens") >= self.mcp_daily_token_budget:
+            raise self._reject("mcp_budget", "Today's budget for MCP calls is used up. Try again tomorrow, or use the chat at chat.rayhanpatel.com.")
 
     async def check_message(self, session_id: str, ip_hash: str):
         if await self._count("messages_session", session_id, session_id=session_id) >= self.messages_per_session:

@@ -56,18 +56,16 @@ class RateLimiter:
         return True
     
     def get_client_ip(self, request: Request) -> str:
-        """Extract client IP from request"""
-        # Check Cloudflare header FIRST (most reliable when behind CF)
-        real_ip = request.headers.get("cf-connecting-ip")
+        """
+        The visitor's address as Railway's edge saw it. The edge overwrites X-Real-IP on
+        every request (and fills it from CF-Connecting-IP only for Cloudflare's own ranges),
+        so a caller can't forge it. Caller-sent cf-connecting-ip and x-forwarded-for are not
+        trusted: on Oct 25, 2026 a burst with a new fake cf-connecting-ip on each request
+        walked straight past the per-IP limits.
+        """
+        real_ip = request.headers.get("x-real-ip")
         if real_ip:
-            return real_ip
-        
-        # Check for forwarded IP (behind other proxies/CDN)
-        forwarded = request.headers.get("x-forwarded-for")
-        if forwarded:
-            return forwarded.split(",")[0].strip()
-        
-        # Fallback to direct client
+            return real_ip.strip()
         return request.client.host if request.client else "unknown"
 
 # Lazy-initialized global instance (uses config)

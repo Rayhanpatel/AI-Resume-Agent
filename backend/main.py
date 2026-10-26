@@ -1,4 +1,5 @@
 import os
+import asyncio
 import time
 import logging
 from contextlib import asynccontextmanager
@@ -101,6 +102,7 @@ async def lifespan(app: FastAPI):
         sessions_per_ip_per_day=settings.quota_sessions_per_ip_per_day,
         daily_token_budget=settings.quota_daily_token_budget,
         salt=settings.session_secret or "no-secret",
+        mcp_daily_token_budget=settings.quota_mcp_daily_token_budget,
     )
 
     # Verification stamps: fast-model verdicts + code checks, optional decision-model second opinion
@@ -141,8 +143,19 @@ async def lifespan(app: FastAPI):
     logger.warning("=" * 50)
     
     logger.info("All services initialized and attached to state")
+
+    async def keep_database_awake():
+        # Supabase pauses a free project after 7 quiet days (ours was paused for months). The
+        # GitHub uptime job queries it daily, but GitHub pauses scheduled jobs in a public repo
+        # after 60 days without commits, so the app keeps it awake itself.
+        while True:
+            await asyncio.sleep(6 * 3600)
+            await app.state.supabase_service.ping()
+
+    keepalive = asyncio.create_task(keep_database_awake())
     async with mcp_server.mcp.session_manager.run():
         yield
+    keepalive.cancel()
     
     # Cleanup
     if hasattr(app.state, "tracing_service") and app.state.tracing_service:
