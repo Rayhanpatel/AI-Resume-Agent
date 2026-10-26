@@ -4,7 +4,7 @@ import { User, Building2, ArrowRight, Sparkles, Briefcase, Link } from 'lucide-r
 // Use test key in development (always passes), production key in production
 const TURNSTILE_SITE_KEY = import.meta.env.DEV
     ? '1x00000000000000000000AA'
-    : '0x4AAAAAAACa21R_BfLUd4767'
+    : '0x4AAAAAACa21R_BfLUd4767'
 
 /**
  * WelcomeForm Component
