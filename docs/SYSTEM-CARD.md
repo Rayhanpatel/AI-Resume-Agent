@@ -14,7 +14,7 @@ Version 2.7.0, Oct 25, 2026. This card says what the system is, what it can do, 
 - **Models:** answers from `gemini-3.5-flash` on Vertex AI (global endpoint), falling back to `gemini-3.5-flash-lite` if the first errors or stays silent for 10 s. Intent classification, job-post extraction and starter questions use `gemini-3.5-flash-lite`.
 - **Knowledge:** one file, `backend/core/profile.json` (about 28 KB), the same file that renders rayhanpatel.com. The whole file is placed in the system instruction; there is no retrieval index. The profile carries an `updated` date.
 - **Modules (one FastAPI deployment, 10 modules):** intent classifier, agent, Gemini request helper, Vertex auth, tracer (Langfuse), Supabase sessions and events, quotas, job extractor, job parser, prompt generator.
-- **Hosting:** backend on Railway, frontend on Vercel behind Cloudflare.
+- **Hosting:** backend on Railway, frontend on Vercel; DNS on Cloudflare (DNS only, not proxied, checked Oct 28, 2026).
 
 ## Data
 
