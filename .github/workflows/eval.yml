@@ -2,8 +2,10 @@ name: Eval gate
 
 # The golden eval asks the real model the questions recruiters ask most and checks
 # what it must and must not say, then stamps every answer against the profile.
-# It runs on pull requests that touch the agent, and weekly, so a model or prompt
-# change can't ship a wrong answer. It signs in to Google with Workload Identity
+# It runs on every push to main and every pull request that touches the agent, and
+# weekly. With Railway's "Wait for CI" on, a failing run stops the backend deploy, so a
+# model, prompt or profile change can't ship a wrong answer (the frontend on Vercel is
+# not gated by it). It signs in to Google with Workload Identity
 # Federation (GitHub's OIDC token, no key file) as a service account that only has
 # "Vertex AI User". Repository variables (identifiers, not secrets):
 #   GCP_PROJECT          the project id
@@ -13,6 +15,12 @@ name: Eval gate
 # get no OIDC token, so they can't reach the model.
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - "backend/core/**"
+      - "backend/services/**"
+      - "backend/evals/**"
   pull_request:
     paths:
       - "backend/core/**"

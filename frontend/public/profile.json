@@ -167,7 +167,7 @@
       "summary": "A FastAPI and React agent that answers questions about my work. It streams over SSE, gates off-topic questions before the expensive call, reads a pasted job post, and keeps chatting when memory, database or tracing are down.",
       "metrics": [
         "83% of claims checked verbatim",
-        "95 tests, CI eval gate"
+        "95 tests, golden eval on every backend push"
       ],
       "highlights": [
         "Every sentence of an answer is stamped checked, inferred or unknown: a fast model proposes a verbatim profile quote, code confirms it and checks every number. First run: 52 claims, 83% checked verbatim, none unknown.",

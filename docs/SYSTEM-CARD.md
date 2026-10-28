@@ -67,7 +67,7 @@ No cookies beyond the frontend's localStorage copy of the visitor's own session 
 - **Verification stamps.** Every sentence is marked checked (verbatim profile quote, confirmed in code), inferred, unknown or n/a; numbers are checked against the profile. First measured run: 52 claims, 83% checked, 0 unknown, 0 unverified numbers, p50 1.2 s. The stamps stream after the answer and are shown under it.
 - **MCP interface** at `/mcp` (protocol 2026-07-28, stateless): read-only `get_profile`, `ask` (with stamps), `fit_report`. No tool takes an action.
 - **On-device tier.** On Chrome desktop with the built-in model, a visitor can answer on their own machine from the same profile; the browser verifies quotes and numbers and falls back to the cloud, visibly, when it can't. Only timing and counts are reported back, never text.
-- **Eval gate workflow** (weekly and on pull requests, once Vertex credentials are added to the repository secrets).
+- **Eval gate workflow:** the golden eval on every push to main and pull request that touches the agent, and weekly; keyless sign-in to Vertex (Workload Identity Federation). It blocks a backend deploy only with Railway's "Wait for CI" setting on; the Vercel frontend is not gated by it.
 
 ## Added Oct 25, 2026 (version 2.7)
 
