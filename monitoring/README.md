@@ -24,7 +24,7 @@ Oct 28, 2026, k6 in Docker against the live site: S1 7/7, D2 3/3 (322 days left)
 | Railway, backend | `OTEL_EXPORTER_OTLP_ENDPOINT` | the OTLP endpoint Grafana shows, e.g. `https://otlp-gateway-prod-<region>.grafana.net/otlp` |
 | Railway, backend | `OTEL_EXPORTER_OTLP_HEADERS` | the header line Grafana shows, `Authorization=Basic%20<token>` (a secret: paste it straight into Railway) |
 | Railway, backend | `OTEL_SERVICE_NAME` | optional; defaults to `rayhan-agent` |
-| Vercel, frontend (Production) | `VITE_FARO_URL` | the Faro collector URL (public by design); takes effect on the next build |
+| (none needed) | `VITE_FARO_URL` | optional override; the production collector URL for the `chat` Faro app is in `frontend/src/lib/telemetry.js` (public by design) and used on chat.rayhanpatel.com only |
 
 Without them nothing is exported and nothing changes: telemetry is off and the Faro code isn't even loaded.
 

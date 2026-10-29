@@ -7,7 +7,7 @@ import ErrorBoundary from './components/ErrorBoundary.jsx'
 import { initTelemetry } from './lib/telemetry.js'
 import './index.css'
 
-initTelemetry()  // off unless VITE_FARO_URL is set at build time
+initTelemetry()  // Grafana Faro, on chat.rayhanpatel.com only (src/lib/telemetry.js)
 
 ReactDOM.createRoot(document.getElementById('root')).render(
     <React.StrictMode>

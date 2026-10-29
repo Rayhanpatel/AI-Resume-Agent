@@ -1,6 +1,11 @@
-// The front door to Faro. Faro loads lazily and only when VITE_FARO_URL is set; events
-// that happen before it arrives are queued (up to 50), and without it they are dropped.
-const FARO_URL = import.meta.env.VITE_FARO_URL
+// The front door to Faro. Faro loads lazily, on chat.rayhanpatel.com only (or wherever
+// VITE_FARO_URL is set at build time); events that happen before it arrives are queued
+// (up to 50), and elsewhere (local runs, preview deployments) they are dropped.
+// The collector URL is public by design: it accepts data only from the CORS origin set
+// on the Grafana Frontend Observability app "chat" (https://chat.rayhanpatel.com).
+const PRODUCTION_FARO_URL = 'https://faro-collector-prod-us-west-0.grafana.net/collect/c0561b80da97a9558645faf4afe9d6c0'
+const FARO_URL = import.meta.env.VITE_FARO_URL ||
+    (typeof window !== 'undefined' && window.location.hostname === 'chat.rayhanpatel.com' ? PRODUCTION_FARO_URL : undefined)
 const MAX_QUEUED = 50
 let faro = null
 const queue = []

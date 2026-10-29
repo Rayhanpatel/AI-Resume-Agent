@@ -10,7 +10,7 @@ export function startFaro(url) {
         app: {
             name: 'chat',
             version: (import.meta.env.VITE_VERCEL_GIT_COMMIT_SHA || 'local').slice(0, 7),
-            environment: import.meta.env.MODE,
+            environment: import.meta.env.VITE_VERCEL_ENV || import.meta.env.MODE,
         },
         instrumentations: getWebInstrumentations({ captureConsole: false }),
         preventGlobalExposure: true,

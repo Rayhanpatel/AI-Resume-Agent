@@ -29,7 +29,7 @@ Version 2.8.0, Oct 28, 2026. This card says what the system is, what it can do, 
 | Trace input and output (the visitor's message and the answer) | Langfuse's online judges, which call `anthropic/claude-haiku-5.5` through OpenRouter | quality scores | Langfuse and OpenRouter terms |
 | Operational telemetry: model names, token counts, timings, outcomes, error types; no message text | the OTLP backend (Grafana Cloud), only when `OTEL_EXPORTER_OTLP_ENDPOINT` is set | monitoring and alerts | 14 days (Grafana Cloud Free) |
 | Page views and page speed (no cookies, no message text) | Vercel Web Analytics and Speed Insights (`@vercel/analytics`, `@vercel/speed-insights` in `main.jsx`) | visit counts | Vercel's terms |
-| Browser errors, page performance, bot-check error codes, a random session ID | Grafana Faro, only when the frontend is built with `VITE_FARO_URL` | monitoring | 14 days (Grafana Cloud Free) |
+| Browser errors, page performance, bot-check error codes, a random session ID | Grafana Faro (app `chat`, location kept at continent level), only on chat.rayhanpatel.com | monitoring | 14 days (Grafana Cloud Free) |
 
 No cookies beyond the frontend's localStorage copy of the visitor's own session (and, with Faro on, its random session ID in browser storage). No audio. No third-party memory service.
 
