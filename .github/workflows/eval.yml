@@ -38,7 +38,7 @@ jobs:
   golden:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Check for Vertex credentials
         id: creds
@@ -50,12 +50,12 @@ jobs:
         if: steps.creds.outputs.present != 'true'
         run: echo "::notice::GCP_WIF_PROVIDER / GCP_SERVICE_ACCOUNT / GCP_PROJECT not set; the golden eval was skipped."
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         if: steps.creds.outputs.present == 'true'
         with:
           python-version: "3.11"
 
-      - uses: google-github-actions/auth@v2
+      - uses: google-github-actions/auth@v3
         if: steps.creds.outputs.present == 'true'
         with:
           workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}

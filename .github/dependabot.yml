@@ -1,19 +1,23 @@
-# Weekly dependency updates, plus security updates as soon as an advisory is published.
-# (Oct 2026: an internet-facing n8n server sat six months behind on security fixes.)
+# Dependency updates, grouped so a week brings at most a few pull requests. Security updates
+# arrive as soon as an advisory is published. (Oct 2026: an internet-facing n8n server sat six
+# months behind on security fixes.) Major upgrades come as one grouped PR to do deliberately.
 version: 2
 updates:
   - package-ecosystem: pip
     directory: /backend
     schedule: {interval: weekly, day: monday}
-    open-pull-requests-limit: 5
+    # requirements.txt uses ranges; only change one when a release falls outside it
+    versioning-strategy: increase-if-necessary
     groups:
-      python-minor-and-patch: {update-types: [minor, patch]}
+      python: {patterns: ["*"]}
   - package-ecosystem: npm
     directory: /frontend
     schedule: {interval: weekly, day: monday}
-    open-pull-requests-limit: 5
     groups:
       npm-minor-and-patch: {update-types: [minor, patch]}
+      npm-major: {update-types: [major]}
   - package-ecosystem: github-actions
     directory: /
     schedule: {interval: monthly}
+    groups:
+      actions: {patterns: ["*"]}

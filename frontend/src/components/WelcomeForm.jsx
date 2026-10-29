@@ -265,8 +265,9 @@ function WelcomeForm({ onStart, defaultValues = {} }) {
                 <p className="text-gray-500 text-xs leading-relaxed">
                     You're chatting with an AI that Rayhan built. It answers only from his public profile.
                     Your name, company and anything you paste are stored to run the chat and reviewed for quality
-                    (Supabase, Langfuse and Google services), and deleted after 90 days. Error and speed data
-                    (no messages) go to Grafana. Nothing is sold. To have it deleted sooner, email{' '}
+                    (Supabase, Langfuse and Google services), and deleted after 90 days. Visits and page speed are
+                    counted by Vercel, and error and speed data (no messages) go to Grafana; no cookies.
+                    Nothing is sold. To have it deleted sooner, email{' '}
                     <a href="mailto:rayhanbp@umd.edu" className="text-gray-400 underline underline-offset-2">rayhanbp@umd.edu</a>.
                 </p>
                 <div className="flex items-center justify-center gap-2">
