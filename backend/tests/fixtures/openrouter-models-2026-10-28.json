@@ -1,0 +1,12 @@
+{
+ "data": [
+  {
+   "id": "anthropic/claude-haiku-5.5",
+   "expiration_date": null
+  },
+  {
+   "id": "poolside/laguna-s-2.1",
+   "expiration_date": "2026-10-31"
+  }
+ ]
+}
