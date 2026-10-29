@@ -89,6 +89,7 @@ No cookies beyond the frontend's localStorage copy of the visitor's own session 
 - **Model lifecycle:** the weekly check also covers the judges' model on OpenRouter (`expiration_date` in its public list). The A2 probe now fails if the decision model stops answering.
 - **Table sizes:** `chat.database.rows` per table, against the free plan's 500 MB.
 - **Dependencies:** Dependabot alerts, security updates and weekly update PRs.
+- **MCP answers are traced** in Langfuse (tagged `mcp`, plus `synthetic` for probes), so agents' questions get the same judges and the same 90-day deletion as web chats. Before this, only web chats were traced.
 
 ## Roadmap (what this card does not yet claim)
 

@@ -49,6 +49,29 @@ def _version() -> str:
     return PROFILE_VERSION
 
 
+def _start_trace(app_state, name: str, input_text: str):
+    """A Langfuse trace for one MCP tool call, tagged "mcp" (and "synthetic" for probe traffic),
+    so agents' questions get the same quality judges and the same 90-day deletion as web chats"""
+    tracer = getattr(app_state, "tracing_service", None)
+    if not tracer:
+        return None, None
+    from core import telemetry
+    from services.tracer import trace_tags
+    return tracer, tracer.trace(name=name, session_id="mcp", input=input_text,
+                                tags=trace_tags("mcp", synthetic=telemetry.is_synthetic()))
+
+
+async def _respond_traced(app_state, name: str, input_text: str, **kwargs) -> tuple:
+    tracer, trace = _start_trace(app_state, name, input_text)
+    try:
+        result = await app_state.agent_service.respond(trace=trace, **kwargs)
+    except Exception as e:
+        if tracer:
+            tracer.end_trace(trace, error=type(e).__name__)
+        raise
+    return tracer, trace, result
+
+
 def attach_agent_tools(app_state):
     """Register the tools that need the running app's services (called from the app lifespan)"""
 
@@ -60,11 +83,14 @@ def attach_agent_tools(app_state):
         `context` may hold the asker's company or role for a tailored answer.
         """
         from services.verifier import verify_answer
-        result = await app_state.agent_service.respond(
+        tracer, trace, result = await _respond_traced(
+            app_state, "mcp_ask", question[:4000],
             session_id="mcp", query=question[:4000], user_name="an agent", company=(context or "")[:100] or None
         )
         record_tool_tokens(app_state, result)
         verification = await verify_answer(result["response"], app_state.verifier, getattr(app_state, "decision_gate", None))
+        if tracer:
+            tracer.end_trace(trace, output=result["response"], metadata={"tool": "ask", "stamps": verification.get("summary")})
         return {"answer": result["response"], "model": result.get("model"), "verification": verification}
 
     @mcp.tool(annotations=READ_ONLY, title="Fit report for a job")
@@ -82,11 +108,14 @@ def attach_agent_tools(app_state):
         job_info = parsed.to_dict() if (parsed.company_name or parsed.role_title) else None
         question = ("Write a short fit report for this role: which requirements Rayhan's profile meets, with the "
                     "specific evidence, and which it does not cover. Be candid about gaps.")
-        result = await app_state.agent_service.respond(
+        tracer, trace, result = await _respond_traced(
+            app_state, "mcp_fit_report", job_description[:4000],
             session_id="mcp", query=question, user_name="an agent", company=(job_info or {}).get("company_name"), job_info=job_info
         )
         record_tool_tokens(app_state, result)
         verification = await verify_answer(result["response"], app_state.verifier, getattr(app_state, "decision_gate", None))
+        if tracer:
+            tracer.end_trace(trace, output=result["response"], metadata={"tool": "fit_report", "stamps": verification.get("summary")})
         return {"job": job_info, "report": result["response"], "verification": verification}
 
 

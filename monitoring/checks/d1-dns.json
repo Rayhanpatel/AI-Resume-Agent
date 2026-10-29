@@ -1,0 +1,8 @@
+{
+  "_comment": "D1: Grafana Synthetic Monitoring DNS checks, every 60 min, 1 location. Each fails when the record is missing or its answer no longer matches. Created by API from this file.",
+  "checks": [
+    {"job": "D1 MX rayhanpatel.com", "target": "rayhanpatel.com", "recordType": "MX", "expect": "route[123]\\.mx\\.cloudflare\\.net"},
+    {"job": "D1 DMARC rayhanpatel.com", "target": "_dmarc.rayhanpatel.com", "recordType": "TXT", "expect": "v=DMARC1"},
+    {"job": "D1 chat CNAME", "target": "chat.rayhanpatel.com", "recordType": "CNAME", "expect": "vercel-dns"}
+  ]
+}

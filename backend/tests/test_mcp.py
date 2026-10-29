@@ -79,3 +79,44 @@ def test_mcp_calls_count_toward_the_daily_limits():
         app.state.quotas.messages_per_session = 99
         app.state.quotas.record_memory("tokens", "all", 10_000)  # global budget spent
         assert client.post("/mcp/", headers={**HEADERS, "mcp-method": "tools/list"}, json=call).status_code == 429
+
+
+def test_mcp_answers_are_traced_like_web_chats():
+    import asyncio
+    from types import SimpleNamespace
+
+    events = []
+
+    class _Tracer:
+        def trace(self, **kwargs):
+            events.append(("start", kwargs["name"], kwargs["tags"]))
+            return "handle"
+
+        def end_trace(self, trace, **kwargs):
+            events.append(("end", trace, kwargs.get("error")))
+
+    class _Agent:
+        def __init__(self, fail=False, expect="handle"):
+            self.fail, self.expect = fail, expect
+
+        async def respond(self, **kwargs):
+            assert kwargs["trace"] == self.expect
+            if self.fail:
+                raise RuntimeError("model down")
+            return {"response": "ok"}
+
+    state = SimpleNamespace(tracing_service=_Tracer(), agent_service=_Agent())
+    tracer, trace, result = asyncio.run(mcp_server._respond_traced(state, "mcp_ask", "q", session_id="mcp", query="q",
+                                                                    user_name="an agent"))
+    assert events[0] == ("start", "mcp_ask", ["mcp"]) and trace == "handle" and result["response"] == "ok"
+
+    state.agent_service = _Agent(fail=True)
+    try:
+        asyncio.run(mcp_server._respond_traced(state, "mcp_ask", "q", session_id="mcp", query="q", user_name="an agent"))
+    except RuntimeError:
+        pass
+    assert events[-1] == ("end", "handle", "RuntimeError")  # a failed call still closes its trace
+
+    no_tracing = SimpleNamespace(agent_service=_Agent(expect=None))
+    assert asyncio.run(mcp_server._respond_traced(no_tracing, "mcp_ask", "q", session_id="mcp", query="q",
+                                                  user_name="an agent"))[0] is None

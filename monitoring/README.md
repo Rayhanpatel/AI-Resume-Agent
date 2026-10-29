@@ -6,13 +6,16 @@ Probes, alert rules and the model-lifecycle check for chat.rayhanpatel.com and r
 |---|---|
 | `checks/b1-chat-page.browser.js` | **B1**, browser check, every 15 min: the site and resume load; the chat form renders; the Turnstile widget has no configuration error |
 | `checks/a1-health.k6.js` | **A1**, scripted check, every 5 min: `/health/llm` says the model and the database both answer |
-| `checks/a2-real-answer.k6.js` | **A2**, scripted check, every 6 hours (each run costs about a cent under the $10/month spend cap): the agent answers a fixed question correctly and with verification stamps, in under 15 s |
-| `alert-rules.yaml` | the six alert rules: query, condition, severity, runbook |
+| `checks/a2-real-answer.k6.js` | **A2**, scripted check, every 6 hours (each run costs about a cent under the $10/month spend cap): the agent answers a fixed question correctly and with verification stamps, the decision model answers, in under 15 s |
+| `checks/s1-site.k6.js` | **S1**, scripted check, every 15 min: rayhanpatel.com names him and has the chat launcher; the resume is a real PDF; `profile.json` is valid |
+| `checks/d1-dns.json` | **D1**, DNS checks, hourly: MX and DMARC for rayhanpatel.com (mail to the domain), the `chat` CNAME to Vercel |
+| `checks/d2-domain-expiry.k6.js` | **D2**, scripted check, daily: rayhanpatel.com has at least 45 days left at the .com registry |
+| `alert-rules.yaml` | the alert rules: query, condition, severity, runbook |
 | `model_lifecycle.py` | the weekly check that no configured model retires within 60 days (run by `.github/workflows/model-lifecycle.yml`) |
 
 Probe requests carry an `X-Synthetic-Check` header. The backend tags them `app_synthetic="true"` and keeps them out of lead capture. The header changes no check and no limit.
 
-Tested on Oct 25, 2026 with k6 v2.3.0 in Docker: A2 passed against the live agent (5 of 5 sentences checked, 6 s). A1 failed on `database: unreachable`, which was true at the time. B1 reported `error:400020` against a local production build with the old site key: that is the outage it exists to catch. Against the live site, B1 fails until a frontend with the `data-turnstile-state` marker (this branch) is deployed.
+Oct 28, 2026, k6 in Docker against the live site: S1 7/7, D2 3/3 (322 days left), A2 8/8 including the decision model. Earlier, Oct 25, 2026 with k6 v2.3.0 in Docker: A2 passed against the live agent (5 of 5 sentences checked, 6 s). A1 failed on `database: unreachable`, which was true at the time. B1 reported `error:400020` against a local production build with the old site key: that is the outage it exists to catch. Against the live site, B1 fails until a frontend with the `data-turnstile-state` marker (this branch) is deployed.
 
 ## Environment variables
 

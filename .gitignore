@@ -76,6 +76,7 @@ htmlcov/
 !frontend/vercel.json
 !frontend/public/profile.json
 !backend/tests/fixtures/openrouter-models-2026-10-28.json
+!monitoring/checks/d1-dns.json
 !frontend/src/lib/
 
 # Windsurf
