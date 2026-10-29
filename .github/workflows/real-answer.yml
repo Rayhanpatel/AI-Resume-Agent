@@ -1,0 +1,29 @@
+name: Real answer (A2)
+# Every 6 hours: ask the live agent a fixed question through MCP and check that the answer
+# names 3E, carries verification stamps and a decision-model probability, in under 15 s
+# (monitoring/checks/a2-real-answer.k6.js). It runs here and not in Grafana Synthetic
+# Monitoring because a check there runs at least hourly and each answer costs about a cent.
+# The result goes to Grafana as synthetic_check_success{job="A2 real answer"} so a failed or
+# missing run pages (rule "Chat broken"); GitHub also emails on failure.
+# Runbook: docs/runbooks/chat-broken.md
+on:
+  schedule:
+    - cron: "17 */6 * * *"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  a2:
+    runs-on: ubuntu-latest
+    env:
+      GRAFANA_OTLP_HEADERS: ${{ secrets.GRAFANA_OTLP_HEADERS }}
+    steps:
+      - uses: actions/checkout@v7
+      - name: Ask the live agent
+        id: k6
+        run: docker run --rm -v "$PWD/monitoring/checks:/checks:ro" grafana/k6:2.3.0 run --quiet /checks/a2-real-answer.k6.js
+      - name: Report the result to Grafana
+        if: always() && env.GRAFANA_OTLP_HEADERS != ''
+        run: |
+          value=0; [ "${{ steps.k6.outcome }}" = "success" ] && value=1
+          python3 monitoring/push_metric.py synthetic.check.success "$value" job="A2 real answer"

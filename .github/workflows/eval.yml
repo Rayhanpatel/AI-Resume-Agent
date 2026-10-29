@@ -37,6 +37,8 @@ permissions:
 jobs:
   golden:
     runs-on: ubuntu-latest
+    env:
+      GRAFANA_OTLP_HEADERS: ${{ secrets.GRAFANA_OTLP_HEADERS }}  # optional: results go to Grafana when set
     steps:
       - uses: actions/checkout@v7
 
@@ -76,3 +78,15 @@ jobs:
           python evals/golden.py | tee eval.log
           echo "## Golden eval" >> "$GITHUB_STEP_SUMMARY"
           grep -E "^== " eval.log >> "$GITHUB_STEP_SUMMARY"
+      - name: Report the results to Grafana
+        if: always() && steps.creds.outputs.present == 'true' && env.GRAFANA_OTLP_HEADERS != ''
+        run: |
+          log=backend/eval.log
+          passed=$(sed -nE 's#^== ([0-9]+)/([0-9]+) passed.*#\1#p' "$log"); cases=$(sed -nE 's#^== ([0-9]+)/([0-9]+) passed.*#\2#p' "$log")
+          checked=$(sed -nE 's#.*checked [0-9]+ \(([0-9]+)%\).*#\1#p' "$log"); p50=$(sed -nE 's#.*p50 ([0-9]+) ms.*#\1#p' "$log")
+          ev="event=${{ github.event_name }}"
+          python3 monitoring/push_metric.py eval.golden.passed "${passed:-0}" "$ev"
+          [ -n "$cases" ] && python3 monitoring/push_metric.py eval.golden.cases "$cases" "$ev"
+          [ -n "$checked" ] && python3 monitoring/push_metric.py eval.golden.checked_percent "$checked" "$ev"
+          [ -n "$p50" ] && python3 monitoring/push_metric.py eval.golden.verify_p50_ms "$p50" "$ev"
+          true
