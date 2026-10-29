@@ -7,7 +7,7 @@ pydantic-settings>=2.7.0,<3.0.0
 # Langfuse v4 (observations-first) needs Python SDK >= 4.7 by Nov 16, 2026; v5 is the current major
 # and needs Python 3.11+ (Dockerfile: 3.11) and opentelemetry-sdk >= 1.45 (pinned below).
 langfuse==5.0.4
-supabase>=2.27.0,<3.0.0
+supabase>=2.33.0,<3.0.0
 httpx[http2]>=0.28.0
 tenacity>=8.2.0
 google-auth>=2.27.0
