@@ -94,14 +94,17 @@ The frontend proxies `/api` requests to the backend during development (configur
 | Dark/Light Theme | Full theme toggle with OS preference detection | `ThemeToggle.jsx` + 150 lines of CSS overrides in `index.css` |
 | Share Conversation | Copy full chat transcript to clipboard | `shareChat()` in `ChatInterface.jsx` with attribution link |
 | Keyboard Shortcuts | `Cmd+K` focus input, `Escape` reset chat | Event listeners in `ChatInterface.jsx` + `useChatSession.js` |
-| Lead Capture | Recruiter data sent to Google Sheets | Fire-and-forget webhook in `leads.py` |
+| Lead Capture | Recruiter data sent to Google Sheets | Webhook in `leads.py`; the sheet's reply is checked and each outcome counted (`chat.leads`), so a refused lead raises an alert |
+| Data Retention | Visitor chats deleted after 90 days idle | Daily job in `main.py` (`maintain_data`): Supabase rows and Langfuse traces |
 | Accessibility | WCAG-compliant | `aria-live="polite"`, `role="dialog"`, `aria-modal`, `prefers-reduced-motion` |
 | Error Recovery | Graceful crash handling | React `ErrorBoundary` (class component) with dev-only stack traces |
 | SEO | Social sharing optimization | Open Graph + Twitter Card meta tags in `index.html` |
 | Mobile Polish | iOS-specific fixes | `font-size: 16px` (prevents auto-zoom), `overscroll-behavior-y: none` |
 | Graceful Degradation | Every external service fails silently | Each service has an `enabled` flag; if Supabase/Langfuse is down, chat continues in ephemeral mode |
 | Bot Protection | Smart CAPTCHA that challenges bots but passes humans | Cloudflare Turnstile (Managed Mode) in `WelcomeForm.jsx` + server-side validation in `session.py` (Fails open if Cloudflare is down) |
-| Visitor Analytics | Privacy-friendly page view & visitor tracking | Vercel Analytics (`@vercel/analytics/react`) in `main.jsx` |
+| Visitor Analytics | Privacy-friendly page view & visitor tracking | Vercel Analytics (`@vercel/analytics/react`) in `main.jsx`; automated browsers (the monitoring check) are excluded |
+| Observability | Traces, metrics and logs; browser errors | OpenTelemetry → Grafana Cloud (`core/telemetry.py`); Grafana Faro on chat.rayhanpatel.com (`src/lib/telemetry.js`) |
+| Uptime and Alerts | Outside checks and on-call alerts | 9 Grafana Synthetic Monitoring checks plus a real-answer check every 6 hours; alerts to email and phone (Grafana IRM); see `monitoring/README.md` |
 | Performance Monitoring | Real User Metrics (Core Web Vitals) | Vercel Speed Insights (`@vercel/speed-insights/react`) in `main.jsx` |
 | Input Sanitization | HTML stripped from all user input before validation | `_strip_html()` regex runs via `@field_validator(mode="before")` across all Pydantic models |
 

@@ -42,7 +42,13 @@ def main(argv) -> int:
     req = urllib.request.Request(f"{ENDPOINT}/v1/metrics", data=json.dumps(body).encode(), method="POST",
                                  headers={key.strip(): urllib.parse.unquote(raw.strip()), "Content-Type": "application/json"})
     with urllib.request.urlopen(req, timeout=30) as r:
-        print(f"sent {name}={value} {pairs}: HTTP {r.status}")
+        raw = r.read()
+    # The gateway can answer 200 and still drop the point: OTLP reports that as partialSuccess
+    rejected = (json.loads(raw).get("partialSuccess") or {}).get("rejectedDataPoints") if raw.strip() else None
+    if rejected:
+        print(f"Grafana rejected {name}: {raw.decode(errors='replace')[:300]}")
+        return 1
+    print(f"sent {name}={value} {pairs}: HTTP {r.status}")
     return 0
 
 

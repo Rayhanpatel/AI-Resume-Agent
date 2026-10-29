@@ -56,7 +56,8 @@ class QuotaService:
         return bool(self.supabase and self.supabase.enabled)
 
     async def _count(self, scope: str, key: str, *, event_type: Optional[str] = None,
-                     session_id: Optional[str] = None, ip_hash: Optional[str] = None) -> int:
+                     session_id: Optional[str] = None, ip_hash: Optional[str] = None,
+                     caller: Optional[str] = None) -> int:
         """Count today's events matching the filters, or read the memory fallback"""
         if not self.persistent:
             return self._memory[(scope, key, _day_start())]
@@ -68,6 +69,8 @@ class QuotaService:
                 query = query.eq("session_id", session_id)
             if ip_hash:
                 query = query.eq("metadata->>ip_hash", ip_hash)
+            if caller:
+                query = query.eq("metadata->>caller", caller)
             response = await safe_timeout(query.execute(), timeout=4.0, label=f"quota.{scope}")
             if response is None:
                 return self._memory[(scope, key, _day_start())]
@@ -112,12 +115,15 @@ class QuotaService:
 
     async def check_mcp(self, caller: str, ip_hash: str):
         """The chat limits, plus a separate daily MCP budget so MCP traffic can't use up the chat's"""
-        await self.check_message(caller, ip_hash)
+        await self.check_message(caller, ip_hash, mcp_caller=caller)
         if self.mcp_daily_token_budget and await self._tokens_today("mcp_tokens") >= self.mcp_daily_token_budget:
             raise self._reject("mcp_budget", "Today's budget for MCP calls is used up. Try again tomorrow, or use the chat at chat.rayhanpatel.com.")
 
-    async def check_message(self, session_id: str, ip_hash: str):
-        if await self._count("messages_session", session_id, session_id=session_id) >= self.messages_per_session:
+    async def check_message(self, session_id: str, ip_hash: str, *, mcp_caller: Optional[str] = None):
+        # An MCP caller has no chat session row; its events carry the caller in metadata
+        per_caller = (await self._count("messages_session", mcp_caller, event_type="mcp", caller=mcp_caller) if mcp_caller
+                      else await self._count("messages_session", session_id, session_id=session_id))
+        if per_caller >= self.messages_per_session:
             raise self._reject("session", "This chat has reached its message limit. Start a new chat, or email rayhanbp@umd.edu.")
         if await self._count("messages_ip", ip_hash, ip_hash=ip_hash) >= self.messages_per_ip_per_day:
             raise self._reject("ip", "You've reached today's message limit. Please come back tomorrow, or email rayhanbp@umd.edu.")

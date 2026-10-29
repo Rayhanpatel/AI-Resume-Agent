@@ -35,6 +35,8 @@ async def submit_recruiter_lead(
     """
     settings = get_settings()
     if not settings.google_sheet_webhook:
+        telemetry.record_lead("skipped")
+        logger.warning("Lead not sent: GOOGLE_SHEET_WEBHOOK is not set")
         return
 
     try:
@@ -74,7 +76,19 @@ async def submit_recruiter_lead(
 
 
 def _is_error_page(response: httpx.Response) -> bool:
-    if "text/html" not in response.headers.get("content-type", ""):
+    """An answer that is not a saved row: a Google sign-in page (the deployment's access changed),
+    an Apps Script error page, or a JSON reply that says error"""
+    if response.url.host and response.url.host.endswith("accounts.google.com"):
+        return True
+    content_type = response.headers.get("content-type", "")
+    if "json" in content_type:
+        try:
+            body = response.json()
+        except ValueError:
+            return True
+        status = str(body.get("result", body.get("status", ""))).lower() if isinstance(body, dict) else ""
+        return status in ("error", "failed", "failure")
+    if "text/html" not in content_type:
         return False
     head = response.text[:3000].lower()
-    return "<title>error</title>" in head or "script function not found" in head
+    return any(marker in head for marker in ("<title>error</title>", "script function not found", "sign in - google accounts"))

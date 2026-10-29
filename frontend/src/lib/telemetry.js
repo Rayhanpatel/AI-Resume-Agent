@@ -34,6 +34,14 @@ export function isTurnstileConfigError(code) {
     return CONFIG_ERROR.test(String(code))
 }
 
+// Render crashes caught by ErrorBoundary never reach window.onerror in a production React
+// build, so it reports them here.
+export function reportError(error, component) {
+    withFaro((f) => f.api.pushError(error instanceof Error ? error : new Error(String(error)), {
+        context: { component: String(component || 'unknown') },
+    }))
+}
+
 export function reportTurnstileError(code) {
     const attributes = { code: String(code), config_error: String(isTurnstileConfigError(code)) }
     withFaro((f) => {

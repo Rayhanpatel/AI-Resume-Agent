@@ -15,14 +15,18 @@ const automated = typeof navigator !== 'undefined' && (
     /GrafanaSyntheticMonitoring|HeadlessChrome/.test(navigator.userAgent) ||
     (typeof window !== 'undefined' && 'k6' in window))
 
+// Vercel's analytics get the same treatment as Faro: the URL without its query (it can hold
+// the visitor's name, company and first question)
+const withoutQuery = (event) => (event && event.url ? { ...event, url: event.url.split(/[?#]/)[0] } : event)
+
 if (!automated) initTelemetry()  // Grafana Faro, on chat.rayhanpatel.com only (src/lib/telemetry.js)
 
 ReactDOM.createRoot(document.getElementById('root')).render(
     <React.StrictMode>
         <ErrorBoundary>
             <App />
-            {!automated && <Analytics />}
-            {!automated && <SpeedInsights />}
+            {!automated && <Analytics beforeSend={withoutQuery} />}
+            {!automated && <SpeedInsights beforeSend={withoutQuery} />}
         </ErrorBoundary>
     </React.StrictMode>,
 )

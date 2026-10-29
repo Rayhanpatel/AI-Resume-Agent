@@ -65,11 +65,24 @@ async def _respond_traced(app_state, name: str, input_text: str, **kwargs) -> tu
     tracer, trace = _start_trace(app_state, name, input_text)
     try:
         result = await app_state.agent_service.respond(trace=trace, **kwargs)
-    except Exception as e:
+    except BaseException as e:  # BaseException: a client disconnect cancels the call
         if tracer:
             tracer.end_trace(trace, error=type(e).__name__)
         raise
     return tracer, trace, result
+
+
+async def _verify_and_end(app_state, tracer, trace, result: dict, tool: str) -> dict:
+    """Stamp the answer, then end the trace whatever happens (end_trace ignores a second call)"""
+    from services.verifier import verify_answer
+    verification = None
+    try:
+        verification = await verify_answer(result["response"], app_state.verifier, getattr(app_state, "decision_gate", None))
+        return verification
+    finally:
+        if tracer:
+            tracer.end_trace(trace, output=result["response"],
+                             metadata={"tool": tool, "stamps": (verification or {}).get("summary")})
 
 
 def attach_agent_tools(app_state):
@@ -82,15 +95,12 @@ def attach_agent_tools(app_state):
         every sentence is marked checked (quote verified in the profile), inferred, unknown or n/a.
         `context` may hold the asker's company or role for a tailored answer.
         """
-        from services.verifier import verify_answer
         tracer, trace, result = await _respond_traced(
             app_state, "mcp_ask", question[:4000],
             session_id="mcp", query=question[:4000], user_name="an agent", company=(context or "")[:100] or None
         )
         record_tool_tokens(app_state, result)
-        verification = await verify_answer(result["response"], app_state.verifier, getattr(app_state, "decision_gate", None))
-        if tracer:
-            tracer.end_trace(trace, output=result["response"], metadata={"tool": "ask", "stamps": verification.get("summary")})
+        verification = await _verify_and_end(app_state, tracer, trace, result, "ask")
         return {"answer": result["response"], "model": result.get("model"), "verification": verification}
 
     @mcp.tool(annotations=READ_ONLY, title="Fit report for a job")
@@ -101,7 +111,6 @@ def attach_agent_tools(app_state):
         """
         from core.config import get_settings
         from services.job_parser import parse_job_description
-        from services.verifier import verify_answer
         settings = get_settings()
         parsed = await parse_job_description(app_state.http_client, app_state.vertex_auth, settings.google_api_key,
                                              job_description[:15000], model=settings.gemini_fast_model)
@@ -113,9 +122,7 @@ def attach_agent_tools(app_state):
             session_id="mcp", query=question, user_name="an agent", company=(job_info or {}).get("company_name"), job_info=job_info
         )
         record_tool_tokens(app_state, result)
-        verification = await verify_answer(result["response"], app_state.verifier, getattr(app_state, "decision_gate", None))
-        if tracer:
-            tracer.end_trace(trace, output=result["response"], metadata={"tool": "fit_report", "stamps": verification.get("summary")})
+        verification = await _verify_and_end(app_state, tracer, trace, result, "fit_report")
         return {"job": job_info, "report": result["response"], "verification": verification}
 
 

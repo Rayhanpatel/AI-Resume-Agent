@@ -50,8 +50,8 @@ Time to detect: about 4.5 months. Time to resolve after detection: about 35 minu
 
 ## What we would still like to change
 
-- Alert on the *rate* of fallback apologies, not only on the probe (a probe can pass while most real questions fail).
-- Pin and re-run the eval on every model version change, in CI.
+- ~~Alert on the *rate* of fallback apologies, not only on the probe.~~ Done Oct 29, 2026: Grafana rules on the fallback share (6 h) and on apology/error answers (24 h).
+- ~~Pin and re-run the eval on every model version change, in CI.~~ Done Oct 26–29, 2026: the golden eval runs on every push that touches the agent (model IDs live in `backend/core/config.py`) and weekly, and its results go to Grafana.
 - Treat "graceful degradation" as a visible state in the UI ("the model is unavailable right now"), not a normal-looking answer.
 
 ## Lessons
@@ -72,6 +72,10 @@ The repair day had its own incidents. They are listed here because the same less
 | until ~11:05 p.m. | Per-IP limits could be bypassed by sending a different `CF-Connecting-IP` header with each request (14 of 14 forged requests got through in a test). | The code trusted headers the caller controls. Railway's edge overwrites `X-Real-IP`, which is the one to use. | Use `X-Real-IP` only; `/mcp` also has its own daily budget so it can't use up the chat's. |
 | Oct 20 – 25 | The five Langfuse judges were paused. | Their model, Gemini 2.5 Flash, was retired on Oct 20, the same kind of retirement as the original outage. | Moved to `anthropic/claude-haiku-5.5` through OpenRouter. |
 
+| Oct 25 – 29 | The eval gate could not fail: a 15/16 run would still pass, so Railway's "Wait for CI" never blocked a bad deploy. | The step piped the eval into `tee` without `pipefail` (GitHub's default shell for a step without `shell:`), so the step's exit code was `tee`'s. It went red only when the eval crashed before printing its summary. Found in a code review; every past run had in fact passed 16/16. | `shell: bash` on the step (`-eo pipefail`). |
+| Oct 25 – 29 | MCP calls were never stored, so the MCP daily token budget read 0 and MCP's per-caller limits reset on every deploy. | The MCP limits logged `session_id="mcp:<hash>"` into `events.session_id`, a foreign key to `sessions`; every insert failed quietly. The Oct 25 test used the in-memory quotas, not the database. | MCP events now have no session and carry the caller in metadata; the per-caller count filters on it. Verified in the live table after deploy. |
+| Oct 28 – 29 | Faro (and Vercel's analytics) received the page URL, which can carry the visitor's name, company and first question. | The chat page takes those from its query string for deep links. | Every reported URL is cut at `?`. |
+
 ### More lessons
 
 - Test the success path, not only the refusal. A security control that has only been tested by being refused can be refusing everyone.
@@ -79,4 +83,6 @@ The repair day had its own incidents. They are listed here because the same less
 - A docstring that describes a safeguard needs a test that proves it.
 - Never trust a header the caller can set. Find out which one the platform's edge overwrites.
 - Free tiers have quiet failure modes (pausing, retirements, scheduled-job expiry). Each one needs an owner and a check.
+- A gate needs a test that it can fail. A pipeline that has only ever been green may be unable to go red.
+- Test limits against the real database, not only the in-memory fallback. A foreign key can quietly refuse every row.
 

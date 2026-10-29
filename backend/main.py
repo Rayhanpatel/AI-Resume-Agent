@@ -168,11 +168,14 @@ async def lifespan(app: FastAPI):
         await asyncio.sleep(600)
         last_retention = None
         while True:
-            await app.state.supabase_service.ping()
-            if last_retention is None or time.monotonic() - last_retention >= 24 * 3600:
-                await apply_retention()
-                last_retention = time.monotonic()
-            await app.state.supabase_service.refresh_row_counts()
+            try:
+                await app.state.supabase_service.ping()
+                if last_retention is None or time.monotonic() - last_retention >= 24 * 3600:
+                    await apply_retention()
+                    last_retention = time.monotonic()
+                await app.state.supabase_service.refresh_row_counts()
+            except Exception as e:  # keep the loop alive; the next pass tries again
+                logger.error(f"Database maintenance pass failed: {type(e).__name__}: {e}")
             await asyncio.sleep(6 * 3600)
 
     keepalive = asyncio.create_task(maintain_data())

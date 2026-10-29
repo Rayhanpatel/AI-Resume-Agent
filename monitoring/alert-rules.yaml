@@ -15,9 +15,10 @@ rules:
     runbook: chat-broken.md
     source: Synthetic Monitoring per-check alert ("Failed executions"), on each of B1, A1, A2
     condition:
-      B1 chat page: 2 failed executions in 35 minutes   # runs every 15 min
-      A1 health: 2 failed executions in 12 minutes      # runs every 5 min
-      A2 real answer: 2 failed executions in 13 hours # runs every 6 h (each run is a ~1-cent model answer)
+      B1 chat page: 2 failed executions in 30 minutes   # runs every 15 min
+      A1 health: 3 failed executions in 15 minutes      # runs every 5 min from 2 locations
+      A2 real answer: see "Real answer check failed / missing (A2)" below (GitHub Actions, every 6 h)
+    note_periods: per-check alert periods must be one the API accepts (15m, 30m and 1h are used; 35m and 3h are refused)
     promql_alternative: |
       # failed executions per check over the window; fire at >= 2
       sum by (job) (increase(probe_all_success_count{job="B1 chat page"}[35m]))
@@ -118,10 +119,10 @@ rules:
     source: Synthetic Monitoring checks S1 (site + resume), D1 (DNS records), D2 (domain expiry) and the
       per-check TLS-expiry alert on every HTTP check
     condition:
-      S1: 2 failed executions in 35 minutes (page, like "Chat broken")
-      D1: 2 failed executions in 3 hours
-      D2: fewer than 45 days to the domain's expiry
-      TLS: fewer than 21 days (email), fewer than 7 days (page)
+      S1: 2 failed executions in 30 minutes (page, like "Chat broken")
+      D1: 1 failed execution in 1 hour (hourly checks)
+      D2: fewer than 45 days to the domain's expiry (the check fails), 1 failure in 1 hour
+      TLS: fewer than 14 days (email), on A1, T1 and T2
 
   - name: Real answer check failed / missing (A2)
     severity: page
@@ -137,5 +138,5 @@ rules:
     severity: email
     runbook: degrading-answers.md
     promql: |
-      last_over_time(eval_golden_passed[8d]) < last_over_time(eval_golden_cases[8d])
+      last_over_time(eval_golden_passed{event!="pull_request"}[8d]) < last_over_time(eval_golden_cases{event!="pull_request"}[8d])
 

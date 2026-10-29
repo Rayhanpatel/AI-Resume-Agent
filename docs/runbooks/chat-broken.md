@@ -1,6 +1,6 @@
 # Runbook: Chat broken
 
-**Fires when** a probe fails twice in a row: B1 (chat page), A1 (model and database health) or A2 (a real answer). Severity: page.
+**Fires when** B1 (chat page) fails twice in 30 minutes, A1 (model and database health) fails 3 times in 15 minutes across its two locations, or A2 (a real answer, every 6 hours from GitHub Actions) fails or stops reporting for 13 hours. Severity: page.
 
 ## What it means
 
@@ -11,7 +11,7 @@ Visitors probably can't start a chat or get an answer. The alert names the check
 1. Open chat.rayhanpatel.com in a private window and start a chat. Do you get an answer?
 2. `curl -s https://rayhan-ai-resume-production-6239.up.railway.app/api/v1/health/llm`: look at `status`, `model` and `database`.
 3. Railway → the backend service → **Deployments**: did a deploy just happen, or is the latest one crashed?
-4. In Grafana, the failed check's logs show which assertion failed. A2 also shows the answer it got.
+4. B1 and A1: Grafana → **Testing & synthetics → Synthetics** → the check → its logs show which assertion failed. A2: GitHub → **Actions → Real answer (A2)** → the failed run's log shows the assertion and the answer it got.
 
 ## Fix, by what failed
 

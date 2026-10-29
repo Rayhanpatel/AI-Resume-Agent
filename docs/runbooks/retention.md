@@ -16,7 +16,7 @@ Old visitor data is not being deleted, which breaks the promise in the chat's pr
 ## Fix
 
 - Fix the cause, then redeploy (the job runs 10 minutes after each start).
-- Langfuse deletes at most 10,000 traces per run; a backlog clears over a few days.
+- Langfuse: one run reads up to 10 pages of 1,000 old traces (following the cursor) and deletes them in batches; Langfuse processes deletions in the background, so a large backlog clears over a few runs.
 
 ## Confirm
 

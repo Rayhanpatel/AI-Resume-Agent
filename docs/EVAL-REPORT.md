@@ -55,6 +55,8 @@ Measured Oct 25: the prompt is 9,279 tokens, and from the second call on Vertex'
 
 Request shape for Gemini 3.x; model fallback on error, silence and empty answers; the real-call health probe and its caching; signed session tokens (round trip, tampering, expiry, wrong session); quotas (in-memory and counted from the events table); the origin lock; the job-post schema boundary (bounded fields, one line each); the SSRF resolver check and the redirect refusal; the verifier (sentence splitting, quote and number checks, status mapping, decision-gate demotion, failure handling); the MCP interface (stateless tools/list and tools/call); and the banned-claim checks on the profile and the rendered prompt.
 
+Since Oct 29, 2026 every CI run also sends its pass count, checked-stamp share and verify p50 to Grafana (`eval_golden_*`; rule "Golden eval regression"), once the `GRAFANA_OTLP_HEADERS` secret exists.
+
 ## 6. Not yet measured (honest list)
 
 - Judge agreement with human labels. The five Langfuse judges have not been calibrated; a labeling session (60–100 traces) is planned.

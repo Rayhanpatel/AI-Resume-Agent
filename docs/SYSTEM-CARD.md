@@ -27,7 +27,7 @@ Version 2.8.0, Oct 28, 2026. This card says what the system is, what it can do, 
 | Model calls | Google Vertex AI | generation | Google's data-governance terms; not used for training without consent |
 | Each answer's sentences and the profile excerpts they cite (no visitor message, name or IP) | OpenRouter, to TypeSafe's decision model `jev-1.14` | the second-opinion check on verification stamps | OpenRouter's and TypeSafe's terms; off when `OPENROUTER_API_KEY` is unset |
 | Trace input and output (the visitor's message and the answer) | Langfuse's online judges, which call `anthropic/claude-haiku-5.5` through OpenRouter | quality scores | Langfuse and OpenRouter terms |
-| Operational telemetry: model names, token counts, timings, outcomes, error types; no message text | the OTLP backend (Grafana Cloud), only when `OTEL_EXPORTER_OTLP_ENDPOINT` is set | monitoring and alerts | 14 days (Grafana Cloud Free) |
+| Operational telemetry: model names, token counts, timings, outcomes, error types; no message text | the OTLP backend (Grafana Cloud, live since Oct 29, 2026; off when `OTEL_EXPORTER_OTLP_ENDPOINT` is unset) | monitoring and alerts | 14 days (Grafana Cloud Free) |
 | Page views and page speed (no cookies, no message text) | Vercel Web Analytics and Speed Insights (`@vercel/analytics`, `@vercel/speed-insights` in `main.jsx`) | visit counts | Vercel's terms |
 | Browser errors, page performance, bot-check error codes, a random session ID | Grafana Faro (app `chat`, location kept at continent level), only on chat.rayhanpatel.com | monitoring | 14 days (Grafana Cloud Free) |
 
@@ -91,6 +91,15 @@ No cookies beyond the frontend's localStorage copy of the visitor's own session 
 - **Dependencies:** Dependabot alerts, security updates and weekly update PRs.
 - **MCP answers are traced** in Langfuse (tagged `mcp`, plus `synthetic` for probes), so agents' questions get the same judges and the same 90-day deletion as web chats. Before this, only web chats were traced.
 
+## Added Oct 29, 2026 (monitoring live)
+
+- **Grafana Cloud** (stack in US West) receives the backend's traces, metrics and logs and the chat page's Faro data. It was set up from code (`monitoring/provision_checks.py`) and through Grafana's hosted MCP server.
+- **Checks:** 9 Synthetic Monitoring checks (B1, A1, S1, D1 ×3, D2, T1, T2) plus A2 every 6 hours from GitHub Actions. **Alerts:** 14 rules plus the per-check alerts; everything goes to email, and failures of B1, A1 or S1 and any `severity=page` rule also page the phone through Grafana IRM. **Dashboards:** an overview and the chat agent.
+- **Automated browsers** are excluded from Vercel's visit counts and from Faro.
+- **No visitor text in the analytics:** the chat page reads the visitor's name, company and first question from its URL (rayhanpatel.com links to `?q=`), so every URL Faro and Vercel's analytics report is cut at `?` (`beforeSend` in `faro.js` and `main.jsx`). Before Oct 29 the full URL went with each event.
+- **MCP limits now hold across deploys:** MCP events are stored without a session (the caller goes in metadata). Before Oct 29 every insert failed on the `events.session_id` foreign key, so the MCP daily token budget read 0 and the per-caller limits lived only in memory.
+- **Known limits:** the Faro collector URL is public by design; its CORS rule stops other websites' browsers, not scripts, so junk data is possible (bounded by the free plan's 50k sessions a month). Grafana Cloud Free keeps 14 days of data.
+
 ## Roadmap (what this card does not yet claim)
 
-Judges calibrated against hand labels, and their observation-level successors; the 200-pair decision-model study; longer multi-turn pressure chains; the monitoring above switched on in Grafana Cloud (code is in place); the origin lock (needs the API behind Cloudflare).
+Judges calibrated against hand labels; the 200-pair decision-model study; longer multi-turn pressure chains; a game day that breaks each check on purpose and confirms the alert arrives; the origin lock (needs the API behind Cloudflare).

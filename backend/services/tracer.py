@@ -353,16 +353,18 @@ class TracingService:
         if not self.enabled or not self.client:
             return 0
         cutoff = datetime.now(timezone.utc) - timedelta(days=days)
-        deleted = 0
-        for _ in range(max_pages):
-            page = self.client.api.observations.get_many(
-                is_root_observation=True, to_start_time=cutoff, fields="core", limit=1000)
-            trace_ids = sorted({o.trace_id for o in page.data if getattr(o, "trace_id", None)})
-            if not trace_ids:
+        trace_ids, cursor = set(), None
+        for _ in range(max_pages):  # read first: Langfuse deletes in the background, so a re-read
+            page = self.client.api.observations.get_many(  # of page one could return the same IDs
+                is_root_observation=True, to_start_time=cutoff, fields="core", limit=1000, cursor=cursor)
+            trace_ids.update(o.trace_id for o in page.data if getattr(o, "trace_id", None))
+            cursor = getattr(getattr(page, "meta", None), "cursor", None)
+            if not cursor:
                 break
-            self.client.api.trace.delete_multiple(trace_ids=trace_ids)
-            deleted += len(trace_ids)
-        return deleted
+        ordered = sorted(trace_ids)
+        for start in range(0, len(ordered), 1000):
+            self.client.api.trace.delete_multiple(trace_ids=ordered[start:start + 1000])
+        return len(ordered)
 
     def shutdown(self):
         """Flush and stop the exporter (end of the app lifespan)"""

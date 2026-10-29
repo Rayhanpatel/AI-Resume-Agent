@@ -1,5 +1,6 @@
 import { Component } from 'react'
 import { AlertTriangle, RefreshCw } from 'lucide-react'
+import { reportError } from '../lib/telemetry.js'
 
 /**
  * ErrorBoundary Component
@@ -19,6 +20,7 @@ class ErrorBoundary extends Component {
 
     componentDidCatch(error, errorInfo) {
         console.error('ErrorBoundary caught an error:', error, errorInfo)
+        reportError(error, 'ErrorBoundary')
     }
 
     handleReset = () => {

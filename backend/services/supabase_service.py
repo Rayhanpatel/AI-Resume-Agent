@@ -56,7 +56,8 @@ class SupabaseService:
 
     async def purge_older_than(self, days: int) -> int:
         """Delete sessions idle for more than `days` days (their events go with them: ON DELETE
-        CASCADE) and older events that have no session (MCP calls). Returns the rows deleted.
+        CASCADE) and any other events older than that (MCP calls have no session). Returns the
+        number of rows deleted (counted by the database; the rows are not downloaded).
         Raises when a query fails or times out, so the caller can count a failed run."""
         if not self.enabled:
             return 0
@@ -64,12 +65,12 @@ class SupabaseService:
         deleted = 0
         for table, column in (("sessions", "last_active"), ("events", "created_at")):
             response = await safe_timeout(
-                self.client.table(table).delete().lt(column, cutoff).execute(),
+                self.client.table(table).delete(count="exact", returning="minimal").lt(column, cutoff).execute(),
                 timeout=30.0, label=f"supabase.purge_{table}"
             )
             if response is None:
                 raise RuntimeError(f"deleting old {table} rows failed or timed out")
-            deleted += len(response.data or [])
+            deleted += response.count or 0
         return deleted
 
     async def refresh_row_counts(self) -> Dict[str, int]:
@@ -196,7 +197,7 @@ class SupabaseService:
     
     async def log_event(
         self,
-        session_id: str,
+        session_id: Optional[str],
         event_type: str,
         intent: Optional[str] = None,
         tokens_in: Optional[int] = None,

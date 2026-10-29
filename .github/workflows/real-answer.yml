@@ -19,11 +19,14 @@ jobs:
       GRAFANA_OTLP_HEADERS: ${{ secrets.GRAFANA_OTLP_HEADERS }}
     steps:
       - uses: actions/checkout@v7
+      - name: Get k6
+        id: pull
+        run: docker pull grafana/k6:2.3.0  # a failed pull is GitHub's problem, not the agent's: no result is reported
       - name: Ask the live agent
         id: k6
         run: docker run --rm -v "$PWD/monitoring/checks:/checks:ro" grafana/k6:2.3.0 run --quiet /checks/a2-real-answer.k6.js
       - name: Report the result to Grafana
-        if: always() && env.GRAFANA_OTLP_HEADERS != ''
+        if: always() && steps.pull.outcome == 'success' && env.GRAFANA_OTLP_HEADERS != ''
         run: |
           value=0; [ "${{ steps.k6.outcome }}" = "success" ] && value=1
           python3 monitoring/push_metric.py synthetic.check.success "$value" check="A2 real answer"

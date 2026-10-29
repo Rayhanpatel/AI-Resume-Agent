@@ -258,6 +258,7 @@ def test_lead_outcomes_counted(otel, monkeypatch):
         httpx.Response(500, text="boom"),
         httpx.Response(200, headers={"content-type": "text/html"}, text="<html><title>Error</title>TypeError</html>"),
         httpx.ConnectError("down"),
+        httpx.Response(200, json={"result": "error", "error": "sheet not found"}),
     ])
 
     def handler(request):
@@ -268,13 +269,15 @@ def test_lead_outcomes_counted(otel, monkeypatch):
 
     async def send_all():
         async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
-            for _ in range(4):
+            for _ in range(5):
                 await leads.submit_recruiter_lead(client, name="A", company="B", job_posting="", session_id="s")
+        monkeypatch.setattr(leads, "get_settings", lambda: SimpleNamespace(google_sheet_webhook=""))
+        await leads.submit_recruiter_lead(None, name="A", company="B", job_posting="", session_id="s")
 
     asyncio.run(send_all())
     _, points = otel
     by_outcome = {_attrs(p)["outcome"]: p.value for p in points("chat.leads")}
-    assert by_outcome == {"ok": 1, "error": 3}
+    assert by_outcome == {"ok": 1, "error": 4, "skipped": 1}
 
 
 def test_row_count_gauge(otel):
@@ -312,7 +315,8 @@ def test_supabase_purge_deletes_idle_sessions_and_old_events():
         def __init__(self, table):
             self.table = table
 
-        def delete(self):
+        def delete(self, count=None, returning=None):
+            assert (count, returning) == ("exact", "minimal")  # counted, not downloaded
             return self
 
         def lt(self, column, cutoff):
@@ -320,7 +324,7 @@ def test_supabase_purge_deletes_idle_sessions_and_old_events():
             return self
 
         async def execute(self):
-            return SimpleNamespace(data=[{"id": 1}, {"id": 2}] if self.table == "sessions" else [{"id": 9}])
+            return SimpleNamespace(data=[], count=2 if self.table == "sessions" else 1)
 
     db = SupabaseService()
     db.enabled, db.client = True, SimpleNamespace(table=_Query)
@@ -339,7 +343,7 @@ def test_supabase_purge_raises_when_a_query_fails():
         def __init__(self, table):
             pass
 
-        def delete(self):
+        def delete(self, count=None, returning=None):
             return self
 
         def lt(self, *args):
@@ -358,17 +362,46 @@ def test_langfuse_purge_deletes_old_traces_page_by_page():
     from types import SimpleNamespace
     from services.tracer import TracingService
 
-    pages = [[SimpleNamespace(trace_id="t1"), SimpleNamespace(trace_id="t2"), SimpleNamespace(trace_id="t1")], []]
+    pages = {None: ([SimpleNamespace(trace_id="t1"), SimpleNamespace(trace_id="t2"), SimpleNamespace(trace_id="t1")], "c2"),
+             "c2": ([SimpleNamespace(trace_id="t3")], None)}
     deleted, asked = [], []
 
     def get_many(**kwargs):
         asked.append(kwargs)
-        return SimpleNamespace(data=pages.pop(0))
+        data, cursor = pages[kwargs.get("cursor")]
+        return SimpleNamespace(data=data, meta=SimpleNamespace(cursor=cursor))
 
     api = SimpleNamespace(observations=SimpleNamespace(get_many=get_many),
-                          trace=SimpleNamespace(delete_multiple=lambda trace_ids: deleted.extend(trace_ids)))
+                          trace=SimpleNamespace(delete_multiple=lambda trace_ids: deleted.append(list(trace_ids))))
     tracer = TracingService.__new__(TracingService)
     tracer.enabled, tracer.client = True, SimpleNamespace(api=api)
-    assert tracer.purge_traces_older_than(90) == 2
-    assert deleted == ["t1", "t2"]
+    assert tracer.purge_traces_older_than(90) == 3
+    assert deleted == [["t1", "t2", "t3"]]  # one batch, each trace once
+    assert [a.get("cursor") for a in asked] == [None, "c2"]  # followed the cursor, no re-read of page one
     assert asked[0]["is_root_observation"] is True and asked[0]["limit"] == 1000
+
+
+def test_mcp_events_carry_the_caller_and_quotas_count_by_it():
+    """events.session_id is a foreign key to sessions, so MCP events have no session and the
+    caller goes in metadata; the per-caller count must filter on that (Oct 2026: every MCP insert
+    failed, so the MCP budget read 0)"""
+    import asyncio
+    from types import SimpleNamespace
+    from services.quotas import QuotaService
+
+    filters = []
+
+    class _Query:
+        def select(self, *a, **k): return self
+        def gte(self, *a): return self
+        def eq(self, column, value):
+            filters.append((column, value)); return self
+        async def execute(self): return SimpleNamespace(count=0, data=[])
+
+    supabase = SimpleNamespace(enabled=True, client=SimpleNamespace(table=lambda name: _Query()))
+    q = QuotaService(supabase, messages_per_session=5, messages_per_ip_per_day=50, sessions_per_ip_per_day=5,
+                     daily_token_budget=10_000, salt="s", mcp_daily_token_budget=1_000)
+    asyncio.run(q.check_mcp("mcp:abc", "iphash"))
+    assert ("metadata->>caller", "mcp:abc") in filters and ("event_type", "mcp") in filters
+    assert ("session_id", "mcp:abc") not in filters
+

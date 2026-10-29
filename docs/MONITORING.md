@@ -9,22 +9,25 @@ Each was visible in a log line or a refused request. This is the setup that watc
 
 ## Design
 
-1. **Watch the journey from outside, on a schedule.** The agent gets a few visitors a day, so real-traffic error rates are noise. Three Grafana Synthetic Monitoring probes give a steady signal:
-   - **B1** (browser, 15 min): the page, the form and the bot-check widget. It never solves the challenge.
-   - **A1** (5 min): `/health/llm`, which makes a real model call and a real database query.
-   - **A2** (every 6 hours; each run is a real ~1-cent answer): a real question through the MCP `ask` tool. It checks the answer's content, its stamps and its latency.
+1. **Watch the journey from outside, on a schedule.** The agent gets a few visitors a day, so real-traffic error rates are noise. Scheduled checks give a steady signal (live since Oct 29, 2026; `monitoring/provision_checks.py` creates them):
+   - **B1** (browser, 15 min): the site, the resume, the chat page, the form and the bot-check widget. It never solves the challenge.
+   - **A1** (HTTP, 5 min, two locations): `/health/llm`, which makes a real model call and a real database query.
+   - **S1** (15 min): rayhanpatel.com names him and has the launcher, the resume is a real PDF, `profile.json` is valid.
+   - **D1** (hourly): the MX and DMARC records (mail to the domain) and the `chat` CNAME. **D2** (hourly): the domain has 45+ days left at the .com registry. **T1/T2** and A1 alert 14 days before a certificate expires.
+   - **A2** (every 6 hours; each run is a real ~1-cent answer): a real question through the MCP `ask` tool, checking the answer's content, its stamps, the decision model's answer and the latency. It runs from GitHub Actions (`.github/workflows/real-answer.yml`), because a Synthetic Monitoring check runs at least hourly, and reports `synthetic_check_success{check="A2 real answer"}`.
 2. **Instrument the inside once, with OpenTelemetry** (`backend/core/telemetry.py`). Traces, metrics and logs go over OTLP, and the destination is set by the standard `OTEL_*` variables. With `OTEL_EXPORTER_OTLP_ENDPOINT` unset it does nothing.
    - The providers are private to the module, and Langfuse gets a private provider of its own (`services/tracer.py`), so neither pipeline sees the other's spans.
    - Message text is never exported. Langfuse spans are filtered out of the OTLP export.
    - `gen_ai.*` names follow the GenAI semantic conventions as shipped in `opentelemetry-semantic-conventions` 0.66b1. They are still "Development" status upstream.
 3. **Watch the dependencies that failed:**
-   - a weekly check of Google's model-retirement dates (`monitoring/model_lifecycle.py`);
-   - `chat.database.up`;
+   - a weekly check of Google's model-retirement dates and of the judges' model on OpenRouter (`monitoring/model_lifecycle.py`);
+   - `chat.database.up` and `chat.database.rows` (the free plan holds 500 MB);
+   - lead capture (`chat.leads`) and the 90-day deletion (`chat.retention.*`);
    - the bot-check widget state, in B1 and in Faro;
    - a Google Cloud budget.
-4. **Alert on what a visitor would feel,** at two levels: a page (phone and email) when the chat is broken or money is at risk, and email when something is degrading. Every alert has a runbook in `docs/runbooks/`.
+4. **Alert on what a visitor would feel,** at two levels: a page (phone through Grafana IRM, and email) when the chat or the site is broken, and email when something is degrading. Every alert has a runbook in `docs/runbooks/`. The live rules, routing and dashboards are listed in `monitoring/README.md`.
 
-Probe traffic carries `X-Synthetic-Check`. It is tagged `app.synthetic` and kept out of lead capture. It is a tag, not a bypass.
+Probe traffic carries `X-Synthetic-Check`. It is tagged `app.synthetic` and kept out of lead capture. It is a tag, not a bypass. Automated browsers (the B1 check) are also kept out of the visit counts and Faro sessions (`frontend/src/main.jsx`).
 
 ## What the backend reports
 

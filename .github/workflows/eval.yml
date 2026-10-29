@@ -21,11 +21,13 @@ on:
       - "backend/core/**"
       - "backend/services/**"
       - "backend/evals/**"
+      - "backend/requirements.txt"
   pull_request:
     paths:
       - "backend/core/**"
       - "backend/services/**"
       - "backend/evals/**"
+      - "backend/requirements.txt"
   schedule:
     - cron: "41 14 * * 1"  # Mondays, 10:41 a.m. ET
   workflow_dispatch:
@@ -69,6 +71,7 @@ jobs:
 
       - name: Run the golden eval against the live model
         if: steps.creds.outputs.present == 'true'
+        shell: bash  # -eo pipefail: without it `| tee` hides golden.py's exit code and a failing eval passes
         env:
           GOOGLE_CLOUD_PROJECT: ${{ vars.GCP_PROJECT }}
           GOOGLE_API_KEY: unused
@@ -80,10 +83,12 @@ jobs:
           grep -E "^== " eval.log >> "$GITHUB_STEP_SUMMARY"
       - name: Report the results to Grafana
         if: always() && steps.creds.outputs.present == 'true' && env.GRAFANA_OTLP_HEADERS != ''
+        continue-on-error: true  # reporting must never fail the gate or block a deploy
         run: |
           log=backend/eval.log
-          passed=$(sed -nE 's#^== ([0-9]+)/([0-9]+) passed.*#\1#p' "$log"); cases=$(sed -nE 's#^== ([0-9]+)/([0-9]+) passed.*#\2#p' "$log")
-          checked=$(sed -nE 's#.*checked [0-9]+ \(([0-9]+)%\).*#\1#p' "$log"); p50=$(sed -nE 's#.*p50 ([0-9]+) ms.*#\1#p' "$log")
+          [ -f "$log" ] || { echo "no eval log; reporting 0 passed"; python3 monitoring/push_metric.py eval.golden.passed 0 event="${{ github.event_name }}"; exit 0; }
+          passed=$(sed -nE 's#^== ([0-9]+)/([0-9]+) passed$#\1#p' "$log"); cases=$(sed -nE 's#^== ([0-9]+)/([0-9]+) passed$#\2#p' "$log")
+          checked=$(sed -nE 's#^== stamps over .* checked [0-9]+ \(([0-9]+)%\).*#\1#p' "$log"); p50=$(sed -nE 's#^== stamps over .*p50 ([0-9]+) ms.*#\1#p' "$log")
           ev="event=${{ github.event_name }}"
           python3 monitoring/push_metric.py eval.golden.passed "${passed:-0}" "$ev"
           [ -n "$cases" ] && python3 monitoring/push_metric.py eval.golden.cases "$cases" "$ev"

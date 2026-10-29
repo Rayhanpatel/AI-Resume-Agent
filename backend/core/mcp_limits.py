@@ -48,7 +48,10 @@ class MCPLimits:
         state.quotas.record_memory("messages_ip", ip_hash)
         supabase = getattr(state, "supabase_service", None)
         if supabase and supabase.enabled:
-            asyncio.create_task(supabase.log_event(session_id=caller, event_type="mcp", metadata={"ip_hash": ip_hash}))
+            # events.session_id must name a real chat session (foreign key), so MCP calls carry
+            # their caller in metadata instead (Oct 2026: every MCP insert had been failing)
+            asyncio.create_task(supabase.log_event(session_id=None, event_type="mcp",
+                                                   metadata={"ip_hash": ip_hash, "caller": caller}))
         return await self.app(scope, receive, send)
 
 
@@ -59,4 +62,4 @@ def record_tool_tokens(app_state, result: dict):
     app_state.quotas.record_memory("tokens", "mcp_tokens", tokens_in + tokens_out)
     supabase = getattr(app_state, "supabase_service", None)
     if supabase and supabase.enabled:
-        asyncio.create_task(supabase.log_event(session_id="mcp", event_type="mcp_tokens", tokens_in=tokens_in, tokens_out=tokens_out))
+        asyncio.create_task(supabase.log_event(session_id=None, event_type="mcp_tokens", tokens_in=tokens_in, tokens_out=tokens_out))
