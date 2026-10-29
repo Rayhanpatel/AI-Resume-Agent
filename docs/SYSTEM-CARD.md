@@ -1,6 +1,6 @@
 # System card: Rayhan's agent (chat.rayhanpatel.com)
 
-Version 2.7.0, Oct 25, 2026. This card says what the system is, what it can do, what data it touches, how it is evaluated, and what is known to go wrong. It is updated with every release that changes any of these.
+Version 2.8.0, Oct 28, 2026. This card says what the system is, what it can do, what data it touches, how it is evaluated, and what is known to go wrong. It is updated with every release that changes any of these.
 
 ## Purpose and scope
 
@@ -20,9 +20,9 @@ Version 2.7.0, Oct 25, 2026. This card says what the system is, what it can do, 
 
 | Data | Where it goes | Why | Retention |
 |---|---|---|---|
-| Visitor name and company (typed by the visitor) | Supabase `sessions`; Google Sheet (lead capture, with the job URL and extracted fields) | to run the chat and let Rayhan follow up | Supabase rows are kept; deletion on request to rayhanbp@umd.edu |
+| Visitor name and company (typed by the visitor) | Supabase `sessions`; Google Sheet (lead capture, with the job URL and extracted fields) | to run the chat and let Rayhan follow up | Supabase rows deleted after 90 days idle (daily job, `data_retention_days`); the lead sheet is kept as his contact record; deletion sooner on request to rayhanbp@umd.edu |
 | Job post text or URL | fetched once, read by a tool-less extraction call, reduced to a schema (title, level, skills, location, summary); the raw text is not stored | tailoring | raw text discarded after extraction |
-| Messages | Supabase `sessions.preferences.history` (last 10 messages); Langfuse traces (inputs and outputs, grouped by session; the Langfuse user ID is the salted IP hash) | multi-turn context; quality review | as above |
+| Messages | Supabase `sessions.preferences.history` (last 10 messages); Langfuse traces (inputs and outputs, grouped by session; the Langfuse user ID is the salted IP hash) | multi-turn context; quality review | 90 days: the same daily job deletes Supabase rows and Langfuse traces (Langfuse's free plan never deletes on its own) |
 | IP address | salted hash in event metadata | per-IP quotas | with the events |
 | Model calls | Google Vertex AI | generation | Google's data-governance terms; not used for training without consent |
 | Each answer's sentences and the profile excerpts they cite (no visitor message, name or IP) | OpenRouter, to TypeSafe's decision model `jev-1.14` | the second-opinion check on verification stamps | OpenRouter's and TypeSafe's terms; off when `OPENROUTER_API_KEY` is unset |
@@ -80,6 +80,14 @@ No cookies beyond the frontend's localStorage copy of the visitor's own session 
 - **Synthetic traffic** carries `X-Synthetic-Check`; it is tagged in telemetry and kept out of lead capture. It changes no check or limit.
 - **Quota fallback fixed:** messages and sessions are now counted in memory whether or not Supabase is configured, so the fallback has data when the database is configured but unreachable (the state found on Oct 25, 2026).
 - **Why these tools:** Grafana Cloud Free covers probes, metrics, logs, traces, frontend errors and phone alerts in one place within its free limits. Langfuse stays for model-quality traces. Checkly's free tier has too few browser runs for a 15-minute check. Sentry would duplicate Faro. Datadog can be added later by changing the OTLP variables.
+
+## Added Oct 28, 2026 (version 2.8)
+
+- **Retention:** visitor chats idle for 90 days are deleted daily from Supabase and Langfuse (`data_retention_days`); the privacy note says so. The run is counted (`chat.retention.*`) and alerted on.
+- **Leads:** the Google Sheet's reply is now checked; a refused lead is counted (`chat.leads{outcome="error"}`), logged without the visitor's name, and alerted on. Before this, an Apps Script error page was logged as a success.
+- **Model lifecycle:** the weekly check also covers the judges' model on OpenRouter (`expiration_date` in its public list). The A2 probe now fails if the decision model stops answering.
+- **Table sizes:** `chat.database.rows` per table, against the free plan's 500 MB.
+- **Dependencies:** Dependabot alerts, security updates and weekly update PRs.
 
 ## Roadmap (what this card does not yet claim)
 

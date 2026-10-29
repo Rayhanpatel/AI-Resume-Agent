@@ -17,6 +17,7 @@ class SupabaseService:
     client: AsyncClient | None = None
     enabled: bool = False
     last_ping: str | None = None
+    row_counts: Dict[str, int] | None = None  # read by the chat.database.rows metric
     
     @classmethod
     async def create(cls, url: str, key: str) -> "SupabaseService":
@@ -52,6 +53,39 @@ class SupabaseService:
             response = None
         self.last_ping = "ok" if response is not None else "unreachable"  # read by the chat.database.up metric
         return self.last_ping
+
+    async def purge_older_than(self, days: int) -> int:
+        """Delete sessions idle for more than `days` days (their events go with them: ON DELETE
+        CASCADE) and older events that have no session (MCP calls). Returns the rows deleted.
+        Raises when a query fails or times out, so the caller can count a failed run."""
+        if not self.enabled:
+            return 0
+        cutoff = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
+        deleted = 0
+        for table, column in (("sessions", "last_active"), ("events", "created_at")):
+            response = await safe_timeout(
+                self.client.table(table).delete().lt(column, cutoff).execute(),
+                timeout=30.0, label=f"supabase.purge_{table}"
+            )
+            if response is None:
+                raise RuntimeError(f"deleting old {table} rows failed or timed out")
+            deleted += len(response.data or [])
+        return deleted
+
+    async def refresh_row_counts(self) -> Dict[str, int]:
+        """Exact row counts for the two tables, kept for the chat.database.rows metric"""
+        if not self.enabled:
+            return {}
+        counts = {}
+        for table in ("sessions", "events"):
+            response = await safe_timeout(
+                self.client.table(table).select("id", count="exact").limit(1).execute(),
+                timeout=10.0, label=f"supabase.count_{table}"
+            )
+            if response is not None and response.count is not None:
+                counts[table] = response.count
+        self.row_counts = counts
+        return counts
 
     async def close(self):
         """No-op for sync client cleanup"""

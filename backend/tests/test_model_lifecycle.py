@@ -14,6 +14,7 @@ spec = importlib.util.spec_from_file_location("model_lifecycle", ROOT / "monitor
 lifecycle = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(lifecycle)
 
+OPENROUTER_FIXTURE = Path(__file__).parent / "fixtures" / "openrouter-models-2026-10-28.json"
 TODAY = datetime.date(2026, 10, 25)
 
 
@@ -49,5 +50,15 @@ def test_reads_the_configured_models_and_exits_cleanly_today():
     models = lifecycle.configured_models(str(ROOT / "backend" / "core" / "config.py"))
     assert set(models) == {"gemini_model", "gemini_fallback_model", "gemini_fast_model"}
     code = lifecycle.main(["--config", str(ROOT / "backend" / "core" / "config.py"),
-                           "--html", str(FIXTURE), "--today", TODAY.isoformat()])
+                           "--html", str(FIXTURE), "--openrouter-json", str(OPENROUTER_FIXTURE),
+                           "--today", TODAY.isoformat()])
     assert code == 0  # gemini-3.5-flash and -lite are both listed as "... 2027 or later"
+
+
+def test_openrouter_models():
+    listed = lifecycle.openrouter_listing(OPENROUTER_FIXTURE.read_text())
+    today = datetime.date(2026, 10, 28)
+    assert lifecycle.assess_openrouter("anthropic/claude-haiku-5.5", listed, today)[0] == "ok"
+    assert lifecycle.assess_openrouter("poolside/laguna-s-2.1", listed, today)[0] == "fail"  # 3 days left
+    assert lifecycle.assess_openrouter("gone/model", listed, today)[0] == "fail"
+    assert lifecycle.assess_openrouter("poolside/laguna-s-2.1", listed, datetime.date(2026, 1, 1), days=60)[0] == "ok"

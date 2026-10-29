@@ -16,6 +16,13 @@ Retirement cells on that page read like:
   "No retirement date announced", "" nothing to act on
 A configured model missing from the page is a warning (renamed page, or a preview model).
 
+Models used through OpenRouter are checked against its public model list
+(https://openrouter.ai/api/v1/models), which carries an `expiration_date` per model:
+the judges' model (set in Langfuse, so listed here in JUDGE_MODELS) fails the check when
+it is gone or expires within the window. The decision model (`decision_model`) is served
+by OpenRouter's Decisions API and is not in that list; the A2 synthetic check confirms
+it answers.
+
 No credentials and no dependencies beyond the standard library. Exit code 1 = act now.
 
     python monitoring/model_lifecycle.py --config backend/core/config.py
@@ -31,6 +38,8 @@ from html.parser import HTMLParser
 
 PAGE_URL = "https://docs.cloud.google.com/gemini-enterprise-agent-platform/models/model-versions"
 MODEL_SETTINGS = ("gemini_model", "gemini_fallback_model", "gemini_fast_model")
+OPENROUTER_URL = "https://openrouter.ai/api/v1/models"
+JUDGE_MODELS = ("anthropic/claude-haiku-5.5",)  # the five Langfuse judges (configured in Langfuse)
 DATE = re.compile(r"([A-Z][a-z]+ \d{1,2}, \d{4})")
 EARLIEST = re.compile(r"(or later|no sooner than|not before)", re.I)
 
@@ -109,6 +118,27 @@ def assess(model: str, cell, today: datetime.date, days: int = 60):
     return "ok", f"{model}: {cell}"
 
 
+def assess_openrouter(model: str, listed: dict, today: datetime.date, days: int = 60):
+    """("ok" | "warn" | "fail", message) for a model used through OpenRouter's chat API"""
+    if model not in listed:
+        return "fail", (f"{model} is no longer in OpenRouter's model list; the Langfuse judges that use "
+                        f"it will stop. Pick a replacement in Langfuse (LLM connection) and re-test a judge.")
+    expires = listed[model]
+    if not expires:
+        return "ok", f"{model}: listed on OpenRouter, no expiration date"
+    left = (datetime.date.fromisoformat(expires[:10]) - today).days
+    if left <= days:
+        state = "has expired" if left < 0 else f"expires in {left} days"
+        return "fail", f"{model} {state} on OpenRouter ({expires[:10]}); switch the judges' model in Langfuse."
+    return "ok", f"{model}: listed on OpenRouter, expires {expires[:10]}"
+
+
+def openrouter_listing(raw: str) -> dict:
+    """{model ID: expiration_date or None} from OpenRouter's /api/v1/models response"""
+    import json
+    return {m["id"]: m.get("expiration_date") for m in json.loads(raw).get("data", [])}
+
+
 def fetch(url: str) -> str:
     request = urllib.request.Request(url, headers={"User-Agent": "rayhan-agent-model-lifecycle/1.0"})
     with urllib.request.urlopen(request, timeout=30) as response:  # follows the docs' redirects
@@ -121,6 +151,8 @@ def main(argv=None) -> int:
     parser.add_argument("--url", default=PAGE_URL)
     parser.add_argument("--html", help="read a saved copy of the page instead of fetching it")
     parser.add_argument("--days", type=int, default=60)
+    parser.add_argument("--openrouter-url", default=OPENROUTER_URL)
+    parser.add_argument("--openrouter-json", help="read a saved copy of OpenRouter's model list instead")
     parser.add_argument("--today", help="YYYY-MM-DD, for testing")
     args = parser.parse_args(argv)
 
@@ -151,6 +183,24 @@ def main(argv=None) -> int:
             worst = "warn" if worst == "ok" else worst
         else:
             print(message)
+
+    try:
+        raw = (open(args.openrouter_json, encoding="utf-8").read() if args.openrouter_json
+               else fetch(args.openrouter_url))
+        listed = openrouter_listing(raw)
+    except Exception as e:
+        listed = None
+        print(f"::warning::could not read OpenRouter's model list ({type(e).__name__}: {e})")
+        worst = "warn" if worst == "ok" else worst
+    if listed is not None:
+        for model in JUDGE_MODELS:
+            level, message = assess_openrouter(model, listed, today, args.days)
+            lines.append(f"| judges (Langfuse) | `{model}` | {level} | {message} |")
+            if level == "fail":
+                print(f"::error::{message}")
+                worst = "fail"
+            else:
+                print(message)
 
     summary = os.getenv("GITHUB_STEP_SUMMARY")
     if summary:

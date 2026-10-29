@@ -30,8 +30,8 @@ rules:
     source: Google Cloud Billing budget on project gen-lang-client-0814894727 (the source of truth for money)
     condition: actual spend passes 90% of the monthly budget (thresholds 50%, 90%, 100%)
     early_warning_promql: |
-      # tokens in the last 24 h against the backend's own daily budget (3M); fire above 90%
-      sum(increase(gen_ai_client_token_usage_sum[24h])) > 2700000
+      # tokens in the last 24 h against the backend's own daily budget (500k since Oct 25); fire above 90%
+      sum(increase(gen_ai_client_token_usage_sum[24h])) > 450000
 
   - name: Database down
     severity: email
@@ -55,7 +55,8 @@ rules:
     severity: email
     runbook: model-retiring.md
     source: GitHub Actions workflow .github/workflows/model-lifecycle.yml (weekly); GitHub emails on failure
-    condition: a configured model has a scheduled retirement date within 60 days
+    condition: a configured Gemini model has a scheduled retirement date within 60 days, or the judges'
+      model is gone from OpenRouter or expires within 60 days
 
   - name: Slow
     severity: email
@@ -66,3 +67,59 @@ rules:
         sum by (le) (rate(chat_time_to_first_word_seconds_bucket{app_synthetic="false"}[24h]))) > 6
     pending_period: 1h
     note: with a few visitors a day this is coarse; A2's 15 s limit is the steady signal.
+
+  # ── Added Oct 28, 2026 ───────────────────────────────────────────────
+
+  - name: Lead not saved
+    severity: email
+    runbook: lead-not-saved.md
+    promql: |
+      # any recruiter lead the Google Sheet did not accept in the last hour
+      sum(increase(chat_leads_total{outcome="error"}[1h])) > 0
+    note: real visitors only (probe sessions never send a lead). The visitor's details are still in Supabase.
+
+  - name: Decision model failing
+    severity: email
+    runbook: decision-model.md
+    promql: |
+      # Jev calls (app.purpose="decision") that ended in an error, over 6 h
+      sum(increase(gen_ai_client_operation_duration_seconds_count{app_purpose="decision", error_type!=""}[6h])) > 2
+    note: A2 also fails when no sentence carries a gate probability, which covers a silent "off".
+
+  - name: Answer quality dropping
+    severity: email
+    runbook: answer-quality.md
+    promql: |
+      # more than 20% of stamped sentences unknown or carrying an unverified number over 24 h (real visitors)
+      sum(increase(chat_verification_stamps_total{stamp=~"unknown|numbers_unverified|unverified", app_synthetic="false"}[24h]))
+        / clamp_min(sum(increase(chat_verification_stamps_total{app_synthetic="false"}[24h])), 20) > 0.2
+    note: the clamp keeps a single odd answer on a quiet day from firing it.
+
+  - name: Retention job failing
+    severity: email
+    runbook: retention.md
+    promql: |
+      # the daily 90-day deletion failed, or has not run for 2 days
+      sum(increase(chat_retention_runs_total{outcome="error"}[1d])) > 0
+      # second rule:
+      absent_over_time(chat_retention_runs_total{outcome="ok"}[2d])
+
+  - name: Database growing
+    severity: email
+    runbook: database-growth.md
+    promql: |
+      # the free plan holds 500 MB; a chat row with history is a few kB
+      max(chat_database_rows{db_collection_name="sessions"}) > 20000
+        or max(chat_database_rows{db_collection_name="events"}) > 300000
+
+  - name: Site, DNS, domain and certificate
+    severity: email (certificate under 7 days: page)
+    runbook: site-and-domain.md
+    source: Synthetic Monitoring checks S1 (site + resume), D1 (DNS records), D2 (domain expiry) and the
+      per-check TLS-expiry alert on every HTTP check
+    condition:
+      S1: 2 failed executions in 35 minutes (page, like "Chat broken")
+      D1: 2 failed executions in 3 hours
+      D2: fewer than 45 days to the domain's expiry
+      TLS: fewer than 21 days (email), fewer than 7 days (page)
+

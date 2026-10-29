@@ -49,5 +49,11 @@ export default function () {
     must(!answer.includes('trouble responding'), 'not the apology (every model attempt failed)')
     must(/\b3E\b/.test(answer), `answer names 3E: "${answer.slice(0, 160)}"`)
     must(summary.checked >= 1, `at least one sentence checked (stamps: ${JSON.stringify(summary)})`)
+    // The second-opinion decision model (Jev, through OpenRouter's Decisions API) is not in
+    // OpenRouter's public model list, so this run is what proves it still answers.
+    const verification = result.verification || {}
+    must(verification.gate_model, 'the decision-model check is switched on (gate_model set)')
+    must((verification.claims || []).some((c) => typeof c.gate_probability === 'number'),
+        `the decision model answered (${verification.gate_model})`)
     must(res.timings.duration < 15000, `answered within 15 s (${Math.round(res.timings.duration)} ms)`)
 }

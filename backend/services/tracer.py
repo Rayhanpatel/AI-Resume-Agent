@@ -18,6 +18,7 @@ from opentelemetry.sdk.trace import TracerProvider
 from core import telemetry
 from typing import Optional, Any, Dict, List
 import logging
+from datetime import datetime, timedelta, timezone
 
 logger = logging.getLogger(__name__)
 
@@ -343,6 +344,25 @@ class TracingService:
         """Flush on a worker thread, so a slow Langfuse never stalls the event loop"""
         if self.enabled and self.client:
             await asyncio.to_thread(self.flush)
+
+    def purge_traces_older_than(self, days: int, max_pages: int = 10) -> int:
+        """Delete Langfuse traces that started more than `days` days ago. Langfuse's free plan
+        keeps event data forever (its retention setting is a paid feature), so the backend's
+        daily retention job does it. Blocking: call it in a thread. Returns traces deleted;
+        raises on an API error. At most max_pages x 1,000 traces per run; the rest go next run."""
+        if not self.enabled or not self.client:
+            return 0
+        cutoff = datetime.now(timezone.utc) - timedelta(days=days)
+        deleted = 0
+        for _ in range(max_pages):
+            page = self.client.api.observations.get_many(
+                is_root_observation=True, to_start_time=cutoff, fields="core", limit=1000)
+            trace_ids = sorted({o.trace_id for o in page.data if getattr(o, "trace_id", None)})
+            if not trace_ids:
+                break
+            self.client.api.trace.delete_multiple(trace_ids=trace_ids)
+            deleted += len(trace_ids)
+        return deleted
 
     def shutdown(self):
         """Flush and stop the exporter (end of the app lifespan)"""

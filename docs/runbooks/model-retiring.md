@@ -20,3 +20,7 @@ Google blocks new access to a model a month before its retirement date, and a re
 ## Confirm
 
 The workflow passes on the merged change, and A2 passes with the new model named in its result.
+
+## The judges' model (added Oct 28, 2026)
+
+The same weekly check reads OpenRouter's public model list and fails when the Langfuse judges' model (`JUDGE_MODELS` in `monitoring/model_lifecycle.py`, now `anthropic/claude-haiku-5.5`) is gone or has an `expiration_date` within 60 days. Fix: in Langfuse, change the model on the `openrouter` LLM connection's judges, run one judge on a recent trace, then update `JUDGE_MODELS`. The decision model is not in that list (it is served by OpenRouter's Decisions API); the A2 probe proves it answers.

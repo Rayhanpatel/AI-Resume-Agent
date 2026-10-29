@@ -144,15 +144,38 @@ async def lifespan(app: FastAPI):
     
     logger.info("All services initialized and attached to state")
 
-    async def keep_database_awake():
+    async def apply_retention():
+        """Delete visitor chats idle for longer than the retention window, in both stores"""
+        days = settings.data_retention_days
+        stores = (("supabase", lambda: app.state.supabase_service.purge_older_than(days)),
+                  ("langfuse", lambda: asyncio.to_thread(app.state.tracing_service.purge_traces_older_than, days)))
+        for store, purge in stores:
+            if store == "langfuse" and not getattr(app.state, "tracing_service", None):
+                continue
+            try:
+                deleted = await purge()
+                telemetry.record_retention(store, "ok", deleted)
+                logger.info(f"Retention ({days} days): deleted {deleted} from {store}")
+            except Exception as e:
+                telemetry.record_retention(store, "error")
+                logger.error(f"Retention ({days} days) failed for {store}: {type(e).__name__}: {e}")
+
+    async def maintain_data():
         # Supabase pauses a free project after 7 quiet days (ours was paused for months). The
         # GitHub uptime job queries it daily, but GitHub pauses scheduled jobs in a public repo
-        # after 60 days without commits, so the app keeps it awake itself.
+        # after 60 days without commits, so the app keeps it awake itself. The same loop applies
+        # the retention window once a day (and 10 minutes after each start) and counts rows.
+        await asyncio.sleep(600)
+        last_retention = None
         while True:
-            await asyncio.sleep(6 * 3600)
             await app.state.supabase_service.ping()
+            if last_retention is None or time.monotonic() - last_retention >= 24 * 3600:
+                await apply_retention()
+                last_retention = time.monotonic()
+            await app.state.supabase_service.refresh_row_counts()
+            await asyncio.sleep(6 * 3600)
 
-    keepalive = asyncio.create_task(keep_database_awake())
+    keepalive = asyncio.create_task(maintain_data())
     async with mcp_server.mcp.session_manager.run():
         yield
     keepalive.cancel()

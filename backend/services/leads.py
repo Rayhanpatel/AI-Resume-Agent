@@ -7,6 +7,7 @@ import httpx
 import logging
 from typing import Optional, Dict, Any
 from core.config import get_settings
+from core import telemetry
 
 logger = logging.getLogger(__name__)
 
@@ -54,12 +55,26 @@ async def submit_recruiter_lead(
             payload["seniority"] = job_info.get("seniority", "")
             payload["team"] = job_info.get("team", "")
         
-        await http_client.post(
+        response = await http_client.post(
             settings.google_sheet_webhook, 
             json=payload, 
             timeout=10.0,
             follow_redirects=True
         )
-        logger.info(f"Lead submitted for {name} at {company}")
+        # Apps Script can answer a script error with an HTML error page, so a 2xx alone is not proof
+        if response.status_code >= 400 or _is_error_page(response):
+            telemetry.record_lead("error")
+            logger.error(f"Lead NOT saved: the sheet answered HTTP {response.status_code}")
+            return
+        telemetry.record_lead("ok")
+        logger.info("Lead submitted")
     except Exception as e:
-        logger.warning(f"Failed to submit lead: {e}")
+        telemetry.record_lead("error")
+        logger.error(f"Lead NOT saved: {type(e).__name__}: {e}")
+
+
+def _is_error_page(response: httpx.Response) -> bool:
+    if "text/html" not in response.headers.get("content-type", ""):
+        return False
+    head = response.text[:3000].lower()
+    return "<title>error</title>" in head or "script function not found" in head

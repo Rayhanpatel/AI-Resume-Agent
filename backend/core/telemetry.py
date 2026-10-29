@@ -75,6 +75,13 @@ class _Instruments:
         self.first_chunk = meter.create_histogram(
             "gen_ai.client.operation.time_to_first_chunk", unit="s", explicit_bucket_boundaries_advisory=SECONDS,
             description="Model request to first streamed chunk")
+        self.leads = meter.create_counter(
+            "chat.leads", unit="{lead}", description="Recruiter leads sent to the Google Sheet, by outcome")
+        self.retention_deleted = meter.create_counter(
+            "chat.retention.deleted", unit="{item}",
+            description="Rows and traces older than the retention window that were deleted, by store")
+        self.retention_runs = meter.create_counter(
+            "chat.retention.runs", unit="{run}", description="Retention job runs, by store and outcome")
 
 
 _noop_meter = metrics.NoOpMeterProvider().get_meter(TRACER_NAME)
@@ -197,6 +204,13 @@ def watch_database(supabase_service):
     # No unit: Prometheus naming would turn "1" into a _ratio suffix
     _meter.create_observable_gauge("chat.database.up", callbacks=[observe],
                                    description="Whether the database answered its last check (1 or 0)")
+
+    def observe_rows(options):
+        counts = getattr(supabase_service, "row_counts", None) or {}
+        return [metrics.Observation(n, {"db.collection.name": table}) for table, n in counts.items()]
+
+    _meter.create_observable_gauge("chat.database.rows", unit="{row}", callbacks=[observe_rows],
+                                   description="Rows per table at the last maintenance run (the free plan holds 500 MB)")
 
 
 def shutdown():
@@ -421,3 +435,15 @@ def record_stamps(summary: Optional[dict]):
 
 def record_quota_rejection(scope: str):
     _m.quota_rejections.add(1, _labels(scope=scope))
+
+
+def record_lead(outcome: str):
+    """chat.leads: ok (the sheet accepted it) or error (an HTTP error, an error page, or no answer)"""
+    _m.leads.add(1, {"outcome": outcome})
+
+
+def record_retention(store: str, outcome: str, deleted: int = 0):
+    """chat.retention.runs and chat.retention.deleted, per store (supabase, langfuse)"""
+    _m.retention_runs.add(1, {"store": store, "outcome": outcome})
+    if deleted:
+        _m.retention_deleted.add(deleted, {"store": store})

@@ -74,6 +74,8 @@ class Settings(BaseSettings):
     quota_daily_token_budget: int = 500_000
     # MCP's share: about 10 answers a day. MCP has no bot check, so it gets its own, smaller budget.
     quota_mcp_daily_token_budget: int = 100_000
+    # Visitor chats (Supabase rows and Langfuse traces) are deleted after this many idle days
+    data_retention_days: int = 90
 
     # Verification stamps on every answer (a fast-model JSON pass plus code checks)
     verify_answers: bool = True

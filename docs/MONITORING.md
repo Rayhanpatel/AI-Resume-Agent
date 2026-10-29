@@ -37,9 +37,12 @@ Probe traffic carries `X-Synthetic-Check`. It is tagged `app.synthetic` and kept
 | `chat.verification.stamps` | `stamp` (checked, inferred, unknown, unverified, numbers_unverified) | quality dashboard |
 | `chat.quota.rejections` | `scope` | Spend |
 | `chat.database.up` | | Database down |
+| `chat.database.rows` | `db.collection.name` (sessions, events) | Database growing |
+| `chat.leads` | `outcome` (ok, error) | Lead not saved |
+| `chat.retention.runs`, `chat.retention.deleted` | `store` (supabase, langfuse), `outcome` | Retention job failing |
 | `gen_ai.client.token.usage`, `gen_ai.client.operation.duration`, `gen_ai.client.operation.time_to_first_chunk` | model, `app.purpose` (answer, intent, verify, job_parse, prompts, decision), `error.type` | Spend, Slow, Degrading answers |
 
-Every metric also carries `app.synthetic` and `app.channel`. Traces have a `gen_ai` client span around each model call, with the model, the token counts and the attempt number (attempt 2+ is the fallback). Log records carry the trace ID of their request. Frontend errors and bot-check failures go to Grafana Faro when `VITE_FARO_URL` is set.
+Every request-path metric also carries `app.synthetic` and `app.channel` (the lead, retention and row-count metrics come from background work and don't). Traces have a `gen_ai` client span around each model call, with the model, the token counts and the attempt number (attempt 2+ is the fallback). Log records carry the trace ID of their request. Frontend errors and bot-check failures go to Grafana Faro when `VITE_FARO_URL` is set.
 
 ## Langfuse (v4 data model, Python SDK 5)
 

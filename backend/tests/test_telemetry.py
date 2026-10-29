@@ -242,3 +242,133 @@ def test_synthetic_session_skips_lead_capture(monkeypatch):
     assert leads == []
     assert client.post("/api/v1/session", json=body).status_code == 200
     assert len(leads) == 1
+
+
+# ── Leads, retention and table sizes ─────────────────────────────────
+
+def test_lead_outcomes_counted(otel, monkeypatch):
+    import asyncio
+    import httpx
+    from types import SimpleNamespace
+    from services import leads
+
+    monkeypatch.setattr(leads, "get_settings", lambda: SimpleNamespace(google_sheet_webhook="https://script.google.com/x"))
+    replies = iter([
+        httpx.Response(200, json={"result": "success"}),
+        httpx.Response(500, text="boom"),
+        httpx.Response(200, headers={"content-type": "text/html"}, text="<html><title>Error</title>TypeError</html>"),
+        httpx.ConnectError("down"),
+    ])
+
+    def handler(request):
+        reply = next(replies)
+        if isinstance(reply, Exception):
+            raise reply
+        return reply
+
+    async def send_all():
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            for _ in range(4):
+                await leads.submit_recruiter_lead(client, name="A", company="B", job_posting="", session_id="s")
+
+    asyncio.run(send_all())
+    _, points = otel
+    by_outcome = {_attrs(p)["outcome"]: p.value for p in points("chat.leads")}
+    assert by_outcome == {"ok": 1, "error": 3}
+
+
+def test_row_count_gauge(otel):
+    _, points = otel
+
+    class _Db:
+        last_ping = "ok"
+        row_counts = None
+
+    db = _Db()
+    telemetry.watch_database(db)
+    assert points("chat.database.rows") == []
+    db.row_counts = {"sessions": 3, "events": 10}
+    assert {_attrs(p)["db.collection.name"]: p.value for p in points("chat.database.rows")} == {"sessions": 3, "events": 10}
+
+
+def test_retention_counted(otel):
+    _, points = otel
+    telemetry.record_retention("supabase", "ok", 5)
+    telemetry.record_retention("langfuse", "error")
+    assert {(_attrs(p)["store"], _attrs(p)["outcome"]): p.value for p in points("chat.retention.runs")} == \
+        {("supabase", "ok"): 1, ("langfuse", "error"): 1}
+    assert [(_attrs(p)["store"], p.value) for p in points("chat.retention.deleted")] == [("supabase", 5)]
+
+
+def test_supabase_purge_deletes_idle_sessions_and_old_events():
+    import asyncio
+    import datetime as dt
+    from types import SimpleNamespace
+    from services.supabase_service import SupabaseService
+
+    calls = []
+
+    class _Query:
+        def __init__(self, table):
+            self.table = table
+
+        def delete(self):
+            return self
+
+        def lt(self, column, cutoff):
+            calls.append((self.table, column, cutoff))
+            return self
+
+        async def execute(self):
+            return SimpleNamespace(data=[{"id": 1}, {"id": 2}] if self.table == "sessions" else [{"id": 9}])
+
+    db = SupabaseService()
+    db.enabled, db.client = True, SimpleNamespace(table=_Query)
+    assert asyncio.run(db.purge_older_than(90)) == 3
+    assert [(t, c) for t, c, _ in calls] == [("sessions", "last_active"), ("events", "created_at")]
+    cutoff = dt.datetime.fromisoformat(calls[0][2])
+    assert abs((dt.datetime.now(dt.timezone.utc) - cutoff).days - 90) <= 1
+
+
+def test_supabase_purge_raises_when_a_query_fails():
+    import asyncio
+    from types import SimpleNamespace
+    from services.supabase_service import SupabaseService
+
+    class _Broken:
+        def __init__(self, table):
+            pass
+
+        def delete(self):
+            return self
+
+        def lt(self, *args):
+            return self
+
+        async def execute(self):
+            raise RuntimeError("down")
+
+    db = SupabaseService()
+    db.enabled, db.client = True, SimpleNamespace(table=_Broken)
+    with pytest.raises(RuntimeError):
+        asyncio.run(db.purge_older_than(90))
+
+
+def test_langfuse_purge_deletes_old_traces_page_by_page():
+    from types import SimpleNamespace
+    from services.tracer import TracingService
+
+    pages = [[SimpleNamespace(trace_id="t1"), SimpleNamespace(trace_id="t2"), SimpleNamespace(trace_id="t1")], []]
+    deleted, asked = [], []
+
+    def get_many(**kwargs):
+        asked.append(kwargs)
+        return SimpleNamespace(data=pages.pop(0))
+
+    api = SimpleNamespace(observations=SimpleNamespace(get_many=get_many),
+                          trace=SimpleNamespace(delete_multiple=lambda trace_ids: deleted.extend(trace_ids)))
+    tracer = TracingService.__new__(TracingService)
+    tracer.enabled, tracer.client = True, SimpleNamespace(api=api)
+    assert tracer.purge_traces_older_than(90) == 2
+    assert deleted == ["t1", "t2"]
+    assert asked[0]["is_root_observation"] is True and asked[0]["limit"] == 1000
