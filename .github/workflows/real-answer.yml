@@ -3,7 +3,7 @@ name: Real answer (A2)
 # names 3E, carries verification stamps and a decision-model probability, in under 15 s
 # (monitoring/checks/a2-real-answer.k6.js). It runs here and not in Grafana Synthetic
 # Monitoring because a check there runs at least hourly and each answer costs about a cent.
-# The result goes to Grafana as synthetic_check_success{job="A2 real answer"} so a failed or
+# The result goes to Grafana as synthetic_check_success{check="A2 real answer"} so a failed or
 # missing run pages (rule "Chat broken"); GitHub also emails on failure.
 # Runbook: docs/runbooks/chat-broken.md
 on:
@@ -26,4 +26,4 @@ jobs:
         if: always() && env.GRAFANA_OTLP_HEADERS != ''
         run: |
           value=0; [ "${{ steps.k6.outcome }}" = "success" ] && value=1
-          python3 monitoring/push_metric.py synthetic.check.success "$value" job="A2 real answer"
+          python3 monitoring/push_metric.py synthetic.check.success "$value" check="A2 real answer"

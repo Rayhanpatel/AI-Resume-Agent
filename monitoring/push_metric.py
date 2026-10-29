@@ -3,10 +3,12 @@ Send one gauge value to Grafana Cloud over OTLP (HTTP/JSON). Used by GitHub Acti
 results that don't come from the backend: the A2 real-answer check and the golden eval.
 
     GRAFANA_OTLP_HEADERS="Authorization=Basic%20..." python3 monitoring/push_metric.py \
-        synthetic.check.success 1 job="A2 real answer"
+        synthetic.check.success 1 check="A2 real answer"
 
 The header value has the same form as OTEL_EXPORTER_OTLP_HEADERS (which is also accepted).
 Without either variable it prints a note and exits 0, so a missing secret never fails a run.
+Don't name an attribute "job" or "instance": Grafana's OTLP gateway sets those from the
+resource (service.name), so ours would be replaced.
 Standard library only.
 """
 import json

@@ -123,3 +123,19 @@ rules:
       D2: fewer than 45 days to the domain's expiry
       TLS: fewer than 21 days (email), fewer than 7 days (page)
 
+  - name: Real answer check failed / missing (A2)
+    severity: page
+    runbook: chat-broken.md
+    promql: |
+      # failed: the last 6-hourly result was 0
+      last_over_time(synthetic_check_success{check="A2 real answer", source=""}[7h]) < 1
+      # missing (second rule, paused until GRAFANA_OTLP_HEADERS is set): no result for 13 h
+      absent_over_time(synthetic_check_success{check="A2 real answer", source=""}[13h])
+    note: the label is "check", not "job" (Grafana's OTLP gateway sets job from service.name). source="manual-test" values are excluded.
+
+  - name: Golden eval regression
+    severity: email
+    runbook: degrading-answers.md
+    promql: |
+      last_over_time(eval_golden_passed[8d]) < last_over_time(eval_golden_cases[8d])
+

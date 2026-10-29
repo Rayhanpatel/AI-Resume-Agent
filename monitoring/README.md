@@ -28,7 +28,16 @@ Oct 28, 2026, k6 in Docker against the live site: S1 7/7, D2 3/3 (322 days left)
 
 Without them nothing is exported and nothing changes: telemetry is off and the Faro code isn't even loaded.
 
-## Setting it up in Grafana Cloud (about 20 minutes)
+## What is live (Oct 28–29, 2026)
+
+Stack `savvyanemone2645.grafana.net` (US West). Set up from code and through Grafana's hosted MCP server, not by hand:
+
+- **Telemetry:** the backend exports over OTLP (`OTEL_EXPORTER_OTLP_*` on Railway, token `railway-backend`); the chat page sends Faro data to the Frontend Observability app `chat` (id 6310, CORS https://chat.rayhanpatel.com only, location at continent level); automated browsers (`navigator.webdriver`) send nothing.
+- **Checks:** `provision_checks.py` creates the 9 Synthetic Monitoring checks (A1, B1, S1, D1 ×3, D2, T1, T2) and their per-check alerts; re-run it after any change. A2 runs every 6 hours from `.github/workflows/real-answer.yml` (a check in Synthetic Monitoring runs at least hourly, and an answer costs about a cent) and reports `synthetic_check_success{check="A2 real answer"}`; the eval workflow reports `eval_golden_*`. Both need the `GRAFANA_OTLP_HEADERS` repo secret.
+- **Alerts:** 14 rules in folder `rayhanpatel.com`, group `chat-agent` (5 min), from `alert-rules.yaml`; contact points `email rayhan` and `phone (IRM)`; policy: everything to email, and failures of A1/B1/S1 plus `severity=page` also to the phone (IRM escalation chain `rayhan`). "Real answer check missing (A2)" stays paused until the secret is set and the first run reports.
+- **Dashboards:** `rp-overview` and `rp-chat` in the same folder.
+
+## Setting it up in Grafana Cloud by hand (the original click-path, kept for reference)
 
 1. **Account.** Sign up for Grafana Cloud Free and create a stack (e.g. `rayhanpatel`).
 2. **Backend telemetry.** In the stack, open **Connections**, then the **OpenTelemetry (OTLP)** setup. Generate a token, then copy the two environment variables it shows into Railway → the backend service → **Variables**, and deploy. Startup logs then say `✓ Telemetry (OpenTelemetry): exporting over OTLP`.
