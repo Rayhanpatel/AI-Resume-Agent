@@ -7,9 +7,13 @@ import ErrorBoundary from './components/ErrorBoundary.jsx'
 import { initTelemetry } from './lib/telemetry.js'
 import './index.css'
 
-// Automated browsers (the Grafana B1 check runs headless Chrome every 15 minutes) set
-// navigator.webdriver; they are not visitors, so they skip visit counts and Faro sessions.
-const automated = typeof navigator !== 'undefined' && navigator.webdriver === true
+// Automated browsers are not visitors, so they skip visit counts and Faro sessions. The
+// Grafana B1 check (k6 browser, every 15 minutes) does not set navigator.webdriver; its user
+// agent ends in "GrafanaSyntheticMonitoring" and k6 exposes window.k6.
+const automated = typeof navigator !== 'undefined' && (
+    navigator.webdriver === true ||
+    /GrafanaSyntheticMonitoring|HeadlessChrome/.test(navigator.userAgent) ||
+    (typeof window !== 'undefined' && 'k6' in window))
 
 if (!automated) initTelemetry()  // Grafana Faro, on chat.rayhanpatel.com only (src/lib/telemetry.js)
 
