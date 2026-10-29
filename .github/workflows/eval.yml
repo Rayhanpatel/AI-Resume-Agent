@@ -50,7 +50,7 @@ jobs:
         if: steps.creds.outputs.present != 'true'
         run: echo "::notice::GCP_WIF_PROVIDER / GCP_SERVICE_ACCOUNT / GCP_PROJECT not set; the golden eval was skipped."
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         if: steps.creds.outputs.present == 'true'
         with:
           python-version: "3.11"
