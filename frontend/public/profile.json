@@ -164,7 +164,7 @@
       "kind": "Live system · solo",
       "date": "Jan 2026 – present",
       "featured": true,
-      "summary": "A FastAPI and React agent that answers questions about my work. It streams over SSE, gates off-topic questions before the expensive call, reads a pasted job post, and keeps chatting when memory, database or tracing are down.",
+      "summary": "A FastAPI and React agent that answers questions about my work. It streams over SSE, screens off-topic messages with a decision model before the expensive call, reads a pasted job post, and keeps chatting when the database, tracing or a model provider is down.",
       "metrics": [
         "83% of claims checked verbatim",
         "Over 100 tests and a golden eval gate every backend deploy"
@@ -172,6 +172,7 @@
       "highlights": [
         "Every sentence of an answer is stamped checked, inferred or unknown: a fast model proposes a verbatim profile quote, code confirms it and checks every number. First run: 52 claims, 83% checked verbatim, none unknown.",
         "Replaced Google's SDK with raw async HTTP/2 after it hung the server, and traced a silent production hang to a cache deadlock by bisecting with diagnostic endpoints.",
+        "Replaced an LLM intent classifier with a calibrated decision model after a benchmark with a holdout committed in advance (96.7% vs 88.3% correct, 0.18 s vs 0.87 s), then caught it refusing short follow-ups and fixed that with the previous turn: 0 of 33 real messages refused, against 7, on held-out conversations written by another model.",
         "Oct 2026: found it had been silently down for months (retired model, closed billing); wrote the post-mortem, made model IDs configuration, added a health probe that makes a real call, a fallback model, signed sessions, quotas and an MCP interface.",
         "Runs it like a production service: nine Grafana synthetic checks, OpenTelemetry traces and metrics, alerts that page his phone through Grafana IRM with a runbook for each, and visitor chats deleted after 90 days. On its first day it flagged the site timing out from Virginia and paged."
       ],
@@ -191,7 +192,7 @@
       ],
       "details": {
         "architecture": "Frontend on Vercel, with DNS on Cloudflare. Backend on Railway, called directly so long streams avoid proxy timeouts. Thin route handlers delegate to services, and every external dependency (Supabase, Langfuse, the decision model) has an enabled flag so the chat degrades instead of failing.",
-        "models": "Answers come from Gemini 3.5 Flash on Vertex AI, with Gemini 3.5 Flash-Lite as the fallback; Flash-Lite also classifies intent and parses job posts. Model IDs are configuration, because Google retires them.",
+        "models": "Answers come from Gemini 3.5 Flash on Vertex AI, with Gemini 3.5 Flash-Lite as the fallback; Flash-Lite also parses job posts and checks each sentence against the profile. A decision model (TypeSafe's Jev, through OpenRouter) decides whether a message is about him, with the previous turn as context. Model IDs are configuration, because Google retires them.",
         "security": "SSRF-protected job URL fetcher, Cloudflare Turnstile, HTML stripped from every input, constant-time admin auth, and job descriptions fenced off as data so they can't override instructions.",
         "bugs_worth_telling": "A threading.Lock plus overridden dict methods deadlocked every POST endpoint with no errors and no logs. He built diagnostic endpoints to binary-search it, and the fix was one line. Separately, asyncio.wait_for hung on clients that ignore cancellation, so he wrote a timeout helper on asyncio.wait.",
         "data": "Its knowledge comes from the same profile file that renders rayhanpatel.com, so the site and the agent can't drift apart.",
