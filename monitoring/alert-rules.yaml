@@ -6,6 +6,12 @@
 # Metric names are as Grafana Cloud's OTLP gateway writes them from core/telemetry.py:
 # dots become underscores, counters get _total, seconds get _seconds, attributes become
 # labels (app.synthetic -> app_synthetic). Confirm each in Explore before saving a rule.
+#
+# Counting rare events: an OTLP counter series starts at its first value (each process gets new
+# series, and no 0 sample comes first), so increase() never sees that first event. Checked Oct 30:
+# increase() saw about 2 of the day's 8 retention runs. Rules that must catch one or a few events add
+# the first value of series created inside the window:
+#   (sum(increase(X[w])) or vector(0)) + (sum(min_over_time(X[w]) unless X offset w) or vector(0))
 
 runbook_base: https://github.com/Rayhanpatel/AI-Resume-Agent/blob/main/docs/runbooks
 
@@ -50,7 +56,7 @@ rules:
       sum(increase(chat_model_fallbacks_total[6h]))
         / clamp_min(sum(increase(chat_answers_total{outcome="ok"}[6h])), 1) > 0.2
       # or, as a second rule: more than 2 apology or error answers in 24 h
-      sum(increase(chat_answers_total{outcome=~"apology|error"}[24h])) > 2
+      ((sum(increase(chat_answers_total{outcome=~"apology|error"}[24h])) or vector(0)) + (sum(min_over_time(chat_answers_total{outcome=~"apology|error"}[24h]) unless chat_answers_total{outcome=~"apology|error"} offset 24h) or vector(0))) > 2
 
   - name: Model retiring
     severity: email
@@ -76,7 +82,7 @@ rules:
     runbook: lead-not-saved.md
     promql: |
       # any recruiter lead the Google Sheet did not accept in the last hour
-      sum(increase(chat_leads_total{outcome="error"}[1h])) > 0
+      ((sum(increase(chat_leads_total{outcome="error"}[1h])) or vector(0)) + (sum(min_over_time(chat_leads_total{outcome="error"}[1h]) unless chat_leads_total{outcome="error"} offset 1h) or vector(0))) > 0
     note: real visitors only (probe sessions never send a lead). The visitor's details are still in Supabase.
 
   - name: Decision model failing
@@ -84,9 +90,9 @@ rules:
     runbook: decision-model.md
     promql: |
       # Jev calls that ended in an error over 6 h: the stamps' second opinion (app.purpose="decision")
-      # plus the off-topic gate's fallbacks to the LLM classifier (since 2.9.0)
-      (sum(increase(gen_ai_client_operation_duration_seconds_count{app_purpose="decision", error_type!=""}[6h])) or vector(0))
-        + (sum(increase(chat_intent_fallbacks_total[6h])) or vector(0)) > 2
+      # plus the off-topic gate's failed calls (since 2.10.0 the message then goes straight to the answer model)
+      ((sum(increase(gen_ai_client_operation_duration_seconds_count{app_purpose="decision", error_type!=""}[6h])) or vector(0)) + (sum(min_over_time(gen_ai_client_operation_duration_seconds_count{app_purpose="decision", error_type!=""}[6h]) unless gen_ai_client_operation_duration_seconds_count{app_purpose="decision", error_type!=""} offset 6h) or vector(0)))
+        + ((sum(increase(chat_intent_fallbacks_total[6h])) or vector(0)) + (sum(min_over_time(chat_intent_fallbacks_total[6h]) unless chat_intent_fallbacks_total offset 6h) or vector(0))) > 2
     note: A2 also fails when no sentence carries a gate probability, which covers a silent "off".
 
   - name: Intent gate refusing too much
@@ -97,6 +103,22 @@ rules:
       sum(increase(chat_intent_decisions_total{intent="off_topic"}[24h]))
         / clamp_min(sum(increase(chat_intent_decisions_total[24h])), 10) > 0.5
     note: a burst of genuinely off-topic or hostile messages also trips it; the runbook says how to tell the two apart.
+
+  - name: Gate declined a mid-conversation message
+    severity: email
+    runbook: intent-gate.md
+    promql: |
+      # the decision model declined a message that came after an earlier turn (refused follow-ups are the costly mistake)
+      ((sum(increase(chat_intent_decisions_total{intent="off_topic", turn="followup", gate="jev"}[1h])) or vector(0)) + (sum(min_over_time(chat_intent_decisions_total{intent="off_topic", turn="followup", gate="jev"}[1h]) unless chat_intent_decisions_total{intent="off_topic", turn="followup", gate="jev"} offset 1h) or vector(0))) > 0
+    note: also fires when a visitor switches to an unrelated request mid-chat; it is a prompt to read that one message in Langfuse.
+
+  - name: Gate decision model drifted
+    severity: email
+    runbook: intent-gate.md
+    promql: |
+      # the daily re-score of the benchmark's near-threshold messages moved more than 0.1 from the recorded values
+      max(chat_intent_canary_drift) > 0.1
+    note: the model is pinned by name; drift means the thresholds no longer mean what the benchmarks measured.
 
   - name: Answer quality dropping
     severity: email
@@ -112,7 +134,7 @@ rules:
     runbook: retention.md
     promql: |
       # the daily 90-day deletion failed, or has not run for 2 days
-      sum(increase(chat_retention_runs_total{outcome="error"}[1d])) > 0
+      ((sum(increase(chat_retention_runs_total{outcome="error"}[1d])) or vector(0)) + (sum(min_over_time(chat_retention_runs_total{outcome="error"}[1d]) unless chat_retention_runs_total{outcome="error"} offset 1d) or vector(0))) > 0
       # second rule:
       absent_over_time(chat_retention_runs_total{outcome="ok"}[2d])
 

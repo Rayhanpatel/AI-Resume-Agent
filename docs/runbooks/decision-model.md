@@ -4,7 +4,7 @@
 
 ## What it means
 
-Answers still go out, and each sentence is still checked against the profile, but the second opinion that demotes weak "checked" stamps to "inferred" is missing. Stamps may be slightly too confident until it is back. For the off-topic gate, the Flash-Lite classifier decides instead: slower (about 0.9 s against 0.2 s) and it lets more off-topic requests through, but nothing is blocked by the failure.
+Answers still go out, and each sentence is still checked against the profile, but the second opinion that demotes weak "checked" stamps to "inferred" is missing. Stamps may be slightly too confident until it is back. For the off-topic gate, a failed or slow call (over 1 s) lets the message through to the answer model, which declines off-topic requests itself: off-topic messages then cost a full answer call (about a cent) instead of being stopped early, but no real question is blocked by the failure. The daily drift check also fails, so `chat_intent_canary_drift` has no value.
 
 ## Check first
 

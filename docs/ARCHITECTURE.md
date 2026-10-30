@@ -1,6 +1,6 @@
 # Architecture
 
-How the agent behind [chat.rayhanpatel.com](https://chat.rayhanpatel.com) and [rayhanpatel.com](https://rayhanpatel.com) is built, from the outside in. The structural views follow the [C4 model](https://c4model.com) (context, containers, components); the behavioural views are UML sequence, state and entity-relationship diagrams. Every diagram has a title, a key, a type and technology on each box, and a label on each arrow. Last checked against the code on Oct 30, 2026 (backend 2.9.0).
+How the agent behind [chat.rayhanpatel.com](https://chat.rayhanpatel.com) and [rayhanpatel.com](https://rayhanpatel.com) is built, from the outside in. The structural views follow the [C4 model](https://c4model.com) (context, containers, components); the behavioural views are UML sequence, state and entity-relationship diagrams. Every diagram has a title, a key, a type and technology on each box, and a label on each arrow. Last checked against the code on Oct 30, 2026 (backend 2.10.0).
 
 **Contents:** [Goals](#goals-and-constraints) · [1 Context](#1-system-context) · [2 Containers](#2-containers) · [3 Backend components](#3-backend-components) · [4 Starting a chat](#4-starting-a-chat) · [5 Answering a question](#5-answering-a-question) · [6 Model fallback](#6-model-fallback-state-machine) · [7 Stamping a sentence](#7-how-a-sentence-gets-its-stamp) · [8 Agents over MCP](#8-agents-over-mcp-and-the-on-device-tier) · [9 Data](#9-data-model-and-where-data-goes) · [10 Deployment](#10-deployment-and-delivery) · [11 Monitoring](#11-monitoring-and-alerting) · [12 Decisions](#12-decisions)
 
@@ -156,7 +156,7 @@ flowchart TB
     end
     subgraph L4["4 · Services: do the work"]
         direction LR
-        s1["JevIntentGate<br/>LLM fallback"] ~~~ s2["AgentService<br/>model fallback"] ~~~ s3["Verifier +<br/>DecisionsGate"] ~~~ s4["JobExtractor +<br/>JobParser"] ~~~ s5["Leads"]
+        s1["JevIntentGate<br/>previous turn, fails open"] ~~~ s2["AgentService<br/>model fallback"] ~~~ s3["Verifier +<br/>DecisionsGate"] ~~~ s4["JobExtractor +<br/>JobParser"] ~~~ s5["Leads"]
     end
     subgraph L5["5 · Adapters: each has an enabled flag, so the chat degrades"]
         direction LR
@@ -185,7 +185,7 @@ Which route uses which components:
 | Route | Guards | Services and adapters |
 |---|---|---|
 | `POST /session` | RateLimiter, QuotaService (sessions per IP) | Turnstile, JobExtractor + JobParser, SupabaseService, Leads, SessionTokens (issues the token) |
-| `POST /chat/stream`, `/chat` | SessionTokens, RateLimiter, QuotaService | JevIntentGate (IntentClassifier as its fallback), AgentService, Verifier + DecisionsGate, SupabaseService, TracingService |
+| `POST /chat/stream`, `/chat` | SessionTokens, RateLimiter, QuotaService | JevIntentGate (sees the previous turn; lets the message through if it fails), AgentService, Verifier + DecisionsGate, SupabaseService, TracingService |
 | `POST /mcp` | MCPLimits | AgentService, Verifier + DecisionsGate, TracingService (tag `mcp`) |
 | `GET /health/llm` | none | Gemini client (cached 10 min), SupabaseService ping |
 | `GET /admin/*` | `X-Admin-Key` | SupabaseService |
@@ -253,9 +253,9 @@ sequenceDiagram
     A->>D: load session and history (3 s timeout, memory fallback)
     A->>A: rate limit, quotas: session, IP, daily tokens (429 if over)
     A->>L: open trace
-    A->>J: on topic? P(yes), with the profile's names (3 s, on error Flash-Lite decides, if both fail it is allowed)
-    alt P below 0.75
-        A-->>F: fixed polite decline, done
+    A->>J: on topic? P(yes), with the profile's names and the previous turn (1 s, on error or timeout it is allowed)
+    alt P below 0.75 (first message) or 0.5 (after a turn)
+        A-->>F: fixed polite decline (kept in the history), done
     else about Rayhan
         A->>G: stream answer, Flash (fallback in §6)
         loop each chunk
@@ -410,7 +410,7 @@ erDiagram
 | Data | Stored in | Kept | Never contains |
 |---|---|---|---|
 | Name, company, job schema, chat history | Supabase `sessions` | 90 days after last activity (daily purge) | the raw job page, the IP address |
-| Questions and answers | Langfuse traces (judged by an LLM through OpenRouter); each question also goes to the decision model for the off-topic gate (zero data retention requested) | 90 days (the app purges; the free plan doesn't) | the name field or IP address (user ID is a salted IP hash) |
+| Questions and answers | Langfuse traces (judged by an LLM through OpenRouter); each question, with the previous question and the start of the previous reply, also goes to the decision model for the off-topic gate (zero data retention requested) | 90 days (the app purges; the free plan doesn't) | the name field or IP address (user ID is a salted IP hash) |
 | Lead: name, company, role, link | Google Sheet | his contact record | chat text |
 | Model names, tokens, timings, outcomes | Grafana Cloud (OTLP) | 14 days | message text, names |
 | Browser errors, page speed, continent | Grafana Faro | 14 days | URL query strings (cut at `?`), names |
@@ -481,7 +481,7 @@ flowchart TB
     end
 
     subgraph grafana["Grafana Cloud"]
-        rules["<b>Alert rules</b><br/>15 rules + per-check alerts"]
+        rules["<b>Alert rules</b><br/>17 rules + per-check alerts"]
         policy{"<b>Notification policy</b>"}
     end
 
@@ -523,7 +523,7 @@ Tested Oct 30, 2026: a rule labelled `severity=page` reached the phone 32 second
 | Code, not the model, decides `checked` | A model can quote what isn't there; a substring check can't | Paraphrased truths land as `inferred` |
 | Stream first, stamp after | First words in seconds; verification adds no wait | Stamps arrive a moment after the text |
 | A decision model as a second opinion, demote-only | It can only make a stamp more cautious | One more paid call per answer (fractions of a cent) |
-| A decision model as the off-topic gate, the LLM classifier as its fallback | Measured Oct 30 on 228 labelled messages: 96.7% vs 88.3% on a held-out set, 180 vs 874 ms, a probability with one threshold instead of free text ([eval report §5](EVAL-REPORT.md#5-should-it-answer-at-all-the-off-topic-gate-oct-30-2026)) | Visitor messages go to a second provider; the threshold belongs to one model version, so a new version means re-running the benchmark |
+| A decision model as the off-topic gate, seeing the previous turn; a failure lets the message through | Measured Oct 30: 96.7% vs 88.3% on held-out single messages and 180 vs 874 ms (version 2); then, with the previous turn, 0 of 33 real messages refused vs 7 on held-out conversations by another author (version 3, [eval report §5](EVAL-REPORT.md#5-should-it-answer-at-all-the-off-topic-gate-oct-30-2026)). The answer model declined every off-topic message it was tested on, so letting one through costs a cent, refusing a recruiter costs more | Visitor messages and the previous reply go to OpenRouter and TypeSafe (zero retention requested); two thresholds to keep calibrated, so a daily drift check re-scores 14 messages; more attacks phrased as questions about Rayhan reach the answer model |
 | API called directly, not through Cloudflare | Long SSE streams avoid proxy timeouts | Limits and sanitisation live in the app; the origin lock is planned |
 | Raw async HTTP to Gemini, not the SDK | The SDK hung the server in production | Request shapes maintained by hand, covered by tests |
 | Model IDs as settings, health probe makes a real call | "Configured" is not "working" | One cached model call every 10 minutes |

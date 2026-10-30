@@ -40,7 +40,8 @@ Probe traffic carries `X-Synthetic-Check`. It is tagged `app.synthetic` and kept
 | `chat.model_fallbacks` | `app.from_model`, `app.to_model` | Degrading answers |
 | `chat.time_to_first_word` (s) | `app.synthetic` | Slow |
 | `chat.verification.stamps` | `stamp` (checked, inferred, unknown, unverified, numbers_unverified) | quality dashboard |
-| `chat.intent.decisions` | `gate` (jev, fallback, gemini), `intent` (job_related, off_topic) | Intent gate refusing too much |
+| `chat.intent.decisions` | `gate` (jev, fallback, gemini), `intent` (job_related, off_topic), `turn` (first, followup) | Intent gate refusing too much; Gate declined a mid-conversation message |
+| `chat.intent.canary.drift` (gauge) | none | Gate decision model drifted (daily re-score of the benchmark's near-threshold messages) |
 | `chat.intent.fallbacks` | `reason` (the error type) | Decision model failing |
 | `chat.quota.rejections` | `scope` | Spend |
 | `chat.database.up` | | Database down |
@@ -48,6 +49,8 @@ Probe traffic carries `X-Synthetic-Check`. It is tagged `app.synthetic` and kept
 | `chat.leads` | `outcome` (ok, error) | Lead not saved |
 | `chat.retention.runs`, `chat.retention.deleted` | `store` (supabase, langfuse), `outcome` | Retention job failing |
 | `gen_ai.client.token.usage`, `gen_ai.client.operation.duration`, `gen_ai.client.operation.time_to_first_chunk` | model, `app.purpose` (answer, intent, verify, job_parse, prompts, decision), `error.type` | Spend, Slow, Degrading answers |
+
+**Counting rare events.** Each process exports new counter series, and a series starts at its first value with no zero before it, so `increase()` never sees that first event (checked Oct 30: it saw about 2 of the day's 8 retention runs). Rules that must catch one or a few events add the first value of any series created inside the window: `(sum(increase(X[w])) or vector(0)) + (sum(min_over_time(X[w]) unless X offset w) or vector(0))`. `monitoring/alert-rules.yaml` uses it for leads, retention failures, decision-model failures, apology answers and declined mid-conversation messages.
 
 Every request-path metric also carries `app.synthetic` and `app.channel` (the lead, retention and row-count metrics come from background work and don't). Traces have a `gen_ai` client span around each model call, with the model, the token counts and the attempt number (attempt 2+ is the fallback). Log records carry the trace ID of their request. Frontend errors and bot-check failures go to Grafana Faro when `VITE_FARO_URL` is set.
 
