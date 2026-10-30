@@ -125,191 +125,122 @@ The frontend proxies `/api` requests to the backend during development (configur
 
 ## Architecture
 
-The system follows a **Service-Oriented Architecture**: thin FastAPI route handlers delegate to rich domain services. Every external dependency (Supabase, Langfuse) is wrapped in a service class that degrades gracefully if unavailable.
+Three containers you can reach (the site, the chat page, the API), one data file every fact comes from, and a model that may run in the visitor's own browser. Thin FastAPI routes delegate to services; every external dependency has an `enabled` flag, so the chat degrades instead of failing. The full design, with eleven views (C4 context, containers and components; UML sequence, state and entity-relationship diagrams; deployment; monitoring; decisions), is in **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)**.
+
+### Containers
 
 ```mermaid
-flowchart LR
-    subgraph Client
-        U["Browser / Mobile"]
+flowchart TB
+    visitor["<b>Visitor</b><br/>[Person]"]
+    agentclient["<b>AI agent</b><br/>[External client]"]
+
+    subgraph sys["Rayhan's agent [Software system]"]
+        site["<b>Site</b><br/>[Container: static HTML]<br/>rayhanpatel.com on Cloudflare Workers"]
+        spa["<b>Chat page</b><br/>[Container: React 18, Vite]<br/>chat.rayhanpatel.com on Vercel"]
+        device["<b>On-device tier</b><br/>[Container: Chrome Prompt API]<br/>Gemini Nano in the visitor's browser"]
+        api["<b>API</b><br/>[Container: FastAPI, Python 3.11]<br/>Railway: sessions, chat, MCP, health"]
+        db[("<b>Database</b><br/>[Container: Postgres on Supabase]<br/>sessions, events")]
+        profile[/"<b>profile.json</b><br/>[Data file]<br/>The only source of facts"/]
     end
 
-    CF(["Cloudflare<br/>DNS + SSL"])
+    turnstile["<b>Turnstile</b><br/>[External: Cloudflare]"]
+    models["<b>Vertex AI + OpenRouter</b><br/>[External: model APIs]"]
+    obs["<b>Langfuse + Grafana Cloud</b><br/>[External: observability]"]
 
-    subgraph FE["Frontend · Vercel"]
-        React["React 18<br/>Vite + Tailwind"]
+    visitor -->|"loads [HTTPS]"| site
+    site -->|"embeds [iframe]"| spa
+    visitor -->|"chats [HTTPS]"| spa
+    spa -->|"session, chat [JSON, SSE]"| api
+    spa -->|"bot check token [JS widget]"| turnstile
+    spa -->|"asks on-device first,<br/>when Chrome supports it [JS]"| device
+    agentclient -->|"ask, fit_report [MCP over HTTPS]"| api
+    api -->|"verifies token [HTTPS]"| turnstile
+    api -->|"prompts [HTTPS]"| models
+    api -->|"reads and writes [PostgREST]"| db
+    api -->|"traces, metrics, logs [SDK, OTLP]"| obs
+    spa -->|"browser errors [Faro]"| obs
+    profile -.->|"rendered at build"| site
+    profile -.->|"copied in at deploy"| api
+    profile -.->|"fetched"| device
+
+    subgraph key["Key"]
+        k1["Container in this system"]:::cont
+        k3["External system"]:::ext
+        k4[/"Data file"/]:::data
+        k5["solid arrow: runtime call<br/>dashed arrow: build or deploy time"]:::note
     end
+    style key fill:#ffffff,stroke:#9ca3af,color:#374151
+    style sys fill:#f8fafc,stroke:#1d4f80,stroke-dasharray: 5 3
 
-    subgraph BE["Backend · Railway"]
-        API["FastAPI<br/>Rate Limiter · CORS"]
-        IC["Intent<br/>Classifier"]
-        Agent["Agent<br/>Service"]
-        VA["Vertex<br/>Auth"]
-    end
-
-    subgraph Ext["External Services"]
-        Gemini["Gemini 3.5<br/>Flash"]
-        LF["Langfuse<br/>+ Evaluators"]
-        Supa[("Supabase<br/>PostgreSQL")]
-        Sheets["Google<br/>Sheets"]
-        Turn(["Cloudflare<br/>Turnstile"])
-    end
-
-    U --> CF --> React
-    React -->|"SSE"| API
-    API --> IC -->|"job_related"| Agent --> VA
-    VA ==>|"HTTP/2"| Gemini
-    Agent -.->|"traces"| LF
-    API -.->|"sessions"| Supa
-    API -.->|"leads"| Sheets
-    API -.->|"bot check"| Turn
-
-    classDef ext fill:#fed7aa,stroke:#ea580c
-    classDef be fill:#d1fae5,stroke:#059669
-    classDef fe fill:#dbeafe,stroke:#3b82f6
-
-    class Gemini,LF,Supa,Sheets,Turn ext
-    class API,IC,Agent,VA be
-    class React fe
+    classDef person fill:#0b3d6e,stroke:#0b3d6e,color:#ffffff
+    classDef cont fill:#3b82c4,stroke:#1d4f80,color:#ffffff
+    classDef data fill:#fef3c7,stroke:#b45309,color:#111827
+    classDef ext fill:#e5e7eb,stroke:#6b7280,color:#111827
+    classDef note fill:#ffffff,stroke:#ffffff,color:#374151
+    class visitor,agentclient person
+    class site,spa,device,api,db cont
+    class profile data
+    class turnstile,models,obs ext
 ```
 
-> **10 backend modules** in **one FastAPI deployment**, plus **4 API route groups**. See [Project Structure](#project-structure) for the complete inventory.
+### How a question is answered
 
-### Traffic Flow & Security
-
-The system uses a **Split Architecture** optimization:
-
-1. **Frontend (Static Assets)**: Served by **Vercel**; Cloudflare only hosts the DNS record (not proxied).
-    - *Security*: Vercel's TLS and edge network; a Content-Security-Policy and security headers from `frontend/vercel.json`.
-2. **Backend (API)**: Hosted on **Railway**, accessed directly by the Frontend (bypassing Cloudflare proxy).
-    - *Reason*: Reduces latency for real-time SSE streaming and avoids Cloudflare timeout limits on long LLM generations.
-    - *Security*: Because API traffic bypasses Cloudflare, the Backend implements its own robust defenses:
-        - **Rate Limiting**: Custom middleware (`rate_limiter.py`) tracks IP reputation.
-        - **Input Sanitization**: Pydantic validators (`schemas.py`) strip HTML from all inputs.
-        - **Bot Detection**: Turnstile token validation (`session.py`) ensures requests originate from the legitimate frontend.
-
-### Data Flow — Streaming Chat Request
+Words stream first; the verification stamps follow in the same stream, so the visitor never waits for them.
 
 ```mermaid
 sequenceDiagram
     autonumber
-    participant U as User
-    participant F as Frontend
-    participant API as FastAPI
-    participant RL as RateLimiter
-    participant IC as IntentClassifier
-    participant AG as AgentService
-    participant G as Gemini API
+    actor V as Visitor
+    participant F as Chat page
+    participant A as API /chat/stream
+    participant D as Supabase
+    participant G as Gemini (Vertex AI)
+    participant J as Jev (OpenRouter)
     participant L as Langfuse
-    participant S as Supabase
 
-    U->>F: Type message + Send
-    Note right of F: Optimistic UI — msg appears before API responds
-    F->>F: Add user msg to state
-    F->>API: POST /api/v1/chat/stream
-    activate API
-
-    API->>RL: Check IP rate limit
-    RL-->>API: OK (or 429)
-
-    API->>API: Verify the signed session token (403 if missing or forged)
-    API->>S: Get session (3s timeout)
-    S-->>API: Session data (or fallback to TTLCache)
-    API->>S: Check quotas (session, IP, daily token budget)
-
-    API->>L: Create trace
-
-    API->>IC: Classify intent (10s timeout)
-    activate IC
-    IC->>G: Gemini Flash-Lite (JSON mode)
-    G-->>IC: {intent: "job_related"}
-    IC-->>API: Pass
-    deactivate IC
-
-    alt intent = off_topic
-        API-->>F: SSE: decline message + [DONE]
-    else intent = job_related
-        API->>AG: respond_stream()
-        activate AG
-        AG->>AG: Build system prompt + profile + job schema + session history
-        AG->>G: POST streamGenerateContent?alt=sse
-
-        loop For each SSE chunk
-            G-->>AG: data: {candidates: [{content: {parts: [{text}]}}]}
-            AG-->>API: yield text chunk
-            API-->>F: data: {"chunk": "text"}\n\n
-            F->>F: Append to assistant message
-            F-->>U: Render incrementally
+    V->>F: question
+    F->>A: POST with session ID + signed token
+    A->>A: verify token (403 if forged or expired)
+    A->>D: load session and history (3 s timeout, memory fallback)
+    A->>A: rate limit, quotas: session, IP, daily tokens (429 if over)
+    A->>L: open trace
+    A->>G: intent, Flash-Lite (10 s, defaults to on-topic)
+    alt off topic
+        A-->>F: polite decline, done
+    else about Rayhan
+        A->>G: stream answer, Flash (fallback in §6)
+        loop each chunk
+            G-->>A: text
+            A-->>F: data: chunk
+            F-->>V: words appear
         end
-
-        API-->>F: data: [DONE]\n\n
-        deactivate AG
-
-        par Fire-and-forget background tasks
-            API->>S: Append the turn to the session history
-            AG->>L: Log generation (model, tokens, cost)
+        A-->>F: data: status verifying
+        A->>G: verdict + verbatim quote per sentence, Flash-Lite JSON
+        A->>A: code checks each quote is in the profile and every number
+        A->>J: probability each sentence holds (can only demote)
+        A-->>F: data: verification (stamp per sentence)
+        A-->>F: data: DONE
+        par after the response
+            A-)D: save the turn, log the event and tokens
+            A-)L: close the trace (judges score it later)
         end
     end
-
-    API->>S: Log event with metrics (background task)
-    API->>L: Flush traces
-    deactivate API
-
-    Note over L: Async (server-side)
-    L->>L: Run 5 LLM-as-a-Judge evaluators
-    Note over L: Hallucination · Relevance · Conciseness<br/>Helpfulness · Toxicity
 ```
 
-### Frontend Component Tree
+### More views in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
 
-```mermaid
-flowchart TB
-    EB[["ErrorBoundary"]] --> App["App"]
-    App --> Hook("useChatSession")
-    App -->|"!hasStarted"| WF["WelcomeForm"]
-    App -->|"hasStarted"| CI["ChatInterface"]
-    App -->|"showResumeModal"| RSM["ResumeSessionModal"]
-    CI --> QQ["QuickQuestions"]
-    CI --> TT["ThemeToggle"]
-    CI --> MD{{"ReactMarkdown"}}
-
-    classDef component fill:#dbeafe,stroke:#3b82f6
-    classDef hook fill:#d1fae5,stroke:#059669
-    classDef boundary fill:#fef3c7,stroke:#d97706
-    classDef library fill:#fee2e2,stroke:#dc2626
-
-    class App,WF,CI,RSM,QQ,TT component
-    class Hook hook
-    class EB boundary
-    class MD library
-```
-
-### Database Schema
-
-```mermaid
-erDiagram
-    SESSIONS {
-        uuid id PK
-        string user_name
-        string company
-        jsonb preferences
-        timestamp created_at
-        timestamp last_active
-    }
-
-    EVENTS {
-        uuid id PK
-        uuid session_id FK
-        string event_type
-        string intent
-        int tokens_in
-        int tokens_out
-        int latency_ms
-        jsonb metadata
-        timestamp created_at
-    }
-
-    SESSIONS ||--o{ EVENTS : has
-```
+| View | Shows |
+|---|---|
+| [System context](docs/ARCHITECTURE.md#1-system-context) | Who uses it and every external service it depends on |
+| [Backend components](docs/ARCHITECTURE.md#3-backend-components) | Middleware, routes, guards, services, adapters, and which route uses what |
+| [Starting a chat](docs/ARCHITECTURE.md#4-starting-a-chat) | Turnstile, job-post extraction (schema only), the signed session token |
+| [Model fallback](docs/ARCHITECTURE.md#6-model-fallback-state-machine) | Flash → Flash-Lite → last try → apology, with the timeouts |
+| [Stamping a sentence](docs/ARCHITECTURE.md#7-how-a-sentence-gets-its-stamp) | How code, not the model, decides `checked` |
+| [MCP and on-device](docs/ARCHITECTURE.md#8-agents-over-mcp-and-the-on-device-tier) | The two other ways in, and the cloud fallback |
+| [Data](docs/ARCHITECTURE.md#9-data-model-and-where-data-goes) | The two tables, and where visitor data can go and for how long |
+| [Deployment](docs/ARCHITECTURE.md#10-deployment-and-delivery) | What runs where, and what must pass before a deploy |
+| [Monitoring](docs/ARCHITECTURE.md#11-monitoring-and-alerting) | Signals, alert routing, what pages the phone |
+| [Decisions](docs/ARCHITECTURE.md#12-decisions) | Ten design decisions with their trade-offs |
 
 ---
 
@@ -440,6 +371,7 @@ Only `GOOGLE_API_KEY` is required. All other services degrade gracefully when th
 │   ├── tailwind.config.js         # Custom palette + animations
 │   └── package.json               # React 18, lucide, react-markdown
 ├── docs/
+│   ├── ARCHITECTURE.md            # The design: C4 context, containers, components; UML sequence, state, ER
 │   ├── SYSTEM-CARD.md             # What it is, what data it touches, known failures
 │   ├── EVAL-REPORT.md             # The numbers, with dates
 │   ├── POSTMORTEM-2026-10-chatbot-outage.md
@@ -564,6 +496,7 @@ Traditional metrics (BLEU, ROUGE) measure surface-level text overlap and fail on
 
 ## Documents
 
+- [Architecture](docs/ARCHITECTURE.md): eleven views of the design, C4 and UML.
 - [System card](docs/SYSTEM-CARD.md): what it is, what data it touches, how it is evaluated, known failures.
 - [Eval report](docs/EVAL-REPORT.md): the numbers, with dates.
 - [Post-mortem](docs/POSTMORTEM-2026-10-chatbot-outage.md): four months of silent outage and what changed.

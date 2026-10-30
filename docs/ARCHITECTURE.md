@@ -1,0 +1,511 @@
+# Architecture
+
+How the agent behind [chat.rayhanpatel.com](https://chat.rayhanpatel.com) and [rayhanpatel.com](https://rayhanpatel.com) is built, from the outside in. The structural views follow the [C4 model](https://c4model.com) (context, containers, components); the behavioural views are UML sequence, state and entity-relationship diagrams. Every diagram has a title, a key, a type and technology on each box, and a label on each arrow. Last checked against the code on Oct 30, 2026 (backend 2.8.0).
+
+**Contents:** [Goals](#goals-and-constraints) · [1 Context](#1-system-context) · [2 Containers](#2-containers) · [3 Backend components](#3-backend-components) · [4 Starting a chat](#4-starting-a-chat) · [5 Answering a question](#5-answering-a-question) · [6 Model fallback](#6-model-fallback-state-machine) · [7 Stamping a sentence](#7-how-a-sentence-gets-its-stamp) · [8 Agents over MCP](#8-agents-over-mcp-and-the-on-device-tier) · [9 Data](#9-data-model-and-where-data-goes) · [10 Deployment](#10-deployment-and-delivery) · [11 Monitoring](#11-monitoring-and-alerting) · [12 Decisions](#12-decisions)
+
+## Goals and constraints
+
+| Quality goal | What it means here | Where it shows up |
+|---|---|---|
+| **Truthful** | Say only what the public profile backs, and show which sentences are backed | One profile file ([§9](#9-data-model-and-where-data-goes)), verification stamps ([§7](#7-how-a-sentence-gets-its-stamp)), the golden eval gate ([§10](#10-deployment-and-delivery)) |
+| **Bounded cost** | A stranger can't run up the bill | Quotas, a daily token budget, a $10/month Google Cloud spend cap ([§5](#5-answering-a-question)) |
+| **Observable by one person** | A broken chat reaches the owner's phone in minutes, with a runbook | Checks from outside, OpenTelemetry, alert routing ([§11](#11-monitoring-and-alerting)) |
+
+**Constraints:** one developer; free tiers (Supabase pauses after 7 quiet days, Grafana keeps 14 days); a few visitors a day, so scheduled probes, not traffic, are the steady signal; Google retires model IDs on a schedule.
+
+---
+
+## 1. System context
+
+*C4 level 1. Who uses the system and what it depends on.*
+
+```mermaid
+flowchart TB
+    visitor["<b>Visitor</b><br/>[Person]<br/>Recruiter or engineer"]
+    agentclient["<b>AI agent</b><br/>[External client]<br/>Another assistant, over MCP"]
+    owner["<b>Rayhan</b><br/>[Person]<br/>Owner, on call"]
+
+    system["<b>Rayhan's agent</b><br/>[Software system]<br/>Site, chat and API: answers questions<br/>about his work and stamps every sentence"]
+
+    vertex["<b>Google Vertex AI</b><br/>[External]<br/>Gemini 3.5 Flash and Flash-Lite"]
+    openrouter["<b>OpenRouter</b><br/>[External]<br/>Decision model (Jev) and judge model"]
+    supabase["<b>Supabase</b><br/>[External]<br/>Postgres: sessions and events"]
+    langfuse["<b>Langfuse</b><br/>[External]<br/>Traces with text, five LLM judges"]
+    grafana["<b>Grafana Cloud</b><br/>[External]<br/>Telemetry, checks, alerts, IRM"]
+    github["<b>GitHub</b><br/>[External]<br/>Code, CI, eval gate, schedules"]
+
+    visitor -->|"reads the site, chats<br/>[HTTPS, SSE]"| system
+    agentclient -->|"asks questions<br/>[MCP over HTTPS]"| system
+    system -->|"answers, classifies, checks<br/>[HTTPS]"| vertex
+    system -->|"second opinion on stamps<br/>[HTTPS]"| openrouter
+    system -->|"reads and writes sessions, events<br/>[HTTPS]"| supabase
+    system -->|"sends traces<br/>[HTTPS, SDK]"| langfuse
+    system -->|"sends telemetry<br/>[OTLP]"| grafana
+    grafana -->|"probes from outside<br/>[HTTPS, browser]"| system
+    grafana -->|"pages and emails<br/>[mobile push, email]"| owner
+    owner -->|"pushes changes<br/>[git]"| github
+    github -->|"deploys after tests and eval pass<br/>[webhook]"| system
+
+    subgraph key["Key"]
+        k1["Person"]:::person
+        k2["This system"]:::sys
+        k3["External system"]:::ext
+    end
+    style key fill:#ffffff,stroke:#9ca3af,color:#374151
+
+    classDef person fill:#0b3d6e,stroke:#0b3d6e,color:#ffffff
+    classDef sys fill:#1d6fb8,stroke:#0b3d6e,color:#ffffff
+    classDef ext fill:#e5e7eb,stroke:#6b7280,color:#111827
+    class visitor,agentclient,owner person
+    class system sys
+    class vertex,openrouter,supabase,langfuse,grafana,github ext
+```
+
+Also used, left out above for size: Cloudflare (DNS, Turnstile bot check, Workers for the site), Vercel (chat page hosting), Railway (API hosting), a Google Sheet (recruiter leads).
+
+---
+
+## 2. Containers
+
+*C4 level 2. The separately running pieces inside the system, and how they talk.*
+
+```mermaid
+flowchart TB
+    visitor["<b>Visitor</b><br/>[Person]"]
+    agentclient["<b>AI agent</b><br/>[External client]"]
+
+    subgraph sys["Rayhan's agent [Software system]"]
+        site["<b>Site</b><br/>[Container: static HTML]<br/>rayhanpatel.com on Cloudflare Workers"]
+        spa["<b>Chat page</b><br/>[Container: React 18, Vite]<br/>chat.rayhanpatel.com on Vercel"]
+        device["<b>On-device tier</b><br/>[Container: Chrome Prompt API]<br/>Gemini Nano in the visitor's browser"]
+        api["<b>API</b><br/>[Container: FastAPI, Python 3.11]<br/>Railway: sessions, chat, MCP, health"]
+        db[("<b>Database</b><br/>[Container: Postgres on Supabase]<br/>sessions, events")]
+        profile[/"<b>profile.json</b><br/>[Data file]<br/>The only source of facts"/]
+    end
+
+    turnstile["<b>Turnstile</b><br/>[External: Cloudflare]"]
+    models["<b>Vertex AI + OpenRouter</b><br/>[External: model APIs]"]
+    obs["<b>Langfuse + Grafana Cloud</b><br/>[External: observability]"]
+
+    visitor -->|"loads [HTTPS]"| site
+    site -->|"embeds [iframe]"| spa
+    visitor -->|"chats [HTTPS]"| spa
+    spa -->|"session, chat [JSON, SSE]"| api
+    spa -->|"bot check token [JS widget]"| turnstile
+    spa -->|"asks on-device first,<br/>when Chrome supports it [JS]"| device
+    agentclient -->|"ask, fit_report [MCP over HTTPS]"| api
+    api -->|"verifies token [HTTPS]"| turnstile
+    api -->|"prompts [HTTPS]"| models
+    api -->|"reads and writes [PostgREST]"| db
+    api -->|"traces, metrics, logs [SDK, OTLP]"| obs
+    spa -->|"browser errors [Faro]"| obs
+    profile -.->|"rendered at build"| site
+    profile -.->|"copied in at deploy"| api
+    profile -.->|"fetched"| device
+
+    subgraph key["Key"]
+        k1["Container in this system"]:::cont
+        k3["External system"]:::ext
+        k4[/"Data file"/]:::data
+        k5["solid arrow: runtime call<br/>dashed arrow: build or deploy time"]:::note
+    end
+    style key fill:#ffffff,stroke:#9ca3af,color:#374151
+    style sys fill:#f8fafc,stroke:#1d4f80,stroke-dasharray: 5 3
+
+    classDef person fill:#0b3d6e,stroke:#0b3d6e,color:#ffffff
+    classDef cont fill:#3b82c4,stroke:#1d4f80,color:#ffffff
+    classDef data fill:#fef3c7,stroke:#b45309,color:#111827
+    classDef ext fill:#e5e7eb,stroke:#6b7280,color:#111827
+    classDef note fill:#ffffff,stroke:#ffffff,color:#374151
+    class visitor,agentclient person
+    class site,spa,device,api,db cont
+    class profile data
+    class turnstile,models,obs ext
+```
+
+The API is called directly, not through Cloudflare's proxy, so long streamed answers aren't cut by proxy timeouts. That puts rate limiting, quotas and input sanitisation in the API itself ([§3](#3-backend-components)).
+
+---
+
+## 3. Backend components
+
+*C4 level 3. Inside the API container. Thin routes; services do the work; every external dependency has an `enabled` flag so the chat degrades instead of failing.*
+
+```mermaid
+flowchart TB
+    req["<b>HTTP request</b><br/>chat page, MCP client or probe"]
+
+    subgraph L1["1 · Middleware: every request, outermost first"]
+        direction LR
+        m1["OpenTelemetry<br/>span + metrics"] --> m2["Origin secret<br/>(off until proxied)"] --> m3["Request ID"] --> m4["CORS"] --> m5["Probe tag<br/>X-Synthetic-Check"]
+    end
+    subgraph L2["2 · Routes: thin"]
+        direction LR
+        r1["/session"] ~~~ r2["/chat<br/>/chat/stream"] ~~~ r3["/mcp"] ~~~ r4["/health<br/>/health/llm"] ~~~ r5["/admin"]
+    end
+    subgraph L3["3 · Guards: refuse with 403 or 429"]
+        direction LR
+        g1["SessionTokens<br/>HMAC, 24 h"] ~~~ g2["RateLimiter<br/>per IP, per minute"] ~~~ g3["QuotaService<br/>session, IP, daily tokens"] ~~~ g4["MCPLimits<br/>+ MCP token budget"]
+    end
+    subgraph L4["4 · Services: do the work"]
+        direction LR
+        s1["IntentClassifier"] ~~~ s2["AgentService<br/>model fallback"] ~~~ s3["Verifier +<br/>DecisionsGate"] ~~~ s4["JobExtractor +<br/>JobParser"] ~~~ s5["Leads"]
+    end
+    subgraph L5["5 · Adapters: each has an enabled flag, so the chat degrades"]
+        direction LR
+        a1["Gemini client<br/>raw async HTTP/2"] ~~~ a2["SupabaseService"] ~~~ a3["TracingService<br/>Langfuse"] ~~~ a4["Telemetry<br/>OTLP"] ~~~ a5["Turnstile,<br/>Sheet webhook"]
+    end
+    bg["<b>maintain_data</b> [background loop]<br/>DB ping every 6 h · 90-day deletion daily · row counts"]
+
+    req --> L1 --> L2 --> L3 --> L4 --> L5
+    bg --> L5
+
+    classDef layer fill:#3b82c4,stroke:#1d4f80,color:#ffffff
+    classDef guard fill:#b45309,stroke:#78350f,color:#ffffff
+    classDef plain fill:#ffffff,stroke:#6b7280,color:#111827
+    class m1,m2,m3,m4,m5,r1,r2,r3,r4,r5,s1,s2,s3,s4,s5,a1,a2,a3,a4,a5,bg layer
+    class g1,g2,g3,g4 guard
+    class req plain
+    style L1 fill:#f8fafc,stroke:#9ca3af
+    style L2 fill:#f8fafc,stroke:#9ca3af
+    style L3 fill:#fff7ed,stroke:#b45309
+    style L4 fill:#f8fafc,stroke:#9ca3af
+    style L5 fill:#f8fafc,stroke:#9ca3af
+```
+
+Which route uses which components:
+
+| Route | Guards | Services and adapters |
+|---|---|---|
+| `POST /session` | RateLimiter, QuotaService (sessions per IP) | Turnstile, JobExtractor + JobParser, SupabaseService, Leads, SessionTokens (issues the token) |
+| `POST /chat/stream`, `/chat` | SessionTokens, RateLimiter, QuotaService | IntentClassifier, AgentService, Verifier + DecisionsGate, SupabaseService, TracingService |
+| `POST /mcp` | MCPLimits | AgentService, Verifier + DecisionsGate, TracingService (tag `mcp`) |
+| `GET /health/llm` | none | Gemini client (cached 10 min), SupabaseService ping |
+| `GET /admin/*` | `X-Admin-Key` | SupabaseService |
+
+---
+
+## 4. Starting a chat
+
+*UML sequence. `POST /api/v1/session`: the only call that needs the bot check, and the one that issues the signed token every later call must carry.*
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor V as Visitor
+    participant F as Chat page
+    participant T as Turnstile
+    participant A as API /session
+    participant G as Gemini Flash-Lite
+    participant D as Supabase
+    participant S as Google Sheet
+
+    V->>F: name, company, optional job link or text
+    F->>T: run the bot check
+    T-->>F: token
+    F->>A: POST /session with the token
+    A->>A: rate limit, sessions per IP per day
+    A->>T: siteverify(token)
+    T-->>A: success (else 403)
+    opt a job post was given
+        A->>A: fetch the URL (SSRF-checked, no redirects)
+        A->>G: extract a fixed schema (title, level, skills, summary)
+        G-->>A: schema JSON. The raw page is discarded.
+    end
+    A->>D: create session (name, company, job schema, hashed IP)
+    opt a job post was read and this is not a probe
+        A-)S: lead (name, company, role), reply checked
+    end
+    A-->>F: session ID + signed token + welcome with AI disclosure
+```
+
+---
+
+## 5. Answering a question
+
+*UML sequence. `POST /api/v1/chat/stream`. Words stream first; the stamps follow the same stream, so the visitor never waits for verification.*
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor V as Visitor
+    participant F as Chat page
+    participant A as API /chat/stream
+    participant D as Supabase
+    participant G as Gemini (Vertex AI)
+    participant J as Jev (OpenRouter)
+    participant L as Langfuse
+
+    V->>F: question
+    F->>A: POST with session ID + signed token
+    A->>A: verify token (403 if forged or expired)
+    A->>D: load session and history (3 s timeout, memory fallback)
+    A->>A: rate limit, quotas: session, IP, daily tokens (429 if over)
+    A->>L: open trace
+    A->>G: intent, Flash-Lite (10 s, defaults to on-topic)
+    alt off topic
+        A-->>F: polite decline, done
+    else about Rayhan
+        A->>G: stream answer, Flash (fallback in §6)
+        loop each chunk
+            G-->>A: text
+            A-->>F: data: chunk
+            F-->>V: words appear
+        end
+        A-->>F: data: status verifying
+        A->>G: verdict + verbatim quote per sentence, Flash-Lite JSON
+        A->>A: code checks each quote is in the profile and every number
+        A->>J: probability each sentence holds (can only demote)
+        A-->>F: data: verification (stamp per sentence)
+        A-->>F: data: DONE
+        par after the response
+            A-)D: save the turn, log the event and tokens
+            A-)L: close the trace (judges score it later)
+        end
+    end
+```
+
+---
+
+## 6. Model fallback (state machine)
+
+*UML state diagram. `AgentService` tries models in order; a model that errors, returns nothing, or sends no first token in time hands over to the next. Every switch is counted (`chat.model_fallbacks`).*
+
+```mermaid
+stateDiagram-v2
+    [*] --> Flash
+    state "Gemini 3.5 Flash<br/>first token within 10 s" as Flash
+    state "Gemini 3.5 Flash-Lite<br/>first token within 15 s" as Lite
+    state "Flash-Lite, last try<br/>first token within 45 s" as LiteLong
+    state "Apology sent<br/>counted as outcome=apology" as Apology
+    Flash --> Answered: tokens arrive
+    Flash --> Lite: error, empty or silent
+    Lite --> Answered: tokens arrive
+    Lite --> LiteLong: error, empty or silent
+    LiteLong --> Answered: tokens arrive
+    LiteLong --> Apology: error, empty or silent
+    Answered --> [*]
+    Apology --> [*]
+```
+
+Model IDs are settings (`GEMINI_MODEL`, `GEMINI_FALLBACK_MODEL`), because Google retires them: a retired ID returns 404, and in 2026 that went unnoticed for four months ([post-mortem](POSTMORTEM-2026-10-chatbot-outage.md)). A weekly workflow now fails 60 days before a configured model's retirement date.
+
+---
+
+## 7. How a sentence gets its stamp
+
+*Decision flow inside `services/verifier.py`. The model only proposes; code decides.*
+
+```mermaid
+flowchart TB
+    s["Sentence from the answer"] --> v{"Flash-Lite verdict<br/>(with a verbatim quote)"}
+    v -->|"no verdict returned"| unv["<b>unverified</b>"]
+    v -->|"not a claim<br/>(greeting, offer)"| na["<b>n/a</b>"]
+    v -->|"not in profile"| unk["<b>unknown</b>"]
+    v -->|"inferred"| inf["<b>inferred</b>"]
+    v -->|"supported"| q{"Does code find the quote<br/>verbatim in profile.json?"}
+    q -->|"no"| inf
+    q -->|"yes"| jev{"Jev probability<br/>below 0.5?"}
+    jev -->|"yes: demote"| inf
+    jev -->|"no, or Jev off"| chk["<b>checked</b>"]
+    chk --> num{"Every number in the sentence<br/>appears in the profile?"}
+    inf --> num
+    num -->|"no"| flag["flag: numbers_unverified"]
+    num -->|"yes"| done["stamp sent to the page"]
+    flag --> done
+
+    subgraph key["Key"]
+        k1{"Decision"}
+        k2["<b>Stamp</b>"]:::stamp
+    end
+    style key fill:#ffffff,stroke:#9ca3af,color:#374151
+
+    classDef stamp fill:#3b82c4,stroke:#1d4f80,color:#ffffff
+    class unv,na,unk,inf,chk stamp
+```
+
+On the golden set (16 recruiter questions against the live model), 82% of 62 claims were `checked` on Oct 30, 2026, with 0 unverified numbers ([eval report](EVAL-REPORT.md)).
+
+---
+
+## 8. Agents over MCP and the on-device tier
+
+*Two other ways in. Both reuse the same agent and the same stamps.*
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant C as AI agent (MCP client)
+    participant M as API /mcp
+    participant AG as AgentService + Verifier
+    actor V as Visitor (Chrome with Gemini Nano)
+    participant N as On-device model
+    participant A as API /chat/stream
+
+    Note over C,AG: MCP 2026-07-28, stateless: every request carries its own metadata
+    C->>M: tools/call ask(question)
+    M->>M: rate limit, per-caller limit, MCP daily token budget (429 if over)
+    M->>AG: answer + stamps (traced in Langfuse as mcp)
+    AG-->>C: answer, model, verification
+
+    Note over V,A: Chrome Prompt API: the question stays on the computer
+    V->>N: question + the matching profile blocks
+    N-->>V: answer + the quotes it relied on
+    alt every quote is verbatim in the profile and every number checks
+        V->>V: show the on-device answer, report timing only
+    else a quote or number fails
+        V->>A: fall back to the cloud agent, visibly
+    end
+```
+
+---
+
+## 9. Data model and where data goes
+
+*UML entity-relationship diagram of the two Postgres tables, then every place visitor data can reach.*
+
+```mermaid
+erDiagram
+    SESSIONS |o--o{ EVENTS : "has 0..n (cascade delete); MCP events have none"
+    SESSIONS {
+        uuid id PK
+        string user_name "typed by the visitor"
+        string company
+        jsonb preferences "history (last 10 turns), job schema, ip_hash"
+        timestamptz created_at
+        timestamptz last_active "deleted 90 days after this"
+    }
+    EVENTS {
+        bigint id PK "BIGSERIAL"
+        uuid session_id FK "null for MCP calls"
+        string event_type "session_start, chat, chat_stream, chat_device, mcp, mcp_tokens"
+        string intent
+        int tokens_in
+        int tokens_out
+        int latency_ms
+        jsonb metadata "ip_hash (salted), caller for MCP"
+        timestamptz created_at
+    }
+```
+
+| Data | Stored in | Kept | Never contains |
+|---|---|---|---|
+| Name, company, job schema, chat history | Supabase `sessions` | 90 days after last activity (daily purge) | the raw job page, the IP address |
+| Questions and answers | Langfuse traces (judged by an LLM through OpenRouter) | 90 days (the app purges; the free plan doesn't) | the name field or IP address (user ID is a salted IP hash) |
+| Lead: name, company, role, link | Google Sheet | his contact record | chat text |
+| Model names, tokens, timings, outcomes | Grafana Cloud (OTLP) | 14 days | message text, names |
+| Browser errors, page speed, continent | Grafana Faro | 14 days | URL query strings (cut at `?`), names |
+| Page views, Web Vitals | Vercel Analytics | Vercel's terms | cookies, URL query strings |
+
+---
+
+## 10. Deployment and delivery
+
+*Where each container runs, and what has to pass before a change reaches it.*
+
+```mermaid
+flowchart TB
+    dev["<b>git push to main</b><br/>[Rayhan]"]
+
+    subgraph gh["GitHub Actions"]
+        ci["<b>ci.yml</b><br/>104 unit tests, frontend build"]
+        eval["<b>eval.yml</b><br/>16-question golden eval vs live model<br/>(keyless Google sign-in)"]
+        sched["<b>Schedules</b><br/>A2 real answer every 6 h, uptime daily,<br/>model retirement weekly"]
+    end
+
+    subgraph run["Runtime"]
+        railway["<b>Railway</b><br/>API container, 1 replica<br/>waits for CI ('Wait for CI')"]
+        vercel["<b>Vercel</b><br/>chat page"]
+        workers["<b>Cloudflare Workers</b><br/>rayhanpatel.com (Portfolio-V2 repo)"]
+    end
+
+    dev --> ci & eval
+    ci -->|"green"| railway
+    eval -->|"green"| railway
+    dev -->|"build on push"| vercel
+    dev -->|"build on push (site repo)"| workers
+    sched -->|"probe, report to Grafana"| railway
+
+    subgraph key["Key"]
+        k1["Gate: a failure stops the deploy"]:::gate
+        k2["Runtime host"]:::host
+    end
+    style key fill:#ffffff,stroke:#9ca3af,color:#374151
+
+    classDef gate fill:#b45309,stroke:#78350f,color:#ffffff
+    classDef host fill:#3b82c4,stroke:#1d4f80,color:#ffffff
+    class ci,eval gate
+    class railway,vercel,workers host
+    style gh fill:#f8fafc,stroke:#9ca3af
+    style run fill:#f8fafc,stroke:#9ca3af
+```
+
+The chat page (Vercel) and the site deploy without the eval gate; only the backend waits for it. Dependabot opens grouped dependency PRs, and those go through the same checks.
+
+---
+
+## 11. Monitoring and alerting
+
+*Signals, where they go, and who gets woken up. Details and the rebuild steps: [`monitoring/README.md`](../monitoring/README.md); every alert links a [runbook](runbooks/).*
+
+```mermaid
+flowchart TB
+    subgraph sources["Signals"]
+        otlp["<b>Backend telemetry</b><br/>[OTLP] traces, metrics, logs"]
+        faro["<b>Browser</b><br/>[Faro] errors, page speed"]
+        probes["<b>9 Synthetic checks</b><br/>[Grafana probes] chat page, health,<br/>site, DNS, domain, TLS"]
+        ciresults["<b>CI results</b><br/>[GitHub Actions] A2 answer, golden eval"]
+    end
+
+    subgraph grafana["Grafana Cloud"]
+        rules["<b>Alert rules</b><br/>14 rules + per-check alerts"]
+        policy{"<b>Notification policy</b>"}
+    end
+
+    email["<b>Email</b><br/>everything"]
+    irm["<b>Grafana IRM</b><br/>escalation chain"]
+    phone["<b>Phone</b><br/>[mobile push]"]
+
+    otlp & faro & probes & ciresults --> rules --> policy
+    policy -->|"all alerts"| email
+    policy -->|"chat or site broken,<br/>severity=page"| irm --> phone
+
+    subgraph key["Key"]
+        k1["Pages the owner"]:::page
+        k2["Email only"]:::mail
+    end
+    style key fill:#ffffff,stroke:#9ca3af,color:#374151
+
+    classDef page fill:#b91c1c,stroke:#7f1d1d,color:#ffffff
+    classDef mail fill:#3b82c4,stroke:#1d4f80,color:#ffffff
+    class irm,phone page
+    class email mail
+    style sources fill:#f8fafc,stroke:#9ca3af
+    style grafana fill:#f8fafc,stroke:#9ca3af
+```
+
+| Pages the phone | Emails only |
+|---|---|
+| Chat page (B1) fails twice in 30 min; model or database health (A1) fails 3 times in 15 min from two locations; the site (S1) fails twice in 30 min; any rule labelled `severity=page` | A certificate within 14 days of expiry; fallback model on over 20% of answers; apology or error answers; unverifiable answer sentences above 20%; a lead not saved; the decision model failing; the 90-day deletion failing; database growth; tokens near the daily budget; slow first words; the A2 real answer failing or missing; a golden eval regression; DNS or domain problems |
+
+Tested Oct 30, 2026: a rule labelled `severity=page` reached the phone 32 seconds after it fired. A2 emails rather than pages because GitHub delays and skips scheduled runs.
+
+---
+
+## 12. Decisions
+
+| Decision | Why | Trade-off |
+|---|---|---|
+| One `profile.json` for the site, the agent and the on-device tier | The site and the agent can't disagree | Every fact change is a commit and a redeploy |
+| Code, not the model, decides `checked` | A model can quote what isn't there; a substring check can't | Paraphrased truths land as `inferred` |
+| Stream first, stamp after | First words in seconds; verification adds no wait | Stamps arrive a moment after the text |
+| A decision model as a second opinion, demote-only | It can only make a stamp more cautious | One more paid call per answer (fractions of a cent) |
+| API called directly, not through Cloudflare | Long SSE streams avoid proxy timeouts | Limits and sanitisation live in the app; the origin lock is planned |
+| Raw async HTTP to Gemini, not the SDK | The SDK hung the server in production | Request shapes maintained by hand, covered by tests |
+| Model IDs as settings, health probe makes a real call | "Configured" is not "working" | One cached model call every 10 minutes |
+| Quotas counted in Postgres with an in-memory fallback | Limits survive restarts, and don't fall to zero if the database drops | A database read per message |
+| Probes, not traffic, as the alert signal | A few visitors a day makes error rates noise | Probe traffic must be tagged and kept out of analytics and leads |
+| A2 every 6 hours from GitHub, not hourly in Grafana | Each run is a real answer (about a cent); Grafana's longest interval is 1 hour | GitHub's schedule is unreliable, so A2 emails instead of paging |
+
+More context: [system card](SYSTEM-CARD.md) (data, safety, evaluation, known failures), [monitoring design](MONITORING.md), [post-mortem](POSTMORTEM-2026-10-chatbot-outage.md).
