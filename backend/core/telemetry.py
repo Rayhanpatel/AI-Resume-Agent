@@ -219,7 +219,7 @@ def watch_database(supabase_service):
 
 
 def watch_gate_canary(read):
-    """chat.intent.canary.drift: the largest change in the gate's probability on the daily check messages
+    """chat.intent.canary.drift: the average change in the gate's probability on the daily check messages
     since the benchmark recorded them; read() returns the last value or None (no check yet, or it failed)"""
     def observe(options):
         value = read()
@@ -227,7 +227,7 @@ def watch_gate_canary(read):
 
     # No unit: Prometheus naming would add a _ratio suffix
     _meter.create_observable_gauge("chat.intent.canary.drift", callbacks=[observe],
-                                   description="Largest change in P(on topic) on the gate's drift-check messages")
+                                   description="Average change in P(on topic) on the gate's drift-check messages")
 
 def shutdown():
     """Flush and stop the exporters (called at the end of the app lifespan, i.e. on SIGTERM)"""

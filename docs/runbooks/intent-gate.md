@@ -6,7 +6,7 @@ Three email alerts point here. All read `chat.intent.decisions` (labels `gate`, 
 |---|---|
 | **Intent gate refusing too much** | More than half of the gate's decisions in 24 hours were refusals, with at least 6 refusals. |
 | **Gate declined a mid-conversation message** | The decision model declined a message that came after an earlier turn (`turn="followup"`). |
-| **Gate decision model drifted** | The daily re-score of the benchmark's near-threshold messages moved more than 0.1 from the recorded probabilities (`chat.intent.canary.drift`). |
+| **Gate decision model drifted** | The daily re-score of 14 benchmark messages moved more than 0.06 on average from the recorded probabilities (`chat.intent.canary.drift`; noise alone is about 0.026). |
 
 ## What it means
 
@@ -26,7 +26,7 @@ A refused real question is the expensive mistake: a recruiter gets "I only answe
    Read the refused message and, for a follow-up, the turn before it in the same session.
 2. `GET /api/v1/health/llm`: `intent_gate` shows the model and both thresholds in use: first messages, and messages with a previous turn.
 3. Grafana: `chat_intent_decisions_total` by `gate` and `turn`. Many `fallback` decisions mean the decision model is failing (see [decision-model.md](decision-model.md)).
-4. For drift: Railway logs, `Gate drift check: largest change …`, and `chat_intent_canary_drift`.
+4. For drift: Railway logs, `Gate drift check: average change …`, and `chat_intent_canary_drift`.
 
 ## Fix
 
@@ -42,4 +42,4 @@ A refused real question is the expensive mistake: a recruiter gets "I only answe
 - A follow-up after an answer ("How long was that?") gets an answer.
 - A real question about one of his projects ("What is MedBill?") gets an answer.
 - `chat_intent_decisions_total{intent="job_related"}` rises again.
-- The next drift check logs a change below 0.1.
+- The next drift check logs an average change below 0.06.

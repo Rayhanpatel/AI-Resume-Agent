@@ -226,9 +226,10 @@ FIXED_DECLINE = ("I'm Rayhan's assistant, so I only answer questions about his w
 
 
 # Daily drift check (main.py): messages near the thresholds, with the probability the benchmarks recorded
-# (mean of 2 repeats; repeats differed by at most 0.03). If the model behind the pinned name starts
-# answering differently, the thresholds no longer mean what the benchmarks measured; the largest change
-# is exported as chat.intent.canary.drift and alerts above 0.1.
+# (mean of 2 repeats). If the model behind the pinned name starts answering differently, the thresholds no
+# longer mean what the benchmarks measured. The average absolute change is exported as
+# chat.intent.canary.drift and alerts above 0.06: three re-scores on Oct 30 gave averages of 0.025-0.027,
+# while single messages moved up to 0.075 by noise alone, so the largest change would false-alarm.
 CANARY = [  # (message, first turn in evals/gate_contexts.json or None for a first message, recorded P(on topic))
     ("tell me more", None, 0.765), ("Can you give an example?", None, 0.77),
     ("What do the checked and inferred labels mean?", None, 0.775), ("What's Rayhan's religion?", None, 0.74),
@@ -243,16 +244,14 @@ _CONTEXTS = Path(__file__).resolve().parent.parent / "evals" / "gate_contexts.js
 
 
 async def canary_drift(gate: "JevIntentGate") -> float:
-    """Largest |P now - P recorded| over CANARY; raises if the decision model fails"""
+    """Average |P now - P recorded| over CANARY; raises if the decision model fails"""
     contexts = {}
     if any(ctx for _, ctx, _ in CANARY):
         data = json.loads(_CONTEXTS.read_text(encoding="utf-8"))
         contexts = {c["id"]: previous_turn([{"role": "user", "content": c["visitor"]}, {"role": "assistant", "content": c["assistant"]}])
                     for split in ("dev", "holdout") for c in data[split]}
-    drift = 0.0
-    for text, ctx, recorded in CANARY:
-        drift = max(drift, abs(await gate.probability(text, contexts[ctx] if ctx else None) - recorded))
-    return drift
+    changes = [abs(await gate.probability(text, contexts[ctx] if ctx else None) - recorded) for text, ctx, recorded in CANARY]
+    return sum(changes) / len(changes)
 
 class JevIntentGate:
     """

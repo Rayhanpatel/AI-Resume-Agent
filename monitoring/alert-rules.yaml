@@ -116,8 +116,9 @@ rules:
     severity: email
     runbook: intent-gate.md
     promql: |
-      # the daily re-score of the benchmark's near-threshold messages moved more than 0.1 from the recorded values
-      max(chat_intent_canary_drift) > 0.1
+      # the daily re-score of 14 benchmark messages moved more than 0.06 on average from the recorded values
+      # (noise alone: 0.025-0.027 on Oct 30; single messages move up to 0.075, so the average, not the largest)
+      max(chat_intent_canary_drift) > 0.06
     note: the model is pinned by name; drift means the thresholds no longer mean what the benchmarks measured.
 
   - name: Answer quality dropping

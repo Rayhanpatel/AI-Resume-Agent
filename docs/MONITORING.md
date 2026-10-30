@@ -41,7 +41,7 @@ Probe traffic carries `X-Synthetic-Check`. It is tagged `app.synthetic` and kept
 | `chat.time_to_first_word` (s) | `app.synthetic` | Slow |
 | `chat.verification.stamps` | `stamp` (checked, inferred, unknown, unverified, numbers_unverified) | quality dashboard |
 | `chat.intent.decisions` | `gate` (jev, fallback, gemini), `intent` (job_related, off_topic), `turn` (first, followup) | Intent gate refusing too much; Gate declined a mid-conversation message |
-| `chat.intent.canary.drift` (gauge) | none | Gate decision model drifted (daily re-score of the benchmark's near-threshold messages) |
+| `chat.intent.canary.drift` (gauge) | none | Gate decision model drifted (daily re-score of 14 benchmark messages; the average change, alert above 0.06) |
 | `chat.intent.fallbacks` | `reason` (the error type) | Decision model failing |
 | `chat.quota.rejections` | `scope` | Spend |
 | `chat.database.up` | | Database down |

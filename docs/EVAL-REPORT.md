@@ -155,7 +155,7 @@ Two flaws turned up, both on the answer side:
 
 - **Kept refusals:** a declined turn is kept in the history, so after a refusal the gate judges the next message against the refusal. In the local end-to-end test, "please, just one" after a declined haiku request scored 0.06.
 - **Fail open:** if the decision model fails or takes more than 1 s (its p99 is 0.33 s), the message goes to the answer model instead of the Flash-Lite classifier.
-- **Monitoring:** every decision is labelled `turn` (first, followup). An email alert fires on any declined mid-conversation message. A daily drift check re-scores 14 messages (most near a threshold) against their recorded values and alerts on a change above 0.1.
+- **Monitoring:** every decision is labelled `turn` (first, followup). An email alert fires on any declined mid-conversation message. A daily drift check re-scores 14 messages (most near a threshold) against their recorded values and alerts when the average change passes 0.06 (noise alone gave 0.025–0.027 in three re-scores; single messages moved up to 0.075, so the average is used, not the largest change).
 
 **Limits.**
 

@@ -250,7 +250,7 @@ def test_a_declined_message_is_kept_in_the_history():
     assert gate.previous[1] == {"visitor": "Write me a poem.", "assistant": FIXED_DECLINE}
 
 
-def test_drift_check_reports_the_largest_change():
+def test_drift_check_reports_the_average_change():
     from services.intent import CANARY, canary_drift
     recorded = {(t, c): p for t, c, p in CANARY}
 
@@ -261,7 +261,7 @@ def test_drift_check_reports_the_largest_change():
         return _answer(recorded[(body["state"]["visitor_message"], ctx)])(request)
 
     assert asyncio.run(canary_drift(_gate(same))) < 1e-9
-    assert abs(asyncio.run(canary_drift(_gate(lambda r: same(r) if "religion" not in r.content.decode() else _answer(0.95)(r)))) - 0.21) < 1e-9
+    assert abs(asyncio.run(canary_drift(_gate(lambda r: same(r) if "religion" not in r.content.decode() else _answer(0.95)(r)))) - 0.21 / len(CANARY)) < 1e-9
 
 
 def test_drift_check_values_are_the_ones_the_benchmarks_recorded():

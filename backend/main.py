@@ -182,7 +182,7 @@ async def lifespan(app: FastAPI):
             return
         try:
             app.state.gate_canary_drift = await canary_drift(app.state.intent_classifier)
-            logger.info(f"Gate drift check: largest change {app.state.gate_canary_drift:.3f}")
+            logger.info(f"Gate drift check: average change {app.state.gate_canary_drift:.3f}")
         except Exception as e:
             app.state.gate_canary_drift = None  # no value is not "no drift"; the failed call is in the model-call metrics
             logger.error(f"Gate drift check failed: {type(e).__name__}: {e}")
