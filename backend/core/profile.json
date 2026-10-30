@@ -1,6 +1,6 @@
 {
   "meta": {
-    "updated": "2026-10-25",
+    "updated": "2026-10-30",
     "about_this_file": "Public-safe profile of Rayhan Patel. It is the single source for rayhanpatel.com (rendered by scripts/build.py) and for the agent at chat.rayhanpatel.com (copied in by scripts/sync_chatbot.py). Everything here is public. It never holds a phone number, a street address, internal employer metrics, ticket IDs or colleague names."
   },
   "basics": {
@@ -167,12 +167,13 @@
       "summary": "A FastAPI and React agent that answers questions about my work. It streams over SSE, gates off-topic questions before the expensive call, reads a pasted job post, and keeps chatting when memory, database or tracing are down.",
       "metrics": [
         "83% of claims checked verbatim",
-        "95 tests, golden eval on every backend push"
+        "104 tests and a golden eval gate every backend deploy"
       ],
       "highlights": [
         "Every sentence of an answer is stamped checked, inferred or unknown: a fast model proposes a verbatim profile quote, code confirms it and checks every number. First run: 52 claims, 83% checked verbatim, none unknown.",
         "Replaced Google's SDK with raw async HTTP/2 after it hung the server, and traced a silent production hang to a cache deadlock by bisecting with diagnostic endpoints.",
-        "Oct 2026: found it had been silently down for months (retired model, closed billing); wrote the post-mortem, made model IDs configuration, added a health probe that makes a real call, a fallback model, signed sessions, quotas and an MCP interface."
+        "Oct 2026: found it had been silently down for months (retired model, closed billing); wrote the post-mortem, made model IDs configuration, added a health probe that makes a real call, a fallback model, signed sessions, quotas and an MCP interface.",
+        "Runs it like a production service: nine Grafana synthetic checks, OpenTelemetry traces and metrics, alerts that page his phone through Grafana IRM with a runbook for each, and visitor chats deleted after 90 days. On its first day it flagged the site timing out from Virginia and paged."
       ],
       "links": {
         "live": "https://chat.rayhanpatel.com",
