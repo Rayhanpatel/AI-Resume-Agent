@@ -48,6 +48,11 @@ def _norm(text: str) -> str:
 _PROFILE_NORM = _norm(PROFILE_TEXT)
 
 
+# Ends of a piece that are abbreviations, not sentence ends (an answer about his degrees split at "B.S."
+# and every stamp came back unverified, Oct 30): initialisms such as B.S., M.S., Ph.D., U.S., e.g., and a few words
+ABBREVIATION_END = re.compile(r"(?:\b(?:[A-Za-z][a-z]?\.){2,}|\b(?:B\.Tech|Dr|Mr|Ms|Mrs|St|Inc|vs|No|approx)\.)$")
+
+
 def split_sentences(answer: str) -> List[str]:
     """Split markdown-ish prose into sentences; bullets and lines count as boundaries"""
     text = re.sub(r"\*\*|__|`", "", answer)
@@ -57,7 +62,12 @@ def split_sentences(answer: str) -> List[str]:
         line = re.sub(r"^\s*(?:[-*•]|\d+[.)])\s+", "", line).strip()
         if not line:
             continue
-        parts += re.split(r"(?<=[.!?])\s+(?=[A-Z0-9\"'(])", line)
+        for piece in re.split(r"(?<=[.!?])\s+(?=[A-Z0-9\"'(])", line):
+            # "B.S. Abdur Rahman", "M.S. Applied", "Ph.D. Student": an abbreviation, not the end of a sentence
+            if parts and ABBREVIATION_END.search(parts[-1]):
+                parts[-1] = f"{parts[-1]} {piece}"
+            else:
+                parts.append(piece)
     return [p.strip() for p in parts if len(p.strip()) >= MIN_CLAIM_CHARS]
 
 

@@ -89,3 +89,13 @@ def test_verifier_failure_yields_unverified_not_an_exception():
         async def verdicts(self, sentences): raise RuntimeError("down")
     result = asyncio.run(verify_answer("He built something important at 3E.", _Broken()))
     assert result["claims"][0]["status"] == "unverified" and result["summary"]["unverified"] == 1
+
+
+
+def test_split_sentences_does_not_break_at_degree_abbreviations():
+    answer = ("He completed his B.Tech. in Computer Science at B.S. Abdur Rahman Crescent Institute in Chennai. "
+              "He is finishing his M.S. Applied Machine Learning degree at the University of Maryland. It ends in May 2027.")
+    assert split_sentences(answer) == [
+        "He completed his B.Tech. in Computer Science at B.S. Abdur Rahman Crescent Institute in Chennai.",
+        "He is finishing his M.S. Applied Machine Learning degree at the University of Maryland.",
+        "It ends in May 2027."]
