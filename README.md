@@ -21,6 +21,19 @@ Its knowledge comes from `backend/core/profile.json`, the same public profile th
 
 ---
 
+## Operations
+
+It runs in production with one person on call, so the work after shipping is in the repo too:
+
+- **Checks from outside, on a schedule:** 9 Grafana Synthetic Monitoring checks (the chat page in a real browser every 15 minutes, model and database health every 5 minutes from two locations, the site and resume, DNS, domain and certificate expiry) plus a real answer, verified sentence by sentence, every 6 hours.
+- **Telemetry:** OpenTelemetry traces, metrics and logs to Grafana Cloud with a `gen_ai` span around every model call and no message text; Grafana Faro for browser errors; Langfuse for answer quality with five LLM judges.
+- **Alerts:** a broken chat or site pages the owner's phone through Grafana IRM; slower problems (fallback model, unverifiable answers, failed leads, retention, spend) go to email. Every alert links a [runbook](docs/runbooks/). A test alert on Oct 30, 2026 went from a Grafana rule to the phone in 32 seconds (IRM delivery log).
+- **Gates:** 104 unit tests and a 16-question golden eval against the live model run before a backend deploy (Railway waits for CI); a weekly check fails when a configured model nears retirement.
+- **Limits and data:** signed sessions, per-IP and per-session quotas, a daily token budget, a $10/month Google Cloud spend cap; visitor chats are deleted after 90 days.
+- **Written down:** [post-mortem](docs/POSTMORTEM-2026-10-chatbot-outage.md) (four months of silent outage, and what broke while fixing it), [system card](docs/SYSTEM-CARD.md), [eval report](docs/EVAL-REPORT.md), [monitoring design](docs/MONITORING.md).
+
+---
+
 ## Quick Start
 
 ### Prerequisites
@@ -165,8 +178,8 @@ flowchart LR
 
 The system uses a **Split Architecture** optimization:
 
-1. **Frontend (Static Assets)**: Served via **Vercel**, proxied through **Cloudflare**.
-    - *Security*: Protected by Cloudflare WAF, DDoS mitigation, and SSL.
+1. **Frontend (Static Assets)**: Served by **Vercel**; Cloudflare only hosts the DNS record (not proxied).
+    - *Security*: Vercel's TLS and edge network; a Content-Security-Policy and security headers from `frontend/vercel.json`.
 2. **Backend (API)**: Hosted on **Railway**, accessed directly by the Frontend (bypassing Cloudflare proxy).
     - *Reason*: Reduces latency for real-time SSE streaming and avoids Cloudflare timeout limits on long LLM generations.
     - *Security*: Because API traffic bypasses Cloudflare, the Backend implements its own robust defenses:
@@ -304,14 +317,15 @@ erDiagram
 
 | Endpoint | Method | Auth | Description |
 |----------|--------|------|-------------|
-| `/api/v1/health` | GET | None | Liveness: config flags for all 6 subsystems (Railway's healthcheck) |
+| `/api/v1/health` | GET | None | Liveness: config flags for all 7 subsystems (Railway's healthcheck) |
 | `/api/v1/health/llm` | GET | None | Readiness: one real model call, cached; 503 if the model fails |
-| `/api/v1/session` | POST | None | Create session with optional job URL/text parsing |
-| `/api/v1/chat` | POST | None | Non-streaming chat response |
-| `/api/v1/chat/stream` | POST | None | SSE streaming chat response |
+| `/api/v1/session` | POST | Turnstile token | Create a session (returns a signed session token), with optional job URL/text parsing |
+| `/api/v1/chat` | POST | Session token | Non-streaming chat response |
+| `/api/v1/chat/stream` | POST | Session token | SSE streaming chat response, then the verification stamps |
+| `/api/v1/chat/device-event` | POST | Session token | Counts and timings from the on-device tier (no text) |
 | `/api/v1/admin/analytics` | GET | `X-Admin-Key` | Aggregated usage stats over N days |
 | `/api/v1/admin/sessions` | GET | `X-Admin-Key` | Recent sessions list |
-| `/mcp` | POST | None | MCP Streamable HTTP, stateless; tools `get_profile`, `ask`, `fit_report` |
+| `/mcp` | POST | None (rate-limited, own daily token budget) | MCP Streamable HTTP, stateless; tools `get_profile`, `ask`, `fit_report` |
 
 ---
 
@@ -340,7 +354,9 @@ All variables loaded via Pydantic `BaseSettings` from `backend/.env`.
 | `TURNSTILE_SECRET_KEY` | No | Cloudflare Turnstile Secret Key (bot protection disabled if absent) |
 | `FRONTEND_URL` | No | Frontend origin for CORS (default: `http://localhost:5173`) |
 | `SESSION_SECRET` | No | Signs session tokens; without it a random secret is used and sessions die on restart |
-| `QUOTA_*` | No | `MESSAGES_PER_SESSION` 40, `MESSAGES_PER_IP_PER_DAY` 80, `SESSIONS_PER_IP_PER_DAY` 15, `DAILY_TOKEN_BUDGET` 3000000 |
+| `QUOTA_*` | No | `MESSAGES_PER_SESSION` 40, `MESSAGES_PER_IP_PER_DAY` 80, `SESSIONS_PER_IP_PER_DAY` 15, `DAILY_TOKEN_BUDGET` 500000, `MCP_DAILY_TOKEN_BUDGET` 100000 |
+| `DATA_RETENTION_DAYS` | No | Visitor chats (Supabase rows, Langfuse traces) are deleted after this many idle days (default `90`) |
+| `OTEL_EXPORTER_OTLP_ENDPOINT`, `OTEL_EXPORTER_OTLP_HEADERS`, `OTEL_EXPORTER_OTLP_PROTOCOL` | No | OpenTelemetry export (Grafana Cloud's OTLP gateway); telemetry is off when the endpoint is unset |
 | `ORIGIN_SECRET` | No | When set, requests must carry `X-Origin-Secret` (added by Cloudflare); health stays open |
 | `VERIFY_ANSWERS` | No | Stamp every answer (default `true`) |
 | `OPENROUTER_API_KEY` | No | Enables the decision-model second opinion on stamps |
@@ -371,6 +387,8 @@ Only `GOOGLE_API_KEY` is required. All other services degrade gracefully when th
 │   │   ├── ttl_cache.py           # Thread-safe TTL cache (OrderedDict + Lock)
 │   │   ├── session_tokens.py      # Signed session tokens
 │   │   ├── origin.py              # Origin-secret middleware
+│   │   ├── telemetry.py           # OpenTelemetry traces, metrics, logs (off without an endpoint)
+│   │   ├── mcp_limits.py          # Rate limits and the MCP token budget around /mcp
 │   │   ├── middleware.py          # Pure ASGI Request ID middleware
 │   │   └── timeout.py            # Safe async timeout (asyncio.wait)
 │   ├── infra/
@@ -402,6 +420,9 @@ Only `GOOGLE_API_KEY` is required. All other services degrade gracefully when th
 │   └── .env.example               # Environment variable reference
 ├── frontend/
 │   ├── src/
+│   │   ├── lib/
+│   │   │   ├── telemetry.js       # Faro front door (chat.rayhanpatel.com only, URLs cut at ?)
+│   │   │   └── faro.js            # Grafana Faro setup, loaded lazily
 │   │   ├── components/
 │   │   │   ├── ChatInterface.jsx  # Main chat UI (memo-wrapped)
 │   │   │   ├── WelcomeForm.jsx    # Entry form (name, company, job)
@@ -418,9 +439,28 @@ Only `GOOGLE_API_KEY` is required. All other services degrade gracefully when th
 │   ├── vite.config.js             # Dev proxy, build config
 │   ├── tailwind.config.js         # Custom palette + animations
 │   └── package.json               # React 18, lucide, react-markdown
+├── docs/
+│   ├── SYSTEM-CARD.md             # What it is, what data it touches, known failures
+│   ├── EVAL-REPORT.md             # The numbers, with dates
+│   ├── POSTMORTEM-2026-10-chatbot-outage.md
+│   ├── MONITORING.md              # Monitoring design
+│   └── runbooks/                  # One per alert: what it means, what to check, how to fix
+├── monitoring/
+│   ├── checks/                    # k6 scripts and DNS checks (A1, A2, B1, S1, D1, D2)
+│   ├── provision_checks.py        # Creates the Synthetic Monitoring checks and their alerts
+│   ├── alert-rules.yaml           # Every alert rule: query, severity, runbook
+│   ├── model_lifecycle.py         # Weekly model-retirement check
+│   ├── push_metric.py             # Sends CI results (A2, eval) to Grafana
+│   ├── DASHBOARDS.md              # The two Grafana dashboards, panel by panel
+│   └── README.md                  # What is live and how to rebuild it
 ├── .github/
+│   ├── dependabot.yml             # Grouped dependency and security updates
 │   └── workflows/
-│       └── ci.yml                 # Backend imports + pytest, frontend build (2 jobs)
+│       ├── ci.yml                 # Backend imports + pytest, frontend build
+│       ├── eval.yml               # Golden eval on every backend push, PRs and weekly
+│       ├── real-answer.yml        # A2: a real verified answer every 6 hours
+│       ├── uptime.yml             # Daily health, database and page check
+│       └── model-lifecycle.yml    # Weekly model-retirement check
 ├── Makefile                       # setup, api, ui, build, clean
 └── README.md
 ```
@@ -477,14 +517,15 @@ Traditional metrics (BLEU, ROUGE) measure surface-level text overlap and fail on
 |-----------|----------|--------|
 | Backend | Railway | `Dockerfile` → `python:3.11-slim`, `start.sh` runs uvicorn with `$PORT`, restart on failure (10 retries), health check at `/api/v1/health` |
 | Frontend | Vercel | Auto-deploy from `main` branch, custom domain `chat.rayhanpatel.com` |
-| CDN | Cloudflare | DNS + SSL + Proxy, SSE buffering bypassed via response headers |
-| CI | GitHub Actions | 2-job pipeline: backend (Python 3.11, install deps, verify imports, pytest) + frontend (Node 20, `npm ci`, `npm run build`) on push/PR to `main` |
+| DNS | Cloudflare | DNS only (not proxied); the backend is called directly so long streams avoid proxy timeouts |
+| CI | GitHub Actions | `ci.yml` (backend Python 3.11 imports + pytest, frontend Node 20 build) and `eval.yml` (golden eval) gate the backend deploy (Railway "Wait for CI"); `real-answer.yml`, `uptime.yml` and `model-lifecycle.yml` run on schedules; Dependabot opens grouped update PRs |
+| Monitoring | Grafana Cloud | OTLP telemetry from the backend, Faro from the frontend, 9 Synthetic Monitoring checks, alert rules, IRM paging to the owner's phone; see [`monitoring/README.md`](monitoring/README.md) |
 
 ### Custom Domain
 
-- **Frontend**: `chat.rayhanpatel.com` → CNAME to `cname.vercel-dns.com`
+- **Frontend**: `chat.rayhanpatel.com` → CNAME to Vercel's DNS target (Cloudflare DNS only, not proxied)
 - **Backend**: CORS allowed origins in `main.py` include the custom domain and Vercel preview URLs
-- **Cloudflare**: Proxy enabled (orange cloud), SSE buffering bypassed by backend `X-Accel-Buffering: no` header
+- **Streaming**: the backend sends `X-Accel-Buffering: no` so any proxy in front of it passes SSE through unbuffered
 
 ---
 
@@ -500,6 +541,8 @@ Traditional metrics (BLEU, ROUGE) measure surface-level text overlap and fail on
 | pydantic | ≥2.10 | Request/response validation + input sanitization |
 | pydantic-settings | ≥2.7 | Environment variable loading |
 | langfuse | 5.0.4 | LLM observability + LLM-as-a-Judge evaluation (Langfuse v4) |
+| opentelemetry-sdk | 1.45.1 | Traces, metrics and logs over OTLP (FastAPI and httpx instrumentation 0.66b1) |
+| mcp | ≥2.3 | MCP server (`/mcp`, protocol 2026-07-28) |
 | supabase | ≥2.27 | Async PostgreSQL client |
 | tenacity | ≥8.2 | Retry with exponential backoff |
 | google-auth | ≥2.27 | Vertex AI OAuth2 token management |
@@ -509,11 +552,13 @@ Traditional metrics (BLEU, ROUGE) measure surface-level text overlap and fail on
 | Dependency | Version | Purpose |
 |------------|---------|---------|
 | React | 18.3 | UI framework |
-| Vite | 5.4 | Build tool + dev server |
+| Vite | 6.4 | Build tool + dev server |
 | TailwindCSS | 3.4 | Utility-first CSS |
 | lucide-react | 0.469 | Icon library |
 | react-markdown | 10.1 | Markdown rendering in chat bubbles |
 | remark-gfm | 4.0 | GitHub Flavored Markdown support |
+| @grafana/faro-web-sdk | 2.12 | Browser errors and page performance (lazy-loaded, production only) |
+| @vercel/analytics, @vercel/speed-insights | 1.x | Page views and Core Web Vitals (no cookies; automated browsers and URL queries excluded) |
 
 ---
 
@@ -522,6 +567,7 @@ Traditional metrics (BLEU, ROUGE) measure surface-level text overlap and fail on
 - [System card](docs/SYSTEM-CARD.md): what it is, what data it touches, how it is evaluated, known failures.
 - [Eval report](docs/EVAL-REPORT.md): the numbers, with dates.
 - [Post-mortem](docs/POSTMORTEM-2026-10-chatbot-outage.md): four months of silent outage and what changed.
+- [Monitoring design](docs/MONITORING.md), [what is live in Grafana](monitoring/README.md), [runbooks](docs/runbooks/).
 
 ## Author
 

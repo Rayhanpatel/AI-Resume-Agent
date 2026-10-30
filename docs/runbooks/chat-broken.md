@@ -1,6 +1,6 @@
 # Runbook: Chat broken
 
-**Fires when** B1 (chat page) fails twice in 30 minutes, A1 (model and database health) fails 3 times in 15 minutes across its two locations, or A2 (a real answer, every 6 hours from GitHub Actions) fails or stops reporting for 13 hours. Severity: page.
+**Fires when** B1 (chat page) fails twice in 30 minutes, A1 (model and database health) fails 3 times in 15 minutes across its two locations, or S1 (the site) fails twice in 30 minutes (S1's own runbook is `site-and-domain.md`). Severity: page. A2 (a real answer, scheduled every 6 hours from GitHub Actions) uses this runbook too, but emails instead of paging, because GitHub delays and skips scheduled runs.
 
 ## What it means
 

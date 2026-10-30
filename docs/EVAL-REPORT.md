@@ -51,7 +51,7 @@ Live service, Oct 25 (includes the intent gate and session lookup): first words 
 
 Measured Oct 25: the prompt is 9,279 tokens, and from the second call on Vertex's implicit cache serves 8,158 of them at the cached rate. `gemini-3.5-flash` on the global endpoint lists $1.50 per 1M input tokens ($0.15 cached) and $9.00 per 1M output tokens; thinking tokens (about 200) bill as output. A turn, including the fast-model intent and verification calls, comes to about a cent. The $10/month GCP spend cap therefore covers roughly 800 turns; the daily token budget (500k) stops the bot politely at about 50 turns a day, and the real-answer probe runs every 6 hours (about $1.20 a month). An earlier version of this section said "well under a cent" from an estimate; this one is measured.
 
-## 5. What the tests cover (89 unit tests, run in CI on every push)
+## 5. What the tests cover (104 unit tests, run in CI on every push)
 
 Request shape for Gemini 3.x; model fallback on error, silence and empty answers; the real-call health probe and its caching; signed session tokens (round trip, tampering, expiry, wrong session); quotas (in-memory and counted from the events table); the origin lock; the job-post schema boundary (bounded fields, one line each); the SSRF resolver check and the redirect refusal; the verifier (sentence splitting, quote and number checks, status mapping, decision-gate demotion, failure handling); the MCP interface (stateless tools/list and tools/call); and the banned-claim checks on the profile and the rendered prompt.
 

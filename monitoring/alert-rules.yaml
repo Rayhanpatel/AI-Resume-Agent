@@ -125,13 +125,13 @@ rules:
       TLS: fewer than 14 days (email), on A1, T1 and T2
 
   - name: Real answer check failed / missing (A2)
-    severity: page
+    severity: email   # Oct 30: GitHub ran the schedule 2 of 4 times in 26 h, one run 5 h late; A1 pages for an outage
     runbook: chat-broken.md
     promql: |
-      # failed: the last 6-hourly result was 0
-      last_over_time(synthetic_check_success{check="A2 real answer", source=""}[7h]) < 1
-      # missing (second rule, paused until GRAFANA_OTLP_HEADERS is set): no result for 13 h
-      absent_over_time(synthetic_check_success{check="A2 real answer", source=""}[13h])
+      # failed: the latest result in 25 h was 0
+      last_over_time(synthetic_check_success{check="A2 real answer", source=""}[25h]) < 1
+      # missing (second rule, paused until GRAFANA_OTLP_HEADERS is set): no result for 25 h
+      absent_over_time(synthetic_check_success{check="A2 real answer", source=""}[25h])
     note: the label is "check", not "job" (Grafana's OTLP gateway sets job from service.name). source="manual-test" values are excluded.
 
   - name: Golden eval regression
