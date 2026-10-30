@@ -79,6 +79,9 @@ htmlcov/
 !monitoring/checks/d1-dns.json
 !backend/evals/results/intent_bench_*.json
 !backend/evals/results/intent_bench_*.svg
+!backend/evals/gate_contexts.json
+!backend/evals/results/gate_bench_*.json
+!backend/evals/results/gate_bench_*.svg
 !frontend/src/lib/
 
 # Windsurf
