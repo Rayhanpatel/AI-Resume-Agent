@@ -1,6 +1,6 @@
 # System card: Rayhan's agent (chat.rayhanpatel.com)
 
-Version 2.8.0, Oct 28, 2026. This card says what the system is, what it can do, what data it touches, how it is evaluated, and what is known to go wrong. It is updated with every release that changes any of these.
+Version 2.9.0, Oct 30, 2026. This card says what the system is, what it can do, what data it touches, how it is evaluated, and what is known to go wrong. It is updated with every release that changes any of these.
 
 ## Purpose and scope
 
@@ -13,9 +13,9 @@ Version 2.8.0, Oct 28, 2026. This card says what the system is, what it can do, 
 The full design, with diagrams, is in [ARCHITECTURE.md](ARCHITECTURE.md).
 
 - **Interfaces:** a React chat at chat.rayhanpatel.com (also embedded on rayhanpatel.com); a JSON API at `/api/v1` used only by that frontend.
-- **Models:** answers from `gemini-3.5-flash` on Vertex AI (global endpoint), falling back to `gemini-3.5-flash-lite` if the first errors or stays silent for 10 s. Intent classification, job-post extraction and starter questions use `gemini-3.5-flash-lite`.
+- **Models:** answers from `gemini-3.5-flash` on Vertex AI (global endpoint), falling back to `gemini-3.5-flash-lite` if the first errors or stays silent for 10 s. Job-post extraction, starter questions and sentence verification use `gemini-3.5-flash-lite`. The off-topic gate uses TypeSafe's decision model `jev-1.14-20261014` through OpenRouter, with `gemini-3.5-flash-lite` as its fallback.
 - **Knowledge:** one file, `backend/core/profile.json` (about 28 KB), the same file that renders rayhanpatel.com. The whole file is placed in the system instruction; there is no retrieval index. The profile carries an `updated` date.
-- **Modules (one FastAPI deployment, 10 modules):** intent classifier, agent, Gemini request helper, Vertex auth, tracer (Langfuse), Supabase sessions and events, quotas, job extractor, job parser, prompt generator.
+- **Modules (one FastAPI deployment, 10 modules):** off-topic gate (decision model, with the LLM classifier as fallback), agent, Gemini request helper, Vertex auth, tracer (Langfuse), Supabase sessions and events, quotas, job extractor, job parser, prompt generator.
 - **Hosting:** backend on Railway, frontend on Vercel; DNS on Cloudflare (DNS only, not proxied, checked Oct 28, 2026).
 
 ## Data
@@ -27,7 +27,8 @@ The full design, with diagrams, is in [ARCHITECTURE.md](ARCHITECTURE.md).
 | Messages | Supabase `sessions.preferences.history` (last 10 messages); Langfuse traces (inputs and outputs, grouped by session; the Langfuse user ID is the salted IP hash) | multi-turn context; quality review | 90 days: the same daily job deletes Supabase rows and Langfuse traces (Langfuse's free plan never deletes on its own) |
 | IP address | salted hash in event metadata | per-IP quotas | with the events |
 | Model calls | Google Vertex AI | generation | Google's data-governance terms; not used for training without consent |
-| Each answer's sentences and the profile excerpts they cite (no visitor message, name or IP) | OpenRouter, to TypeSafe's decision model `jev-1.14` | the second-opinion check on verification stamps | OpenRouter's and TypeSafe's terms; off when `OPENROUTER_API_KEY` is unset |
+| Each answer's sentences and the profile excerpts they cite (no visitor message, name or IP) | OpenRouter, to TypeSafe's decision model `jev-1.14` | the second-opinion check on verification stamps | zero data retention and no training requested on every call (`provider.zdr`, `data_collection: deny`, since Oct 30); off when `OPENROUTER_API_KEY` is unset |
+| Each visitor message (not the name, company or IP), with the names in the public profile | OpenRouter, to TypeSafe's decision model `jev-1.14` (since 2.9.0) | the off-topic gate | zero data retention and no training requested on every call; `INTENT_GATE=gemini` keeps messages on Vertex AI instead |
 | Trace input and output (the visitor's message and the answer) | Langfuse's online judges, which call `anthropic/claude-haiku-5.5` through OpenRouter | quality scores | Langfuse and OpenRouter terms |
 | Operational telemetry: model names, token counts, timings, outcomes, error types; no message text | the OTLP backend (Grafana Cloud, live since Oct 29, 2026; off when `OTEL_EXPORTER_OTLP_ENDPOINT` is unset) | monitoring and alerts | 14 days (Grafana Cloud Free) |
 | Page views and page speed (no cookies, no message text) | Vercel Web Analytics and Speed Insights (`@vercel/analytics`, `@vercel/speed-insights` in `main.jsx`) | visit counts | Vercel's terms |
@@ -46,10 +47,10 @@ No cookies beyond the frontend's localStorage copy of the visitor's own session 
 
 ## Evaluation
 
-- **Unit tests (108 on Oct 30, 2026):** request shape, model fallback, health probe, session tokens, quotas (including the in-memory fallback with an unreachable database), origin lock, job-schema boundary, SSRF resolver, banned-claim checks on the profile and prompt, verification, MCP, telemetry (off without its variable, the synthetic tag, outcomes, `gen_ai` spans, Langfuse spans never exported), Langfuse v4 tracing (root input and output, propagated session and user on generations, no visitor name, the root ended when a visitor leaves mid-answer) and the model-lifecycle parser.
+- **Unit tests (118 on Oct 30, 2026):** request shape, model fallback, health probe, session tokens, quotas (including the in-memory fallback with an unreachable database), origin lock, job-schema boundary, SSRF resolver, banned-claim checks on the profile and prompt, verification, MCP, telemetry (off without its variable, the synthetic tag, outcomes, `gen_ai` spans, Langfuse spans never exported), Langfuse v4 tracing (root input and output, propagated session and user on generations, no visitor name, the root ended when a visitor leaves mid-answer) and the model-lifecycle parser.
 - **Golden eval (16 questions, run against the live model):** what the agent must say and must not say on the questions recruiters ask most, including a multi-turn follow-up, an off-topic request, a phone-number request, a question whose honest answer is "the profile doesn't say", and two questions that invite overclaiming. Oct 25, 2026: 13/13 on three consecutive runs after the latest prompt change.
 - **Online judges (Langfuse):** five LLM-as-judge evaluators score traces (hallucination, relevance, conciseness, helpfulness, toxicity) with `anthropic/claude-haiku-5.5` through OpenRouter, a different model family from the answer model. They were paused from Oct 20 (their Gemini 2.5 model was retired) until Oct 25. Not yet calibrated against human labels, and still trace-level ("legacy") rules that need observation-level successors before Nov 16, 2026.
-- **Latency, measured Oct 25, 2026 from the live service:** first words in 3.7–7.4 s; local runs against the same model 1–5 s. The intent gate runs before the answer and is the main fixed cost.
+- **Latency, measured Oct 25, 2026 from the live service:** first words in 3.7–7.4 s; local runs against the same model 1–5 s. The off-topic gate runs before the answer; since 2.9.0 it takes about 0.18 s at the median instead of 0.87 s (measured Oct 30, `docs/EVAL-REPORT.md` §5).
 - **Cost, measured Oct 25:** the prompt is 9,279 tokens, 8,158 of them served from Vertex's implicit cache after the first call; about a cent per turn at $1.50/$9.00 per 1M tokens ($0.15 cached). See `docs/EVAL-REPORT.md`.
 
 ## Known failure modes
@@ -57,6 +58,7 @@ No cookies beyond the frontend's localStorage copy of the visitor's own session 
 - **Inference presented as fact.** The model can describe the profile's architecture decisions in its own words ("routes queries to them") in ways the profile does not literally state. Planned fix: per-claim evidence stamps (checked / inferred / unknown) verified in code.
 - **Occasional provider errors.** `gemini-3.5-flash` returned 429s under load on Oct 25; the fallback absorbed them. `gemini-3.5-flash-lite` once returned an empty answer (`MALFORMED_RESPONSE`); the retry absorbed it.
 - **Prompt-level rules are not a security boundary.** Adaptive prompt injection defeats prompt-level defenses in the literature; the structural defense here is that untrusted text never reaches the persona model, and the agent has no tools to misuse.
+- **The off-topic gate sees only the current message.** A bare follow-up such as "Why?" can be declined mid-conversation (it was before 2.9.0 too). It also lets through a few messages that mention Rayhan but aren't questions about him ("roast him", "review my resume"); the answer model declines those.
 - **No memory across sessions** (by design since 2.5.0).
 - **Free tiers pause or expire quietly.** Supabase pauses a free project after 7 quiet days (it did); the app now queries it every 6 hours. GitHub pauses scheduled workflows in a public repo after 60 days without activity; the daily uptime job re-enables them, and the external probes don't depend on GitHub.
 
@@ -107,3 +109,9 @@ No cookies beyond the frontend's localStorage copy of the visitor's own session 
 ## Roadmap (what this card does not yet claim)
 
 Judges calibrated against hand labels; the 200-pair decision-model study; longer multi-turn pressure chains; a game day that breaks each check on purpose and confirms the alert arrives; the origin lock (needs the API behind Cloudflare).
+
+## Added Oct 30, 2026 (version 2.9)
+
+- **A decision model as the off-topic gate.** TypeSafe's `jev-1.14-20261014` returns the probability that a message is something this agent should answer, given the names in Rayhan's profile; below 0.75 the visitor gets a fixed decline. On a 60-message held-out set it was right 96.7% of the time against 88.3% for the LLM classifier it replaces, refused the same number of real questions (1 of 34), and took 180 ms against 874 ms at the median. The threshold was chosen on a separate dev set. The LLM classifier takes over if the decision model fails; if both fail the message is allowed. Rollback: `INTENT_GATE=gemini`. Method and every number: `docs/EVAL-REPORT.md` §5.
+- **Zero data retention requested** on both decision-model calls (the gate and the stamps' second opinion).
+- **Monitoring:** `chat.intent.decisions` and `chat.intent.fallbacks`; a new email alert "Intent gate refusing too much" and the decision-model alert now also counts gate fallbacks (15 rules). Each trace records which gate decided and its probability, so refusals can be reviewed in Langfuse. `/health/llm` names the gate.

@@ -83,6 +83,15 @@ class Settings(BaseSettings):
     # Pinned to a dated snapshot: probabilities drift between versions, so thresholds are per model.
     openrouter_api_key: Optional[str] = None
     decision_model: str = "typesafe/jev-1.14-20261014"
+    # Intent gate: "gemini" (the LLM classifier) or "jev" (the decision model above, with the LLM
+    # classifier as its fallback). The threshold belongs to the frozen question in services/intent.py
+    # and was chosen on the dev half of evals/intent_set.jsonl (evals/intent_bench.py).
+    # Off-topic gate: "jev" = TypeSafe's decision model with the profile's names (needs OPENROUTER_API_KEY;
+    # falls back to the LLM classifier if it fails); "gemini" = the Flash-Lite classifier. The threshold was
+    # chosen on the dev half of evals/intent_set.jsonl and belongs to that model version and question.
+    intent_gate: str = "jev"
+    intent_jev_threshold: float = 0.75
+    intent_jev_timeout: float = 3.0
 
     # When set, every request except /health* must carry X-Origin-Secret with this value.
     # Cloudflare adds the header once the API is proxied through it, so direct hits are refused.

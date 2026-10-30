@@ -152,7 +152,9 @@ class DecisionsGate:
             response = await self.http_client.post(
                 "https://openrouter.ai/api/alpha/decisions",
                 headers={"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"},
-                json={"model": self.model, "state": "PROFILE (JSON):\n" + PROFILE_TEXT, "questions": questions},
+                json={"model": self.model, "state": "PROFILE (JSON):\n" + PROFILE_TEXT, "questions": questions,
+                      # only providers that keep nothing and don't train on it (TypeSafe qualifies)
+                      "provider": {"zdr": True, "data_collection": "deny"}},
                 timeout=20.0,
             )
             if response.status_code != 200:

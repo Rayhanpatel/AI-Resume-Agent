@@ -97,6 +97,7 @@ def test_llm_health_is_cached_and_returns_503_on_failure(monkeypatch):
 
     assert first.status_code == 503 and second.status_code == 503
     assert first.json()["error"] == "HTTP 403"  # no provider error text leaks publicly
+    assert "intent_gate" in first.json()
     assert len(calls) == 1  # second request served from cache
 
 

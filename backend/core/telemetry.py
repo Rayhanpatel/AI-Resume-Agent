@@ -75,6 +75,10 @@ class _Instruments:
         self.first_chunk = meter.create_histogram(
             "gen_ai.client.operation.time_to_first_chunk", unit="s", explicit_bucket_boundaries_advisory=SECONDS,
             description="Model request to first streamed chunk")
+        self.intent = meter.create_counter(
+            "chat.intent.decisions", unit="{message}", description="Intent gate decisions, by gate and intent")
+        self.intent_fallbacks = meter.create_counter(
+            "chat.intent.fallbacks", unit="{message}", description="Decision-model gate calls that failed and fell back")
         self.leads = meter.create_counter(
             "chat.leads", unit="{lead}", description="Recruiter leads sent to the Google Sheet, by outcome")
         self.retention_deleted = meter.create_counter(
@@ -435,6 +439,15 @@ def record_stamps(summary: Optional[dict]):
 
 def record_quota_rejection(scope: str):
     _m.quota_rejections.add(1, _labels(scope=scope))
+
+
+def record_intent(gate: str, intent: str):
+    """chat.intent.decisions: which gate decided (jev, gemini, fallback) and what it decided"""
+    _m.intent.add(1, _labels(gate=gate, intent=intent))
+
+
+def record_intent_fallback(reason: str):
+    _m.intent_fallbacks.add(1, _labels(reason=reason))
 
 
 def record_lead(outcome: str):

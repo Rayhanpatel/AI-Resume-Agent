@@ -93,6 +93,14 @@ async def _verify(request: Request, answer: str):
     return await verify_answer(answer, state.verifier, getattr(state, "decision_gate", None))
 
 
+def _intent_metadata(intent_result) -> dict:
+    """Which gate decided and, for the decision model, its probability (to review refusals in Langfuse)"""
+    out = {"intent_gate": intent_result.get("gate", "gemini")}
+    if intent_result.get("p_on_topic") is not None:
+        out["p_on_topic"] = round(intent_result["p_on_topic"], 3)
+    return out
+
+
 def _verification_metadata(verification) -> dict:
     if not verification:
         return {}
@@ -162,7 +170,7 @@ async def chat(
                 metadata={"ip_hash": ip_hash}
             )
         if tracing_service:
-            tracing_service.end_trace(trace, output=response_text, metadata={"intent": "off_topic"})
+            tracing_service.end_trace(trace, output=response_text, metadata={"intent": "off_topic", **_intent_metadata(intent_result)})
             await tracing_service.aflush()
 
         return ChatResponse(
@@ -204,7 +212,7 @@ async def chat(
 
     if tracing_service:
         tracing_service.end_trace(trace, output=agent_result["response"],
-                                  metadata={"intent": "job_related", **_verification_metadata(verification)},
+                                  metadata={"intent": "job_related", **_intent_metadata(intent_result), **_verification_metadata(verification)},
                                   error=agent_result.get("error"))
         await tracing_service.aflush()
     return ChatResponse(
@@ -264,7 +272,8 @@ async def stream_chat(
                 latency_ms=latency_ms, metadata={"ip_hash": ip_hash}
             ))
         if tracing_service:
-            tracing_service.end_trace(trace, output=intent_result.get("decline_message"), metadata={"intent": "off_topic"})
+            tracing_service.end_trace(trace, output=intent_result.get("decline_message"),
+                                      metadata={"intent": "off_topic", **_intent_metadata(intent_result)})
             await tracing_service.aflush()
         return StreamingResponse(off_topic_stream(), media_type="text/event-stream", headers=SSE_HEADERS)
 
@@ -310,7 +319,8 @@ async def stream_chat(
                 ))
             if tracing_service:
                 tracing_service.end_trace(trace, output=stats.get("response"),
-                                          metadata={"intent": "job_related", **_verification_metadata(verification)})
+                                          metadata={"intent": "job_related", **_intent_metadata(intent_result),
+                                                    **_verification_metadata(verification)})
                 await tracing_service.aflush()
 
         except Exception as e:

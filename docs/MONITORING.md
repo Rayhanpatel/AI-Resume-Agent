@@ -40,6 +40,8 @@ Probe traffic carries `X-Synthetic-Check`. It is tagged `app.synthetic` and kept
 | `chat.model_fallbacks` | `app.from_model`, `app.to_model` | Degrading answers |
 | `chat.time_to_first_word` (s) | `app.synthetic` | Slow |
 | `chat.verification.stamps` | `stamp` (checked, inferred, unknown, unverified, numbers_unverified) | quality dashboard |
+| `chat.intent.decisions` | `gate` (jev, fallback, gemini), `intent` (job_related, off_topic) | Intent gate refusing too much |
+| `chat.intent.fallbacks` | `reason` (the error type) | Decision model failing |
 | `chat.quota.rejections` | `scope` | Spend |
 | `chat.database.up` | | Database down |
 | `chat.database.rows` | `db.collection.name` (sessions, events) | Database growing |

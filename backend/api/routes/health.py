@@ -10,7 +10,7 @@ from services.gemini import check_llm
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
-APP_VERSION = "2.8.0"
+APP_VERSION = "2.9.0"
 LLM_CHECK_TTL_SECONDS = 600         # a passing check is reused for 10 minutes
 LLM_CHECK_FAILURE_TTL_SECONDS = 60  # a failing one is retried after a minute
 
@@ -63,6 +63,7 @@ async def llm_health_check(request: Request):
         "api_mode": result["api_mode"],
         "latency_ms": result["latency_ms"],
         "database": result.get("database", "off"),
+        "intent_gate": getattr(state, "intent_gate", None),
         "checked_seconds_ago": int(time.time() - result["checked_at"]),
     }
     if not result["ok"]:

@@ -83,9 +83,20 @@ rules:
     severity: email
     runbook: decision-model.md
     promql: |
-      # Jev calls (app.purpose="decision") that ended in an error, over 6 h
-      sum(increase(gen_ai_client_operation_duration_seconds_count{app_purpose="decision", error_type!=""}[6h])) > 2
+      # Jev calls that ended in an error over 6 h: the stamps' second opinion (app.purpose="decision")
+      # plus the off-topic gate's fallbacks to the LLM classifier (since 2.9.0)
+      (sum(increase(gen_ai_client_operation_duration_seconds_count{app_purpose="decision", error_type!=""}[6h])) or vector(0))
+        + (sum(increase(chat_intent_fallbacks_total[6h])) or vector(0)) > 2
     note: A2 also fails when no sentence carries a gate probability, which covers a silent "off".
+
+  - name: Intent gate refusing too much
+    severity: email
+    runbook: intent-gate.md
+    promql: |
+      # more than half of the off-topic gate's decisions in 24 h were refusals, and at least 6 of them
+      sum(increase(chat_intent_decisions_total{intent="off_topic"}[24h]))
+        / clamp_min(sum(increase(chat_intent_decisions_total[24h])), 10) > 0.5
+    note: a burst of genuinely off-topic or hostile messages also trips it; the runbook says how to tell the two apart.
 
   - name: Answer quality dropping
     severity: email

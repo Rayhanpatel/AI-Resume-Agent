@@ -30,6 +30,7 @@ from services import (
 from services.gemini import check_llm
 from services.quotas import QuotaService
 from services.verifier import GeminiJsonVerifier, DecisionsGate
+from services.intent import JevIntentGate, _load_profile_names
 import mcp_server
 
 # Load environment variables
@@ -64,13 +65,22 @@ async def lifespan(app: FastAPI):
         key=settings.supabase_key or ""
     )
     telemetry.watch_database(app.state.supabase_service)
-    app.state.intent_classifier = IntentClassifier(
+    llm_intent = IntentClassifier(
         api_key=settings.google_api_key,
         http_client=app.state.http_client,
         vertex_auth=app.state.vertex_auth,
         model=settings.gemini_fast_model,
         thinking_level=settings.gemini_thinking_level
     )
+    if settings.intent_gate == "jev" and settings.openrouter_api_key:
+        app.state.intent_classifier = JevIntentGate(
+            app.state.http_client, settings.openrouter_api_key, settings.decision_model,
+            threshold=settings.intent_jev_threshold, fallback=llm_intent, timeout=settings.intent_jev_timeout,
+            names=_load_profile_names())
+        app.state.intent_gate = f"{settings.decision_model} (threshold {settings.intent_jev_threshold:g})"
+    else:
+        app.state.intent_classifier = llm_intent
+        app.state.intent_gate = settings.gemini_fast_model
     app.state.tracing_service = TracingService(
         public_key=settings.langfuse_public_key or "",
         secret_key=settings.langfuse_secret_key or "",
@@ -131,7 +141,7 @@ async def lifespan(app: FastAPI):
     logger.warning("=" * 50)
     logger.warning("SERVICE STATUS:")
     logger.warning(f"  {'✓' if app.state.vertex_auth.enabled else '✗'} Vertex AI: {'Enabled (production)' if app.state.vertex_auth.enabled else 'Disabled (using AI Studio)'}")
-    logger.warning(f"  ✓ Intent Classifier: Ready")
+    logger.warning(f"  ✓ Intent gate: {app.state.intent_gate}")
     logger.warning(f"  ✓ Agent Service: Ready")
     logger.warning(f"  {'✓' if settings.session_secret else '✗'} Session secret: {'set' if settings.session_secret else 'random (set SESSION_SECRET)'}")
     logger.warning(f"  {'✓' if database == 'ok' else '✗'} Quotas: {'persistent (events table)' if database == 'ok' else 'in memory (database ' + database + ')'}")

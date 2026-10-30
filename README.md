@@ -29,7 +29,7 @@ It runs in production with one person on call, so the work after shipping is in 
 
 - **Checks from outside, on a schedule:** 9 Grafana Synthetic Monitoring checks (the chat page in a real browser every 15 minutes, model and database health every 5 minutes from two locations, the site and resume, DNS, domain and certificate expiry) plus a real answer, verified sentence by sentence, every 6 hours.
 - **Telemetry:** OpenTelemetry traces, metrics and logs to Grafana Cloud with a `gen_ai` span around every model call and no message text; Grafana Faro for browser errors; Langfuse for answer quality with five LLM judges.
-- **Alerts:** a broken chat or site pages the owner's phone through Grafana IRM; slower problems (fallback model, unverifiable answers, failed leads, retention, spend) go to email. Every alert links a [runbook](docs/runbooks/). A test alert on Oct 30, 2026 went from a Grafana rule to the phone in 32 seconds (IRM delivery log).
+- **Alerts:** a broken chat or site pages the owner's phone through Grafana IRM; slower problems (fallback model, unverifiable answers, an off-topic gate refusing too much, failed leads, retention, spend) go to email. Every alert links a [runbook](docs/runbooks/). A test alert on Oct 30, 2026 went from a Grafana rule to the phone in 32 seconds (IRM delivery log).
 - **Gates:** over 100 unit tests (including checks that these docs match the code) and a 16-question golden eval against the live model run before a backend deploy (Railway waits for CI); a weekly check fails when a configured model nears retirement.
 - **Limits and data:** signed sessions, per-IP and per-session quotas, a daily token budget, a $10/month Google Cloud spend cap; visitor chats are deleted after 90 days.
 - **Written down:** [post-mortem](docs/POSTMORTEM-2026-10-chatbot-outage.md) (four months of silent outage, and what broke while fixing it), [system card](docs/SYSTEM-CARD.md), [eval report](docs/EVAL-REPORT.md), [monitoring design](docs/MONITORING.md).
@@ -100,7 +100,7 @@ The frontend proxies `/api` requests to the backend during development (configur
 | Server-side Sessions | A client can't forge who it is or what was said | `/session` issues a signed token after Turnstile; `/chat` requires it; name, company, job schema and the last 10 turns live in the session row (`session_tokens.py`, `chat.py`) |
 | Quotas That Survive Restarts | Cost abuse is bounded | Messages per session, messages and sessions per IP per day (salted IP hashes), and a global daily token budget, all counted from the events table (`quotas.py`) |
 | Origin Lock | Direct hits on the Railway URL are refused | `X-Origin-Secret` added by Cloudflare once the API is proxied; health stays open (`core/origin.py`) |
-| Intent Classification | Filters off-topic queries before LLM calls | Gemini Flash gate with fail-safe default to `job_related` |
+| Off-topic Gate | Declines off-topic and manipulation requests before the answer model runs | TypeSafe's decision model (`jev-1.14`, through OpenRouter) returns P(on topic) for one fixed question, with the profile's names as context; threshold 0.75 chosen on labelled data; the Flash-Lite classifier is its fallback, and if both fail the message is allowed (`intent.py`; [benchmark](docs/EVAL-REPORT.md#5-should-it-answer-at-all-the-off-topic-gate-oct-30-2026)) |
 | Prompt Injection Defense | A job page never reaches the persona model as text | A separate tool-less call extracts a fixed schema (title, level, skills, location, summary); only the bounded schema is rendered into the prompt (`render_job_context` in `prompts.py`) |
 | Observability | Full LLM tracing, cost tracking, and automated quality evaluation | Langfuse Python SDK 5 (Langfuse v4 data model: one root observation per turn, generations as children, session and user propagated) with per-model pricing in `tracer.py` + 5 LLM-as-a-Judge evaluators (Hallucination, Relevance, Conciseness, Helpfulness, Toxicity) |
 | Rate Limiting | Per-IP sliding window throttle | Cloudflare-aware IP extraction (`CF-Connecting-IP` → `X-Forwarded-For`) |
@@ -194,7 +194,7 @@ Words stream first; the verification stamps follow in the same stream, so the vi
 ```mermaid
 sequenceDiagram
     accTitle: Sequence: answering a question
-    accDescr: The API checks the token, loads the session, applies limits, classifies intent, streams the answer, then verifies each sentence and streams the stamps before saving the turn and closing the trace.
+    accDescr: The API checks the token, loads the session, applies limits, asks the decision model whether the question is on topic, streams the answer, then verifies each sentence and streams the stamps before saving the turn and closing the trace.
     autonumber
     actor V as Visitor
     participant F as Chat page
@@ -210,9 +210,9 @@ sequenceDiagram
     A->>D: load session and history (3 s timeout, memory fallback)
     A->>A: rate limit, quotas: session, IP, daily tokens (429 if over)
     A->>L: open trace
-    A->>G: intent, Flash-Lite (10 s, defaults to on-topic)
-    alt off topic
-        A-->>F: polite decline, done
+    A->>J: on topic? P(yes), with the profile's names (3 s, on error Flash-Lite decides, if both fail it is allowed)
+    alt P below 0.75
+        A-->>F: fixed polite decline, done
     else about Rayhan
         A->>G: stream answer, Flash (fallback in §6)
         loop each chunk
@@ -296,7 +296,9 @@ All variables loaded via Pydantic `BaseSettings` from `backend/.env`.
 | `OTEL_EXPORTER_OTLP_ENDPOINT`, `OTEL_EXPORTER_OTLP_HEADERS`, `OTEL_EXPORTER_OTLP_PROTOCOL` | No | OpenTelemetry export (Grafana Cloud's OTLP gateway); telemetry is off when the endpoint is unset |
 | `ORIGIN_SECRET` | No | When set, requests must carry `X-Origin-Secret` (added by Cloudflare); health stays open |
 | `VERIFY_ANSWERS` | No | Stamp every answer (default `true`) |
-| `OPENROUTER_API_KEY` | No | Enables the decision-model second opinion on stamps |
+| `OPENROUTER_API_KEY` | No | Enables the decision model: the off-topic gate and the second opinion on stamps |
+| `INTENT_GATE` | No | `jev` (default; needs `OPENROUTER_API_KEY`) or `gemini` (the Flash-Lite classifier); set `gemini` to roll back |
+| `INTENT_JEV_THRESHOLD` | No | Off-topic threshold for the decision model (default `0.75`, chosen on the benchmark's dev half; re-run `evals/intent_bench.py` before changing it or the model) |
 | `DECISION_MODEL` | No | Pinned decision model on OpenRouter (default `typesafe/jev-1.14-20261014`) |
 | `RATE_LIMIT_RPM` | No | Max requests per minute per IP (default: `10`) |
 | `ENVIRONMENT` | No | `development` or `production` |
@@ -337,7 +339,7 @@ Only `GOOGLE_API_KEY` is required. All other services degrade gracefully when th
 │   ├── services/
 │   │   ├── agent.py               # Core chat agent (streaming + non-streaming, model fallback)
 │   │   ├── gemini.py              # Endpoint, generation config, response parsing, health probe
-│   │   ├── intent.py              # Intent classifier (job_related/off_topic)
+│   │   ├── intent.py              # Off-topic gate: decision model, LLM classifier as fallback
 │   │   ├── vertex_auth.py         # Vertex AI OAuth2 + AI Studio fallback
 │   │   ├── quotas.py              # Persistent quotas from the events table
 │   │   ├── verifier.py            # Verification stamps: verdicts + quote and number checks
@@ -431,9 +433,9 @@ Starlette's `BaseHTTPMiddleware` has a known issue where it can hang when readin
 
 User messages appear in the chat instantly before the API responds (optimistic rendering). Non-critical background operations (memory storage, event logging, lead capture) use `asyncio.create_task()` so they never block the response stream.
 
-### Intent classification as a gate
+### A decision model as the off-topic gate
 
-Off-topic queries are classified and declined *before* the expensive agent call. The classifier uses Gemini Flash-Lite (the cheapest model) in JSON mode and defaults to `job_related` on any failure, ensuring users are never incorrectly blocked.
+Off-topic queries are declined *before* the answer model runs. Until Oct 30, 2026 an LLM classifier (Gemini Flash-Lite, JSON mode) decided; it took 874 ms at the median, timed out on 1.8% of checks and let through coding and general-knowledge requests. A decision model answers one fixed yes/no question with a calibrated probability instead, and the threshold is chosen on labelled data. On a held-out set of 60 labelled messages it was right 96.7% of the time against 88.3%, refused the same number of real questions (1 of 34), and took 180 ms ([eval report §5](docs/EVAL-REPORT.md#5-should-it-answer-at-all-the-off-topic-gate-oct-30-2026)). A failure never blocks a visitor: the LLM classifier decides if the decision model errors, and the message is allowed if both fail.
 
 ### Graceful degradation via service flags
 
