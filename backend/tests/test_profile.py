@@ -73,3 +73,22 @@ def test_history_is_capped():
     contents = AgentService._history_contents(history, "latest")
     assert len(contents) <= 11
     assert contents[-1]["parts"][0]["text"].endswith("latest")
+
+
+def _model_name(model_id: str) -> str:
+    """gemini-3.5-flash-lite -> Gemini 3.5 Flash-Lite"""
+    parts = model_id.split("-")
+    return f"Gemini {parts[1]} " + "-".join(p.capitalize() for p in parts[2:])
+
+
+def test_technical_context_matches_the_configuration():
+    """The bot answers "how were you built?" from this text; it said Gemini 3.8, Mem0 and "behind Cloudflare" for weeks"""
+    from core.config import Settings
+    from core.prompts import TECHNICAL_CONTEXT
+    default = lambda name: Settings.model_fields[name].default  # the configured defaults; no env needed
+    for model_id in (default("gemini_model"), default("gemini_fallback_model"), default("gemini_fast_model")):
+        assert _model_name(model_id) in TECHNICAL_CONTEXT, f"{model_id} is not named in TECHNICAL_CONTEXT"
+    jev = default("decision_model").split("/")[1].split("-")  # typesafe/jev-1.14-20261014 -> Jev 1.14
+    assert f"{jev[0].capitalize()} {jev[1]}" in TECHNICAL_CONTEXT
+    for stale in ("Mem0", "behind Cloudflare", "3.8"):
+        assert stale not in TECHNICAL_CONTEXT, f"stale claim in TECHNICAL_CONTEXT: {stale}"

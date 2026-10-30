@@ -38,14 +38,15 @@ PROFILE_TEXT = json.dumps(PROFILE, indent=1, ensure_ascii=False)
 
 # Technical context for "How was this built?" questions
 TECHNICAL_CONTEXT = """
-- Backend: FastAPI on Railway, called directly by the frontend so long SSE streams avoid proxy timeouts. Frontend: React 18 + Vite on Vercel behind Cloudflare.
-- Models: answers from Gemini 3.8 Flash on Vertex AI (global endpoint); Gemini 3.5 Flash-Lite classifies intent, parses job posts and writes starter questions. Raw async HTTP/2 (httpx), no SDK: Google's SDK blocked the event loop.
-- Request path: rate limit -> session -> intent gate (off-topic questions are declined before the expensive call) -> agent with the profile as its system instruction, recent turns and Mem0 memory -> streamed answer.
-- Reliability: every external service (Mem0, Supabase, Langfuse) can fail and the chat continues. A custom timeout helper on asyncio.wait avoids hangs from clients that ignore cancellation. A thread-safe TTL cache once deadlocked every POST endpoint; the fix was one line after bisecting with diagnostic endpoints.
-- Security: SSRF-protected job URL fetcher, Cloudflare Turnstile, HTML stripped from every input, constant-time admin auth, job posts fenced off as data.
-- Quality: five LLM-as-judge evaluators in Langfuse (hallucination, relevance, conciseness, helpfulness, toxicity) with a judge model separate from the answer model. CI runs unit tests on every push, including a test that fails if a known-wrong claim reappears in the profile.
-- Operations: /api/v1/health/llm makes a real model call (cached) so outages are visible. In Oct 2026 the original model (Gemini 2.0 Flash) was retired by Google; the move to Gemini 3.x made model IDs configuration instead of code.
-- Data: the profile file is shared with rayhanpatel.com, so the site and this agent always say the same thing.
+- Backend: FastAPI on Railway, called directly by the frontend so long SSE streams avoid proxy timeouts. Frontend: React 18 + Vite 6 on Vercel. rayhanpatel.com itself is a static site on Cloudflare Workers.
+- Models: answers from Gemini 3.5 Flash on Vertex AI, with Gemini 3.5 Flash-Lite taking over if it fails or stalls. Flash-Lite also parses job posts, writes starter questions and checks each sentence of an answer against the profile. A decision model, TypeSafe's Jev 1.14 through OpenRouter, decides whether a message is about Rayhan (it sees the previous turn, so short follow-ups count) and gives a second opinion on the checks. Raw async HTTP/2 (httpx), no SDK: Google's SDK blocked the event loop.
+- Request path: rate limit and quotas -> signed session -> off-topic gate (off-topic messages get a short fixed reply before the expensive call) -> answer model with the profile as its system instruction and the recent turns -> streamed answer -> verification stamps: every sentence marked checked, inferred or unknown, with the profile quote confirmed in code.
+- Reliability: every external service (Supabase, Langfuse, OpenRouter) can fail and the chat continues; if the off-topic gate doesn't answer within a second, the message goes to the answer model, which declines off-topic requests itself. A custom timeout helper on asyncio.wait avoids hangs from clients that ignore cancellation. A thread-safe TTL cache once deadlocked every POST endpoint; the fix was one line after bisecting with diagnostic endpoints.
+- Security: signed session tokens, per-visitor and global daily quotas, Cloudflare Turnstile, an SSRF-protected job URL fetcher, HTML stripped from every input, job posts reduced to a fixed schema before any model reads them, constant-time admin auth.
+- Also an MCP server at /mcp with read-only tools (get_profile, ask, fit_report), so other AI agents can ask about Rayhan.
+- Quality: five LLM-as-judge evaluators in Langfuse with a judge from another model family (Claude Haiku), a golden set of questions that must pass before any backend deploy, and unit tests on every push, including one that fails if a known-wrong claim reappears in the profile.
+- Operations: Grafana Cloud watches it from outside (health, a real answer, the chat page, DNS, TLS), with alerts to email and the phone. /api/v1/health/llm makes a real model call (cached) so outages are visible. In Oct 2026 the original model (Gemini 2.0 Flash) was retired by Google and the bot was silently down; the fix made model IDs configuration and added the real-call health probe.
+- Data: the profile file is shared with rayhanpatel.com, so the site and this agent always say the same thing. Chats are deleted after 90 days.
 """
 
 # System prompt that instructs the AI on how to behave
