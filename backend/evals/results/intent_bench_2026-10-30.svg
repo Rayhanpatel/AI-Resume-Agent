@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="820" height="256" font-family="system-ui, sans-serif" font-size="12">
+<rect width="100%" height="100%" fill="#ffffff"/>
+<text x="20" y="22" font-size="14" font-weight="600" fill="#111827">Intent gate: LLM classifier vs decision model</text>
+<text x="20" y="50" font-weight="600" fill="#111827">Gate latency (all calls)</text>
+<text x="20" y="76" fill="#374151">median</text>
+<rect x="20" y="82" width="146.9" height="13" fill="#6b7280"/><text x="172.9" y="93" fill="#111827">874 ms</text>
+<rect x="20" y="98" width="29.6" height="13" fill="#93c5fd"/><text x="55.6" y="109" fill="#111827">176 ms</text>
+<rect x="20" y="114" width="30.3" height="13" fill="#1d6fb8"/><text x="56.3" y="125" fill="#111827">180 ms</text>
+<text x="20" y="152" fill="#374151">95th percentile</text>
+<rect x="20" y="158" width="230.0" height="13" fill="#6b7280"/><text x="256.0" y="169" fill="#111827">1369 ms</text>
+<rect x="20" y="174" width="48.6" height="13" fill="#93c5fd"/><text x="74.6" y="185" fill="#111827">289 ms</text>
+<rect x="20" y="190" width="53.8" height="13" fill="#1d6fb8"/><text x="79.8" y="201" fill="#111827">320 ms</text>
+<text x="420" y="50" font-weight="600" fill="#111827">Mistakes on the held-out set</text>
+<text x="420" y="76" fill="#374151">real questions refused</text>
+<rect x="420" y="82" width="6.8" height="13" fill="#6b7280"/><text x="432.8" y="93" fill="#111827">2.9 %</text>
+<rect x="420" y="98" width="54.1" height="13" fill="#93c5fd"/><text x="480.1" y="109" fill="#111827">23.5 %</text>
+<rect x="420" y="114" width="6.8" height="13" fill="#1d6fb8"/><text x="432.8" y="125" fill="#111827">2.9 %</text>
+<text x="420" y="152" fill="#374151">off-topic or attacks let through</text>
+<rect x="420" y="158" width="53.1" height="13" fill="#6b7280"/><text x="479.1" y="169" fill="#111827">23.1 %</text>
+<rect x="420" y="174" width="8.8" height="13" fill="#93c5fd"/><text x="434.8" y="185" fill="#111827">3.8 %</text>
+<rect x="420" y="190" width="8.8" height="13" fill="#1d6fb8"/><text x="434.8" y="201" fill="#111827">3.8 %</text>
+<rect x="20" y="232" width="12" height="12" fill="#6b7280"/><text x="38" y="242" fill="#374151">LLM classifier (Flash-Lite)</text>
+<rect x="280" y="232" width="12" height="12" fill="#93c5fd"/><text x="298" y="242" fill="#374151">Jev, message only</text>
+<rect x="540" y="232" width="12" height="12" fill="#1d6fb8"/><text x="558" y="242" fill="#374151">Jev + profile names</text>
+</svg>
