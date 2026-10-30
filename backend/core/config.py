@@ -90,8 +90,9 @@ class Settings(BaseSettings):
     # falls back to the LLM classifier if it fails); "gemini" = the Flash-Lite classifier. The threshold was
     # chosen on the dev half of evals/intent_set.jsonl and belongs to that model version and question.
     intent_gate: str = "jev"
-    intent_jev_threshold: float = 0.75
-    intent_jev_timeout: float = 3.0
+    intent_jev_threshold: float = 0.75            # first messages (evals/intent_bench.py)
+    intent_jev_followup_threshold: float = 0.5    # messages after a turn, which the gate also sees (evals/gate_bench.py)
+    intent_jev_timeout: float = 1.0               # p99 was 0.53 s; after that the answer model decides
 
     # When set, every request except /health* must carry X-Origin-Secret with this value.
     # Cloudflare adds the header once the API is proxied through it, so direct hits are refused.

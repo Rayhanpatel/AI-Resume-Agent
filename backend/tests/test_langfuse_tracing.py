@@ -142,7 +142,7 @@ def test_coexists_with_telemetry_without_sharing_spans(langfuse, otel):
 # ── The stream route: one root per turn, ended even when the visitor leaves ──
 
 class _OnTopic:
-    async def classify(self, query):
+    async def classify(self, query, previous=None):
         return {"intent": "job_related"}
 
 

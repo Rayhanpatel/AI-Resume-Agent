@@ -30,7 +30,7 @@ from services import (
 from services.gemini import check_llm
 from services.quotas import QuotaService
 from services.verifier import GeminiJsonVerifier, DecisionsGate
-from services.intent import JevIntentGate, _load_profile_names
+from services.intent import JevIntentGate, _load_profile_names, canary_drift
 import mcp_server
 
 # Load environment variables
@@ -75,9 +75,12 @@ async def lifespan(app: FastAPI):
     if settings.intent_gate == "jev" and settings.openrouter_api_key:
         app.state.intent_classifier = JevIntentGate(
             app.state.http_client, settings.openrouter_api_key, settings.decision_model,
-            threshold=settings.intent_jev_threshold, fallback=llm_intent, timeout=settings.intent_jev_timeout,
-            names=_load_profile_names())
-        app.state.intent_gate = f"{settings.decision_model} (threshold {settings.intent_jev_threshold:g})"
+            # No LLM fallback: if the decision model fails or is slow, the message goes to the answer model, which
+            # declined all 13 off-topic messages it was tested on (evals/gate_v3_preregistration.md)
+            threshold=settings.intent_jev_threshold, followup_threshold=settings.intent_jev_followup_threshold,
+            fallback=None, timeout=settings.intent_jev_timeout, names=_load_profile_names())
+        app.state.intent_gate = (f"{settings.decision_model} (threshold {settings.intent_jev_threshold:g}, "
+                                 f"{settings.intent_jev_followup_threshold:g} with the previous turn)")
     else:
         app.state.intent_classifier = llm_intent
         app.state.intent_gate = settings.gemini_fast_model
@@ -170,14 +173,32 @@ async def lifespan(app: FastAPI):
                 telemetry.record_retention(store, "error")
                 logger.error(f"Retention ({days} days) failed for {store}: {type(e).__name__}: {e}")
 
+    app.state.gate_canary_drift = None
+    telemetry.watch_gate_canary(lambda: app.state.gate_canary_drift)
+
+    async def check_gate_drift():
+        """The decision model is pinned by name; re-score the benchmark's near-threshold messages to see it still answers the same"""
+        if not isinstance(app.state.intent_classifier, JevIntentGate):
+            return
+        try:
+            app.state.gate_canary_drift = await canary_drift(app.state.intent_classifier)
+            logger.info(f"Gate drift check: largest change {app.state.gate_canary_drift:.3f}")
+        except Exception as e:
+            app.state.gate_canary_drift = None  # no value is not "no drift"; the failed call is in the model-call metrics
+            logger.error(f"Gate drift check failed: {type(e).__name__}: {e}")
+
     async def maintain_data():
         # Supabase pauses a free project after 7 quiet days (ours was paused for months). The
         # GitHub uptime job queries it daily, but GitHub pauses scheduled jobs in a public repo
         # after 60 days without commits, so the app keeps it awake itself. The same loop applies
-        # the retention window once a day (and 10 minutes after each start) and counts rows.
+        # the retention window once a day (and 10 minutes after each start) and counts rows, and it
+        # re-checks the off-topic gate's decision model once a day.
         await asyncio.sleep(600)
-        last_retention = None
+        last_retention = last_canary = None
         while True:
+            if last_canary is None or time.monotonic() - last_canary >= 24 * 3600:
+                await check_gate_drift()
+                last_canary = time.monotonic()
             try:
                 await app.state.supabase_service.ping()
                 if last_retention is None or time.monotonic() - last_retention >= 24 * 3600:

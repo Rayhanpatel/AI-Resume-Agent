@@ -30,7 +30,7 @@ class _DownSupabase:
 
 
 class _OffTopic:
-    async def classify(self, query):
+    async def classify(self, query, previous=None):
         return {"intent": "off_topic", "decline_message": "I only answer questions about Rayhan."}
 
 

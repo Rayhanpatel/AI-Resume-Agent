@@ -10,6 +10,7 @@ from api.deps import get_agent_service, get_intent_classifier, get_tracing_servi
 from services.quotas import QuotaExceeded, hash_ip
 from services.verifier import verify_answer
 from services.tracer import visitor_id, trace_tags
+from services.intent import previous_turn
 from core.config import get_settings
 from core import telemetry
 
@@ -95,7 +96,7 @@ async def _verify(request: Request, answer: str):
 
 def _intent_metadata(intent_result) -> dict:
     """Which gate decided and, for the decision model, its probability (to review refusals in Langfuse)"""
-    out = {"intent_gate": intent_result.get("gate", "gemini")}
+    out = {"intent_gate": intent_result.get("gate", "gemini"), "turn": intent_result.get("turn", "first")}
     if intent_result.get("p_on_topic") is not None:
         out["p_on_topic"] = round(intent_result["p_on_topic"], 3)
     return out
@@ -149,7 +150,7 @@ async def chat(
 
     # Intent classification with timeout fallback
     intent_result = await safe_timeout(
-        intent_classifier.classify(body.query),
+        intent_classifier.classify(body.query, previous_turn(prefs.get("history"))),
         timeout=15.0,
         default={"intent": "job_related", "confidence": 0.5, "reasoning": "Timeout fallback"},
         label="intent_classification"
@@ -160,6 +161,8 @@ async def chat(
         latency_ms = int((time.time() - start_time) * 1000)
 
         _count_in_memory(request, body.session_id, ip_hash)
+        # Kept in the history so the gate judges the next message against this refusal, not an older answer
+        background_tasks.add_task(remember_turn, request, session, body.query, response_text)
         if supabase_service and supabase_service.enabled:
             background_tasks.add_task(
                 supabase_service.log_event,
@@ -253,18 +256,22 @@ async def stream_chat(
         )
 
     intent_result = await safe_timeout(
-        intent_classifier.classify(body.query),
+        intent_classifier.classify(body.query, previous_turn(prefs.get("history"))),
         timeout=10.0,
         default={"intent": "job_related", "confidence": 0.5, "reasoning": "Timeout fallback"},
         label="stream.intent_classification"
     )
 
     if intent_result["intent"] == "off_topic":
+        # `or`, not a .get default: the LLM classifier can return the key with None
+        msg = intent_result.get("decline_message") or "I'm Rayhan's AI assistant. How can I help you learn about his qualifications?"
+
         async def off_topic_stream():
-            msg = intent_result.get("decline_message", "I'm Rayhan's AI assistant. How can I help you learn about his qualifications?")
             yield f"data: {json.dumps({'chunk': msg})}\n\n"
             yield "data: [DONE]\n\n"
         _count_in_memory(request, session_id, ip_hash)
+        # Kept in the history so the gate judges the next message against this refusal, not an older answer
+        asyncio.create_task(remember_turn(request, session, body.query, msg))
         if supabase_service and supabase_service.enabled:
             latency_ms = int((time.time() - start_time) * 1000)
             asyncio.create_task(supabase_service.log_event(
@@ -272,7 +279,7 @@ async def stream_chat(
                 latency_ms=latency_ms, metadata={"ip_hash": ip_hash}
             ))
         if tracing_service:
-            tracing_service.end_trace(trace, output=intent_result.get("decline_message"),
+            tracing_service.end_trace(trace, output=msg,
                                       metadata={"intent": "off_topic", **_intent_metadata(intent_result)})
             await tracing_service.aflush()
         return StreamingResponse(off_topic_stream(), media_type="text/event-stream", headers=SSE_HEADERS)

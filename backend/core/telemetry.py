@@ -217,6 +217,18 @@ def watch_database(supabase_service):
                                    description="Rows per table at the last maintenance run (the free plan holds 500 MB)")
 
 
+
+def watch_gate_canary(read):
+    """chat.intent.canary.drift: the largest change in the gate's probability on the daily check messages
+    since the benchmark recorded them; read() returns the last value or None (no check yet, or it failed)"""
+    def observe(options):
+        value = read()
+        return [] if value is None else [metrics.Observation(value)]
+
+    # No unit: Prometheus naming would add a _ratio suffix
+    _meter.create_observable_gauge("chat.intent.canary.drift", callbacks=[observe],
+                                   description="Largest change in P(on topic) on the gate's drift-check messages")
+
 def shutdown():
     """Flush and stop the exporters (called at the end of the app lifespan, i.e. on SIGTERM)"""
     if not enabled():
@@ -441,9 +453,10 @@ def record_quota_rejection(scope: str):
     _m.quota_rejections.add(1, _labels(scope=scope))
 
 
-def record_intent(gate: str, intent: str):
-    """chat.intent.decisions: which gate decided (jev, gemini, fallback) and what it decided"""
-    _m.intent.add(1, _labels(gate=gate, intent=intent))
+def record_intent(gate: str, intent: str, turn: str = "first"):
+    """chat.intent.decisions: which gate decided (jev, gemini, fallback), what it decided, and whether the
+    message was the first of the chat or came after an earlier turn (refused follow-ups are the costly mistake)"""
+    _m.intent.add(1, _labels(gate=gate, intent=intent, turn=turn))
 
 
 def record_intent_fallback(reason: str):
