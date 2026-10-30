@@ -167,7 +167,7 @@
       "summary": "A FastAPI and React agent that answers questions about my work. It streams over SSE, gates off-topic questions before the expensive call, reads a pasted job post, and keeps chatting when memory, database or tracing are down.",
       "metrics": [
         "83% of claims checked verbatim",
-        "104 tests and a golden eval gate every backend deploy"
+        "Over 100 tests and a golden eval gate every backend deploy"
       ],
       "highlights": [
         "Every sentence of an answer is stamped checked, inferred or unknown: a fast model proposes a verbatim profile quote, code confirms it and checks every number. First run: 52 claims, 83% checked verbatim, none unknown.",
@@ -178,6 +178,7 @@
       "links": {
         "live": "https://chat.rayhanpatel.com",
         "code": "https://github.com/Rayhanpatel/AI-Resume-Agent",
+        "design": "https://github.com/Rayhanpatel/AI-Resume-Agent/blob/main/docs/ARCHITECTURE.md",
         "walkthrough": "https://youtu.be/5xGjCrDEoMQ"
       },
       "tags": [

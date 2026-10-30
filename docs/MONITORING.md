@@ -9,6 +9,8 @@ Each was visible in a log line or a refused request. This is the setup that watc
 
 ## Design
 
+Where monitoring sits in the whole system, with the alert-routing diagram: [ARCHITECTURE.md §11](ARCHITECTURE.md#11-monitoring-and-alerting).
+
 1. **Watch the journey from outside, on a schedule.** The agent gets a few visitors a day, so real-traffic error rates are noise. Scheduled checks give a steady signal (live since Oct 29, 2026; `monitoring/provision_checks.py` creates them):
    - **B1** (browser, 15 min): the site, the resume, the chat page, the form and the bot-check widget. It never solves the challenge.
    - **A1** (HTTP, 5 min, two locations): `/health/llm`, which makes a real model call and a real database query.

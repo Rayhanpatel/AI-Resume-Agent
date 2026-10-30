@@ -22,6 +22,8 @@ How the agent behind [chat.rayhanpatel.com](https://chat.rayhanpatel.com) and [r
 
 ```mermaid
 flowchart TB
+    accTitle: System context of Rayhan's agent
+    accDescr: Visitors and AI agents use the system. It calls Google Vertex AI, OpenRouter, Supabase, Langfuse and Grafana Cloud. Grafana probes it and pages Rayhan, and GitHub deploys it after tests and the eval pass.
     visitor["<b>Visitor</b><br/>[Person]<br/>Recruiter or engineer"]
     agentclient["<b>AI agent</b><br/>[External client]<br/>Another assistant, over MCP"]
     owner["<b>Rayhan</b><br/>[Person]<br/>Owner, on call"]
@@ -52,7 +54,7 @@ flowchart TB
         k2["This system"]:::sys
         k3["External system"]:::ext
     end
-    style key fill:#ffffff,stroke:#9ca3af,color:#374151
+    style key fill:none,stroke:#9ca3af,color:#6b7280
 
     classDef person fill:#0b3d6e,stroke:#0b3d6e,color:#ffffff
     classDef sys fill:#1d6fb8,stroke:#0b3d6e,color:#ffffff
@@ -72,6 +74,8 @@ Also used, left out above for size: Cloudflare (DNS, Turnstile bot check, Worker
 
 ```mermaid
 flowchart TB
+    accTitle: Containers of Rayhan's agent
+    accDescr: The site, the chat page, the on-device tier, the API and the database, with profile.json feeding the site, the API and the on-device tier, and the external Turnstile, model and observability services.
     visitor["<b>Visitor</b><br/>[Person]"]
     agentclient["<b>AI agent</b><br/>[External client]"]
 
@@ -110,14 +114,14 @@ flowchart TB
         k4[/"Data file"/]:::data
         k5["solid arrow: runtime call<br/>dashed arrow: build or deploy time"]:::note
     end
-    style key fill:#ffffff,stroke:#9ca3af,color:#374151
-    style sys fill:#f8fafc,stroke:#1d4f80,stroke-dasharray: 5 3
+    style key fill:none,stroke:#9ca3af,color:#6b7280
+    style sys fill:none,stroke:#1d4f80,color:#6b7280,stroke-dasharray: 5 3
 
     classDef person fill:#0b3d6e,stroke:#0b3d6e,color:#ffffff
     classDef cont fill:#3b82c4,stroke:#1d4f80,color:#ffffff
     classDef data fill:#fef3c7,stroke:#b45309,color:#111827
     classDef ext fill:#e5e7eb,stroke:#6b7280,color:#111827
-    classDef note fill:#ffffff,stroke:#ffffff,color:#374151
+    classDef note fill:none,stroke:none,color:#6b7280
     class visitor,agentclient person
     class site,spa,device,api,db cont
     class profile data
@@ -134,6 +138,8 @@ The API is called directly, not through Cloudflare's proxy, so long streamed ans
 
 ```mermaid
 flowchart TB
+    accTitle: Backend components in five layers
+    accDescr: A request passes middleware, a thin route, guards that can refuse it, services that do the work, and adapters to external services. A background loop maintains the database.
     req["<b>HTTP request</b><br/>chat page, MCP client or probe"]
 
     subgraph L1["1 · Middleware: every request, outermost first"]
@@ -167,11 +173,11 @@ flowchart TB
     class m1,m2,m3,m4,m5,r1,r2,r3,r4,r5,s1,s2,s3,s4,s5,a1,a2,a3,a4,a5,bg layer
     class g1,g2,g3,g4 guard
     class req plain
-    style L1 fill:#f8fafc,stroke:#9ca3af
-    style L2 fill:#f8fafc,stroke:#9ca3af
-    style L3 fill:#fff7ed,stroke:#b45309
-    style L4 fill:#f8fafc,stroke:#9ca3af
-    style L5 fill:#f8fafc,stroke:#9ca3af
+    style L1 fill:none,stroke:#9ca3af,color:#6b7280
+    style L2 fill:none,stroke:#9ca3af,color:#6b7280
+    style L3 fill:none,stroke:#b45309,color:#b45309
+    style L4 fill:none,stroke:#9ca3af,color:#6b7280
+    style L5 fill:none,stroke:#9ca3af,color:#6b7280
 ```
 
 Which route uses which components:
@@ -192,6 +198,8 @@ Which route uses which components:
 
 ```mermaid
 sequenceDiagram
+    accTitle: Sequence: starting a chat
+    accDescr: The chat page gets a Turnstile token, the API verifies it, optionally reduces a job post to a schema, creates the session, records a lead and returns a signed token.
     autonumber
     actor V as Visitor
     participant F as Chat page
@@ -228,6 +236,8 @@ sequenceDiagram
 
 ```mermaid
 sequenceDiagram
+    accTitle: Sequence: answering a question
+    accDescr: The API checks the token, loads the session, applies limits, classifies intent, streams the answer, then verifies each sentence and streams the stamps before saving the turn and closing the trace.
     autonumber
     actor V as Visitor
     participant F as Chat page
@@ -274,6 +284,8 @@ sequenceDiagram
 
 ```mermaid
 stateDiagram-v2
+    accTitle: State machine: model fallback
+    accDescr: Gemini 3.5 Flash is tried first, then Flash-Lite, then Flash-Lite with a longer wait, and an apology is sent if all fail.
     [*] --> Flash
     state "Gemini 3.5 Flash<br/>first token within 10 s" as Flash
     state "Gemini 3.5 Flash-Lite<br/>first token within 15 s" as Lite
@@ -299,6 +311,8 @@ Model IDs are settings (`GEMINI_MODEL`, `GEMINI_FALLBACK_MODEL`), because Google
 
 ```mermaid
 flowchart TB
+    accTitle: Decision flow: how a sentence gets its stamp
+    accDescr: The model's verdict and quote are checked by code against the profile, the decision model can demote checked to inferred, and every number is checked.
     s["Sentence from the answer"] --> v{"Flash-Lite verdict<br/>(with a verbatim quote)"}
     v -->|"no verdict returned"| unv["<b>unverified</b>"]
     v -->|"not a claim<br/>(greeting, offer)"| na["<b>n/a</b>"]
@@ -319,7 +333,7 @@ flowchart TB
         k1{"Decision"}
         k2["<b>Stamp</b>"]:::stamp
     end
-    style key fill:#ffffff,stroke:#9ca3af,color:#374151
+    style key fill:none,stroke:#9ca3af,color:#6b7280
 
     classDef stamp fill:#3b82c4,stroke:#1d4f80,color:#ffffff
     class unv,na,unk,inf,chk stamp
@@ -335,6 +349,8 @@ On the golden set (16 recruiter questions against the live model), 82% of 62 cla
 
 ```mermaid
 sequenceDiagram
+    accTitle: Sequence: MCP clients and the on-device tier
+    accDescr: An MCP client's question passes the MCP limits and gets the same stamped answer. In Chrome, the on-device model answers first and falls back to the cloud if a quote or number fails.
     autonumber
     participant C as AI agent (MCP client)
     participant M as API /mcp
@@ -367,6 +383,8 @@ sequenceDiagram
 
 ```mermaid
 erDiagram
+    accTitle: Entity-relationship diagram of the database
+    accDescr: A session has zero or more events; MCP events have no session. Sessions hold the visitor's name, company, history and job schema.
     SESSIONS |o--o{ EVENTS : "has 0..n (cascade delete); MCP events have none"
     SESSIONS {
         uuid id PK
@@ -406,10 +424,12 @@ erDiagram
 
 ```mermaid
 flowchart TB
+    accTitle: Deployment and delivery
+    accDescr: A push to main runs the unit tests and the golden eval, which gate the Railway deploy. Vercel and Cloudflare Workers build on push. Scheduled workflows probe the API.
     dev["<b>git push to main</b><br/>[Rayhan]"]
 
     subgraph gh["GitHub Actions"]
-        ci["<b>ci.yml</b><br/>104 unit tests, frontend build"]
+        ci["<b>ci.yml</b><br/>unit tests incl. docs-match-code, frontend build"]
         eval["<b>eval.yml</b><br/>16-question golden eval vs live model<br/>(keyless Google sign-in)"]
         sched["<b>Schedules</b><br/>A2 real answer every 6 h, uptime daily,<br/>model retirement weekly"]
     end
@@ -431,14 +451,14 @@ flowchart TB
         k1["Gate: a failure stops the deploy"]:::gate
         k2["Runtime host"]:::host
     end
-    style key fill:#ffffff,stroke:#9ca3af,color:#374151
+    style key fill:none,stroke:#9ca3af,color:#6b7280
 
     classDef gate fill:#b45309,stroke:#78350f,color:#ffffff
     classDef host fill:#3b82c4,stroke:#1d4f80,color:#ffffff
     class ci,eval gate
     class railway,vercel,workers host
-    style gh fill:#f8fafc,stroke:#9ca3af
-    style run fill:#f8fafc,stroke:#9ca3af
+    style gh fill:none,stroke:#9ca3af,color:#6b7280
+    style run fill:none,stroke:#9ca3af,color:#6b7280
 ```
 
 The chat page (Vercel) and the site deploy without the eval gate; only the backend waits for it. Dependabot opens grouped dependency PRs, and those go through the same checks.
@@ -451,6 +471,8 @@ The chat page (Vercel) and the site deploy without the eval gate; only the backe
 
 ```mermaid
 flowchart TB
+    accTitle: Monitoring and alert routing
+    accDescr: Synthetic checks, backend telemetry, browser data and CI results feed alert rules. Every alert is emailed; broken chat or site alerts also page the phone through Grafana IRM.
     subgraph sources["Signals"]
         otlp["<b>Backend telemetry</b><br/>[OTLP] traces, metrics, logs"]
         faro["<b>Browser</b><br/>[Faro] errors, page speed"]
@@ -475,14 +497,14 @@ flowchart TB
         k1["Pages the owner"]:::page
         k2["Email only"]:::mail
     end
-    style key fill:#ffffff,stroke:#9ca3af,color:#374151
+    style key fill:none,stroke:#9ca3af,color:#6b7280
 
     classDef page fill:#b91c1c,stroke:#7f1d1d,color:#ffffff
     classDef mail fill:#3b82c4,stroke:#1d4f80,color:#ffffff
     class irm,phone page
     class email mail
-    style sources fill:#f8fafc,stroke:#9ca3af
-    style grafana fill:#f8fafc,stroke:#9ca3af
+    style sources fill:none,stroke:#9ca3af,color:#6b7280
+    style grafana fill:none,stroke:#9ca3af,color:#6b7280
 ```
 
 | Pages the phone | Emails only |

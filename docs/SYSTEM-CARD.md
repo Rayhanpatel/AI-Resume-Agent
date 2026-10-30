@@ -10,6 +10,8 @@ Version 2.8.0, Oct 28, 2026. This card says what the system is, what it can do, 
 
 ## System
 
+The full design, with diagrams, is in [ARCHITECTURE.md](ARCHITECTURE.md).
+
 - **Interfaces:** a React chat at chat.rayhanpatel.com (also embedded on rayhanpatel.com); a JSON API at `/api/v1` used only by that frontend.
 - **Models:** answers from `gemini-3.5-flash` on Vertex AI (global endpoint), falling back to `gemini-3.5-flash-lite` if the first errors or stays silent for 10 s. Intent classification, job-post extraction and starter questions use `gemini-3.5-flash-lite`.
 - **Knowledge:** one file, `backend/core/profile.json` (about 28 KB), the same file that renders rayhanpatel.com. The whole file is placed in the system instruction; there is no retrieval index. The profile carries an `updated` date.
@@ -44,7 +46,7 @@ No cookies beyond the frontend's localStorage copy of the visitor's own session 
 
 ## Evaluation
 
-- **Unit tests (104):** request shape, model fallback, health probe, session tokens, quotas (including the in-memory fallback with an unreachable database), origin lock, job-schema boundary, SSRF resolver, banned-claim checks on the profile and prompt, verification, MCP, telemetry (off without its variable, the synthetic tag, outcomes, `gen_ai` spans, Langfuse spans never exported), Langfuse v4 tracing (root input and output, propagated session and user on generations, no visitor name, the root ended when a visitor leaves mid-answer) and the model-lifecycle parser.
+- **Unit tests (108 on Oct 30, 2026):** request shape, model fallback, health probe, session tokens, quotas (including the in-memory fallback with an unreachable database), origin lock, job-schema boundary, SSRF resolver, banned-claim checks on the profile and prompt, verification, MCP, telemetry (off without its variable, the synthetic tag, outcomes, `gen_ai` spans, Langfuse spans never exported), Langfuse v4 tracing (root input and output, propagated session and user on generations, no visitor name, the root ended when a visitor leaves mid-answer) and the model-lifecycle parser.
 - **Golden eval (16 questions, run against the live model):** what the agent must say and must not say on the questions recruiters ask most, including a multi-turn follow-up, an off-topic request, a phone-number request, a question whose honest answer is "the profile doesn't say", and two questions that invite overclaiming. Oct 25, 2026: 13/13 on three consecutive runs after the latest prompt change.
 - **Online judges (Langfuse):** five LLM-as-judge evaluators score traces (hallucination, relevance, conciseness, helpfulness, toxicity) with `anthropic/claude-haiku-5.5` through OpenRouter, a different model family from the answer model. They were paused from Oct 20 (their Gemini 2.5 model was retired) until Oct 25. Not yet calibrated against human labels, and still trace-level ("legacy") rules that need observation-level successors before Nov 16, 2026.
 - **Latency, measured Oct 25, 2026 from the live service:** first words in 3.7–7.4 s; local runs against the same model 1–5 s. The intent gate runs before the answer and is the main fixed cost.

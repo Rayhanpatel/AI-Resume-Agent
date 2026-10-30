@@ -1,0 +1,28 @@
+name: Docs
+# Renders every Mermaid diagram in the README and docs/ on each change, so a syntax error fails
+# here instead of showing as raw text on GitHub. Drift between the docs and the code (routes,
+# event types, MCP tools, fallback timeouts) is caught by backend/tests/test_docs.py in CI.
+on:
+  push:
+    branches: [main]
+    paths: ["README.md", "docs/**", ".github/workflows/docs.yml"]
+  pull_request:
+    paths: ["README.md", "docs/**", ".github/workflows/docs.yml"]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  diagrams:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Render every Mermaid block
+        run: |
+          mkdir -p /tmp/rendered && chmod 777 /tmp/rendered
+          for f in README.md docs/*.md; do
+            grep -q '```mermaid' "$f" || continue
+            n=$(grep -c '```mermaid' "$f")
+            docker run --rm -v "$PWD":/data:ro -v /tmp/rendered:/out minlag/mermaid-cli:12.0.1 \
+              -q -i "/data/$f" -o "/out/$(basename "$f")"
+            echo "$f: $n diagrams rendered"
+          done

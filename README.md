@@ -17,6 +17,8 @@ Its knowledge comes from `backend/core/profile.json`, the same public profile th
   <img src="docs/demo.gif" alt="AI Resume Chatbot Demo" width="720" />
 </p>
 
+<p align="center"><sub>Recorded February 2026. The live chat now adds a verification stamp to every sentence; try it at <a href="https://chat.rayhanpatel.com">chat.rayhanpatel.com</a>.</sub></p>
+
 > 🎬 **[Watch the full architecture walkthrough](https://youtu.be/5xGjCrDEoMQ)** · **[Try it live →](https://chat.rayhanpatel.com)**
 
 ---
@@ -28,7 +30,7 @@ It runs in production with one person on call, so the work after shipping is in 
 - **Checks from outside, on a schedule:** 9 Grafana Synthetic Monitoring checks (the chat page in a real browser every 15 minutes, model and database health every 5 minutes from two locations, the site and resume, DNS, domain and certificate expiry) plus a real answer, verified sentence by sentence, every 6 hours.
 - **Telemetry:** OpenTelemetry traces, metrics and logs to Grafana Cloud with a `gen_ai` span around every model call and no message text; Grafana Faro for browser errors; Langfuse for answer quality with five LLM judges.
 - **Alerts:** a broken chat or site pages the owner's phone through Grafana IRM; slower problems (fallback model, unverifiable answers, failed leads, retention, spend) go to email. Every alert links a [runbook](docs/runbooks/). A test alert on Oct 30, 2026 went from a Grafana rule to the phone in 32 seconds (IRM delivery log).
-- **Gates:** 104 unit tests and a 16-question golden eval against the live model run before a backend deploy (Railway waits for CI); a weekly check fails when a configured model nears retirement.
+- **Gates:** over 100 unit tests (including checks that these docs match the code) and a 16-question golden eval against the live model run before a backend deploy (Railway waits for CI); a weekly check fails when a configured model nears retirement.
 - **Limits and data:** signed sessions, per-IP and per-session quotas, a daily token budget, a $10/month Google Cloud spend cap; visitor chats are deleted after 90 days.
 - **Written down:** [post-mortem](docs/POSTMORTEM-2026-10-chatbot-outage.md) (four months of silent outage, and what broke while fixing it), [system card](docs/SYSTEM-CARD.md), [eval report](docs/EVAL-REPORT.md), [monitoring design](docs/MONITORING.md).
 
@@ -131,6 +133,8 @@ Three containers you can reach (the site, the chat page, the API), one data file
 
 ```mermaid
 flowchart TB
+    accTitle: Containers of Rayhan's agent
+    accDescr: The site, the chat page, the on-device tier, the API and the database, with profile.json feeding the site, the API and the on-device tier, and the external Turnstile, model and observability services.
     visitor["<b>Visitor</b><br/>[Person]"]
     agentclient["<b>AI agent</b><br/>[External client]"]
 
@@ -169,14 +173,14 @@ flowchart TB
         k4[/"Data file"/]:::data
         k5["solid arrow: runtime call<br/>dashed arrow: build or deploy time"]:::note
     end
-    style key fill:#ffffff,stroke:#9ca3af,color:#374151
-    style sys fill:#f8fafc,stroke:#1d4f80,stroke-dasharray: 5 3
+    style key fill:none,stroke:#9ca3af,color:#6b7280
+    style sys fill:none,stroke:#1d4f80,color:#6b7280,stroke-dasharray: 5 3
 
     classDef person fill:#0b3d6e,stroke:#0b3d6e,color:#ffffff
     classDef cont fill:#3b82c4,stroke:#1d4f80,color:#ffffff
     classDef data fill:#fef3c7,stroke:#b45309,color:#111827
     classDef ext fill:#e5e7eb,stroke:#6b7280,color:#111827
-    classDef note fill:#ffffff,stroke:#ffffff,color:#374151
+    classDef note fill:none,stroke:none,color:#6b7280
     class visitor,agentclient person
     class site,spa,device,api,db cont
     class profile data
@@ -189,6 +193,8 @@ Words stream first; the verification stamps follow in the same stream, so the vi
 
 ```mermaid
 sequenceDiagram
+    accTitle: Sequence: answering a question
+    accDescr: The API checks the token, loads the session, applies limits, classifies intent, streams the answer, then verifies each sentence and streams the stamps before saving the turn and closing the trace.
     autonumber
     actor V as Visitor
     participant F as Chat page
