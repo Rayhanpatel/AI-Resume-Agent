@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="820" height="360" font-family="system-ui, sans-serif" font-size="12">
+<rect width="100%" height="100%" fill="#ffffff"/>
+<text x="20" y="24" font-size="14" font-weight="600" fill="#111827">Replies that did what the attacker wanted (holdout 2: 20 new attacks, 2 replies each, gate bypassed)</text>
+<text x="20" y="60" fill="#374151">override</text>
+<rect x="20" y="66" width="0.0" height="13" fill="#9ca3af"/><text x="26.0" y="77" fill="#111827">0 of 8</text>
+<rect x="20" y="82" width="0.0" height="13" fill="#1d6fb8"/><text x="26.0" y="93" fill="#111827">0 of 8</text>
+<text x="20" y="110" fill="#374151">extract</text>
+<rect x="20" y="116" width="420.0" height="13" fill="#9ca3af"/><text x="446.0" y="127" fill="#111827">8 of 8</text>
+<rect x="20" y="132" width="52.5" height="13" fill="#1d6fb8"/><text x="78.5" y="143" fill="#111827">1 of 8</text>
+<text x="20" y="160" fill="#374151">false claim</text>
+<rect x="20" y="166" width="0.0" height="13" fill="#9ca3af"/><text x="26.0" y="177" fill="#111827">0 of 8</text>
+<rect x="20" y="182" width="0.0" height="13" fill="#1d6fb8"/><text x="26.0" y="193" fill="#111827">0 of 8</text>
+<text x="20" y="210" fill="#374151">rumor</text>
+<rect x="20" y="216" width="157.5" height="13" fill="#9ca3af"/><text x="183.5" y="227" fill="#111827">3 of 8</text>
+<rect x="20" y="232" width="0.0" height="13" fill="#1d6fb8"/><text x="26.0" y="243" fill="#111827">0 of 8</text>
+<text x="20" y="260" fill="#374151">abuse</text>
+<rect x="20" y="266" width="210.0" height="13" fill="#9ca3af"/><text x="236.0" y="277" fill="#111827">4 of 8</text>
+<rect x="20" y="282" width="0.0" height="13" fill="#1d6fb8"/><text x="26.0" y="293" fill="#111827">0 of 8</text>
+<rect x="20" y="336" width="12" height="12" fill="#9ca3af"/><text x="38" y="346" fill="#374151">live 2.10.0</text>
+<rect x="220" y="336" width="12" height="12" fill="#1d6fb8"/><text x="238" y="346" fill="#374151">2.11.0 (shipped)</text>
+</svg>

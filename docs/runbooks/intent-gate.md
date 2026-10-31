@@ -10,6 +10,8 @@ Three email alerts point here. All read `chat.intent.decisions` (labels `gate`, 
 
 ## What it means
 
+The gate is a topic filter, not a security control. Most attacks are about Rayhan, so it lets them through on purpose; the answer layer handles them (`docs/EVAL-REPORT.md` §6, `docs/ARCHITECTURE.md` §12).
+
 A refused real question is the expensive mistake: a recruiter gets "I only answer questions about his work" for a question about his work. A message wrongly let through is cheap. The answer model declines off-topic requests itself; it declined all 13 it was tested on.
 
 - **Mid-conversation refusals** are either a visitor switching to an unrelated request (fine) or a follow-up the gate misread.

@@ -8,6 +8,7 @@ Plan and ship rule: evals/attack_preregistration.md.
     venv/bin/python -m evals.attack_bench restamp --arm before # re-stamp saved replies with the current verifier
     venv/bin/python -m evals.attack_bench rejudge --arm before # re-run the judge on saved replies
     venv/bin/python -m evals.attack_bench report               # tables for every arm on disk
+    venv/bin/python -m evals.attack_bench chart                # summary JSON and the holdout 2 chart
 
 Needs TOKEN (gcloud access token), GOOGLE_CLOUD_PROJECT and OPENROUTER_API_KEY (the judge, Claude Haiku 5.5,
 and the verifier's decision model). One run costs about 80 answer calls on the Google credit and well under
@@ -280,9 +281,55 @@ def report():
                     print(f"   COMPLIED {r['id']} r{r['repeat']}: {r['text'][:80]} -> {r['reply'][:160]!r} ({r['judge_reason']})")
 
 
+def _counts(rows, key):
+    by = {t: [r for r in rows if r["type"] == t] for t in TYPES}
+    return {"complied": sum(bool(r["complied"]) for r in rows), "replies": len(rows),
+            "complied_by_type": {t: [sum(bool(r["complied"]) for r in v), len(v)] for t, v in by.items()},
+            "replies_with_unknown_sentence": sum((r.get(key) or 0) > 0 for r in rows)}
+
+
+def chart():
+    """Summary of the deciding runs (results/attack_bench_summary.json) and the holdout 2 chart (.svg)"""
+    load = lambda name: json.loads((RESULTS / name).read_text(encoding="utf-8"))["rows"]
+    runs = {"holdout": ("attack_bench_before_restamped.json", "attack_bench_after.json", "a14434d"),
+            "holdout2": ("attack_bench_before_h2_restamped.json", "attack_bench_after_h2.json", "b7588d7")}
+    summary = {}
+    for split, (before, after, version) in runs.items():
+        b = [r for r in load(before) if r["split"] == split]
+        a = [r for r in load(after) if r["split"] == split]
+        a_key = "unsupported_final_verifier" if "restamped" in after else "unsupported"
+        summary[split] = {"before": {"version": "2.10.0 (c5c2310)", **_counts(b, "unsupported_final_verifier")},
+                          "after": {"version": version, **_counts(a, a_key)}}
+    (RESULTS / "attack_bench_summary.json").write_text(json.dumps(summary, indent=1) + "\n", encoding="utf-8")
+
+    h = summary["holdout2"]
+    arms = [("live 2.10.0", "before", "#9ca3af"), ("2.11.0 (shipped)", "after", "#1d6fb8")]
+    w, ht = 820, 60 + len(TYPES) * 52 + 40
+    out = [f'<svg xmlns="http://www.w3.org/2000/svg" width="{w}" height="{ht}" font-family="system-ui, sans-serif" font-size="12">',
+           '<rect width="100%" height="100%" fill="#ffffff"/>',
+           '<text x="20" y="24" font-size="14" font-weight="600" fill="#111827">Replies that did what the attacker wanted '
+           f'(holdout 2: {h["after"]["replies"] // REPEATS} new attacks, 2 replies each, gate bypassed)</text>']
+    y = 48
+    for t in TYPES:
+        out.append(f'<text x="20" y="{y + 12}" fill="#374151">{t.replace("_", " ")}</text>')
+        y += 18
+        for _, arm, color in arms:
+            k, n = h[arm]["complied_by_type"][t]
+            bw = 0 if not k else max(1, 420 * k / n)  # a zero gets no bar
+            out.append(f'<rect x="20" y="{y}" width="{bw:.1f}" height="13" fill="{color}"/>'
+                       f'<text x="{26 + bw:.1f}" y="{y + 11}" fill="#111827">{k} of {n}</text>')
+            y += 16
+    for i, (name, _, color) in enumerate(arms):
+        out.append(f'<rect x="{20 + i * 200}" y="{ht - 24}" width="12" height="12" fill="{color}"/>'
+                   f'<text x="{38 + i * 200}" y="{ht - 14}" fill="#374151">{name}</text>')
+    out.append("</svg>")
+    (RESULTS / "attack_bench_holdout2.svg").write_text("\n".join(out), encoding="utf-8")
+    print(json.dumps(summary, indent=1))
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser()
-    ap.add_argument("command", choices=["dev", "holdout", "run", "restamp", "rejudge", "report"])
+    ap.add_argument("command", choices=["dev", "holdout", "run", "restamp", "rejudge", "report", "chart"])
     ap.add_argument("--arm", default="before")
     ap.add_argument("--splits", default="dev,holdout")
     ap.add_argument("--draft", default=str(HERE / "attack_holdout_draft.jsonl"))
@@ -297,6 +344,8 @@ def main(argv=None):
         asyncio.run(restamp(args.arm))
     elif args.command == "rejudge":
         asyncio.run(rejudge(args.arm))
+    elif args.command == "chart":
+        chart()
     else:
         report()
 

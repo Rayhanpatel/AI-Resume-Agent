@@ -27,7 +27,7 @@ mcp = MCPServer(
         "verification stamps, and fit_report to map his experience to a job description."
     ),
     website_url="https://rayhanpatel.com",
-    version="2.10.0",
+    version="2.11.0",
 )
 
 

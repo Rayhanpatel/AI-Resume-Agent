@@ -30,8 +30,9 @@ It runs in production with one person on call, so the work after shipping is in 
 - **Checks from outside, on a schedule:** 9 Grafana Synthetic Monitoring checks (the chat page in a real browser every 15 minutes, model and database health every 5 minutes from two locations, the site and resume, DNS, domain and certificate expiry) plus a real answer, verified sentence by sentence, every 6 hours.
 - **Telemetry:** OpenTelemetry traces, metrics and logs to Grafana Cloud with a `gen_ai` span around every model call and no message text; Grafana Faro for browser errors; Langfuse for answer quality with five LLM judges.
 - **Alerts:** a broken chat or site pages the owner's phone through Grafana IRM; slower problems (fallback model, unverifiable answers, an off-topic gate refusing too much or declining a mid-conversation message, decision-model drift, failed leads, retention, spend) go to email. Every alert links a [runbook](docs/runbooks/). A test alert on Oct 30, 2026 went from a Grafana rule to the phone in 32 seconds (IRM delivery log).
-- **Gates:** over 100 unit tests (including checks that these docs match the code) and a 16-question golden eval against the live model run before a backend deploy (Railway waits for CI); a weekly check fails when a configured model nears retirement.
-- **Limits and data:** signed sessions, per-IP and per-session quotas, a daily token budget, a $10/month Google Cloud spend cap; visitor chats are deleted after 90 days.
+- **Gates:** over 100 unit tests (including checks that these docs match the code) and a 20-question golden eval against the live model, four of its questions attacks, run before a backend deploy (Railway waits for CI); a weekly check fails when a configured model nears retirement.
+- **Attack-tested:** 55 attack messages in five types (fake overrides, prompt and key requests, false claims, made-up rumours, roasts), answered with the off-topic gate bypassed and judged by a model from another family. On held-out attacks written by another model, the bot gave in on 15 of 40 replies before 2.11.0 and 1 of 40 after ([eval report §6](docs/EVAL-REPORT.md#6-what-does-it-say-to-attacks-oct-3031-2026), [threats and defences](docs/ARCHITECTURE.md#12-threats-and-defences)).
+- **Limits and data:** signed sessions, per-IP and per-session quotas, a daily token budget, a $25/month Google Cloud spend cap; visitor chats are deleted after 90 days.
 - **Written down:** [post-mortem](docs/POSTMORTEM-2026-10-chatbot-outage.md) (four months of silent outage, and what broke while fixing it), [system card](docs/SYSTEM-CARD.md), [eval report](docs/EVAL-REPORT.md), [monitoring design](docs/MONITORING.md).
 
 ---
@@ -90,8 +91,9 @@ The frontend proxies `/api` requests to the backend during development (configur
 | Model Fallback | A slow or failing model never takes the chat down | Answer model → fallback model if it errors, returns nothing, or stays silent past `GEMINI_FIRST_TOKEN_TIMEOUT`; the fallback gets one patient retry (`agent.py`) |
 | Models as Config | Google retires model IDs; changing one is an env var | `GEMINI_MODEL`, `GEMINI_FALLBACK_MODEL`, `GEMINI_FAST_MODEL` in `config.py`; one request helper in `services/gemini.py` |
 | Real Health Check | Catches a dead model, not just a dead process | `/api/v1/health/llm` makes a real model call (cached 10 min, failures retried after 60 s) and returns 503 when it fails |
-| Conversation History | Follow-up questions work | The frontend sends the last 10 turns; the backend merges them into alternating turns ending with the question |
-| Golden Eval | Checks what the model actually says | `backend/evals/golden.py`: 13 recruiter questions with must-say / must-not-say checks, run against the real model |
+| Conversation History | Follow-up questions work | The last 10 messages live in the server-side session (a client can't rewrite them); declined turns are kept too, so the gate judges the next message against them |
+| Golden Eval | Checks what the model actually says | `backend/evals/golden.py`: 20 questions (recruiter questions, multi-turn pressure, four attacks) with must-say / must-not-say checks, run against the real model on every backend push |
+| Attack Handling | Rumours, false premises, fake overrides, prompt requests and roasts get safe answers | Rules per attack type in the prompt; nothing secret in the model's context; measured by `backend/evals/attack_bench.py` with a holdout written by another model (`docs/EVAL-REPORT.md` §6) |
 | Truth Tests | Known-wrong claims can't come back | `tests/test_profile.py` fails CI if banned wording appears in the profile or the rendered prompt |
 | Vertex / AI Studio | Vertex AI in production, AI Studio for local runs | Chosen in `vertex_auth.py` from credential availability |
 | Job URL Extraction | Paste LinkedIn/Greenhouse/Lever URLs | SSRF-protected fetcher in `job_extractor.py`: literal-IP blocklist, hostname resolution checked against private ranges, no redirects, size and type limits |
@@ -100,10 +102,10 @@ The frontend proxies `/api` requests to the backend during development (configur
 | Server-side Sessions | A client can't forge who it is or what was said | `/session` issues a signed token after Turnstile; `/chat` requires it; name, company, job schema and the last 10 turns live in the session row (`session_tokens.py`, `chat.py`) |
 | Quotas That Survive Restarts | Cost abuse is bounded | Messages per session, messages and sessions per IP per day (salted IP hashes), and a global daily token budget, all counted from the events table (`quotas.py`) |
 | Origin Lock | Direct hits on the Railway URL are refused | `X-Origin-Secret` added by Cloudflare once the API is proxied; health stays open (`core/origin.py`) |
-| Off-topic Gate | Declines off-topic and manipulation requests before the answer model runs | TypeSafe's decision model (`jev-1.14`, through OpenRouter) returns P(on topic) for one fixed question, with the profile's names as context; after the first message it also sees the previous turn, so short follow-ups count; thresholds 0.75 and 0.5 chosen on labelled sets; if it fails or takes over 1 s the message goes to the answer model, which declines off-topic requests itself (`intent.py`; [benchmarks](docs/EVAL-REPORT.md#5-should-it-answer-at-all-the-off-topic-gate-oct-30-2026)) |
+| Off-topic Gate | Declines unrelated requests and plain jailbreaks before the answer model runs (a topic filter, not a security control: attacks about Rayhan pass to the answer layer) | TypeSafe's decision model (`jev-1.14`, through OpenRouter) returns P(on topic) for one fixed question, with the profile's names as context; after the first message it also sees the previous turn, so short follow-ups count; thresholds 0.75 and 0.5 chosen on labelled sets; if it fails or takes over 1 s the message goes to the answer model, which declines off-topic requests itself (`intent.py`; [benchmarks](docs/EVAL-REPORT.md#5-should-it-answer-at-all-the-off-topic-gate-oct-30-2026)) |
 | Prompt Injection Defense | A job page never reaches the persona model as text | A separate tool-less call extracts a fixed schema (title, level, skills, location, summary); only the bounded schema is rendered into the prompt (`render_job_context` in `prompts.py`) |
 | Observability | Full LLM tracing, cost tracking, and automated quality evaluation | Langfuse Python SDK 5 (Langfuse v4 data model: one root observation per turn, generations as children, session and user propagated) with per-model pricing in `tracer.py` + 5 LLM-as-a-Judge evaluators (Hallucination, Relevance, Conciseness, Helpfulness, Toxicity) |
-| Rate Limiting | Per-IP sliding window throttle | Cloudflare-aware IP extraction (`CF-Connecting-IP` → `X-Forwarded-For`) |
+| Rate Limiting | Per-IP sliding window throttle | Keys on `X-Real-IP`, which Railway's edge overwrites; caller-sent `CF-Connecting-IP` and `X-Forwarded-For` are ignored (`middleware/rate_limiter.py`) |
 | Session Persistence | Backend: Supabase PostgreSQL, Frontend: localStorage | 24h TTL, in-memory `TTLCache` fallback if DB is down; the AI disclosure is in the first message |
 | Session Resume | "Welcome back" modal for returning users | `localStorage` check on mount in `useChatSession.js` |
 | Dark/Light Theme | Full theme toggle with OS preference detection | `ThemeToggle.jsx` + 150 lines of CSS overrides in `index.css` |
@@ -246,7 +248,8 @@ sequenceDiagram
 | [Data](docs/ARCHITECTURE.md#9-data-model-and-where-data-goes) | The two tables, and where visitor data can go and for how long |
 | [Deployment](docs/ARCHITECTURE.md#10-deployment-and-delivery) | What runs where, and what must pass before a deploy |
 | [Monitoring](docs/ARCHITECTURE.md#11-monitoring-and-alerting) | Signals, alert routing, what pages the phone |
-| [Decisions](docs/ARCHITECTURE.md#12-decisions) | Ten design decisions with their trade-offs |
+| [Threats and defences](docs/ARCHITECTURE.md#12-threats-and-defences) | Five layers, in the order a message meets them, with what gets past each |
+| [Decisions](docs/ARCHITECTURE.md#13-decisions) | Eleven design decisions with their trade-offs |
 
 ---
 
@@ -508,7 +511,7 @@ Traditional metrics (BLEU, ROUGE) measure surface-level text overlap and fail on
 
 ## Documents
 
-- [Architecture](docs/ARCHITECTURE.md): eleven views of the design, C4 and UML.
+- [Architecture](docs/ARCHITECTURE.md): twelve views of the design, C4 and UML, including threats and defences.
 - [System card](docs/SYSTEM-CARD.md): what it is, what data it touches, how it is evaluated, known failures.
 - [Eval report](docs/EVAL-REPORT.md): the numbers, with dates.
 - [Post-mortem](docs/POSTMORTEM-2026-10-chatbot-outage.md): four months of silent outage and what changed.

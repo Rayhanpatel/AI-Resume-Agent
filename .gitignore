@@ -82,6 +82,8 @@ htmlcov/
 !backend/evals/gate_contexts.json
 !backend/evals/results/gate_bench_*.json
 !backend/evals/results/gate_bench_*.svg
+!backend/evals/results/attack_bench_*.json
+!backend/evals/results/attack_bench_*.svg
 !frontend/src/lib/
 
 # Windsurf

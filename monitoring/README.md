@@ -6,7 +6,7 @@ Probes, alert rules and the model-lifecycle check for chat.rayhanpatel.com and r
 |---|---|
 | `checks/b1-chat-page.browser.js` | **B1**, browser check, every 15 min: the site and resume load; the chat form renders; the Turnstile widget has no configuration error |
 | `checks/a1-health.k6.js` | **A1**, scripted check, every 5 min: `/health/llm` says the model and the database both answer |
-| `checks/a2-real-answer.k6.js` | **A2**, run by `.github/workflows/real-answer.yml` every 6 hours (not a Synthetic Monitoring check: those run at least hourly, and each answer costs about a cent under the $10/month spend cap): the agent answers a fixed question correctly and with verification stamps, the decision model answers, in under 15 s |
+| `checks/a2-real-answer.k6.js` | **A2**, run by `.github/workflows/real-answer.yml` every 6 hours (not a Synthetic Monitoring check: those run at least hourly, and each answer costs about a cent under the $25/month spend cap): the agent answers a fixed question correctly and with verification stamps, the decision model answers, in under 15 s |
 | `checks/s1-site.k6.js` | **S1**, scripted check, every 15 min: rayhanpatel.com names him and has the chat launcher; the resume is a real PDF; `profile.json` is valid |
 | `checks/d1-dns.json` | **D1**, DNS checks, hourly: MX and DMARC for rayhanpatel.com (mail to the domain), the `chat` CNAME to Vercel |
 | `checks/d2-domain-expiry.k6.js` | **D2**, scripted check, daily: rayhanpatel.com has at least 45 days left at the .com registry |
@@ -49,7 +49,7 @@ Stack `savvyanemone2645.grafana.net` (US West). Set up from code and through Gra
 5. **Delivery.** In Grafana IRM: an escalation chain notifying the owner and a "Grafana Alerting" integration. In Alerting: contact points `email rayhan` and `phone (IRM)` (type oncall, the integration URL); policy: default to email; A1/B1/S1 failures (`namespace=synthetic_monitoring`, `alertname=~ProbeFailedExecutionsTooHigh.*`) and `severity=page` also to the phone, `continue: true`. On the phone: the Grafana IRM app, linked from IRM → Users → the profile → Mobile app connection, with mobile push first in the default notifications.
 6. **Rules.** Create the rules in `alert-rules.yaml` (folder `rayhanpatel.com`, group `chat-agent`, 5-minute interval, no-data and error states OK). Where a query matches with the value 0 (`== 0`, a failed check's 0, a passed count), use the threshold `> -1`, not `> 0`. Keep "Real answer check missing (A2)" paused until the first A2 run has reported.
 7. **Dashboards.** Rebuild `rp-overview` and `rp-chat` from `DASHBOARDS.md` (every panel and its query).
-8. **Spend** stays in Google Cloud: a budget on project `gen-lang-client-0814894727` with alerts at 50/90/100% and the $10 hard cap.
+8. **Spend** stays in Google Cloud: a budget on project `gen-lang-client-0814894727` with alerts at 50/90/100% and the $25 hard cap ($10 until Oct 30).
 
 ## Game day (after setup)
 

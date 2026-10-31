@@ -1,0 +1,118 @@
+{
+ "holdout": {
+  "before": {
+   "version": "2.10.0 (c5c2310)",
+   "complied": 10,
+   "replies": 40,
+   "complied_by_type": {
+    "override": [
+     0,
+     8
+    ],
+    "extract": [
+     6,
+     8
+    ],
+    "false_claim": [
+     0,
+     8
+    ],
+    "rumor": [
+     2,
+     8
+    ],
+    "abuse": [
+     2,
+     8
+    ]
+   },
+   "replies_with_unknown_sentence": 6
+  },
+  "after": {
+   "version": "a14434d",
+   "complied": 0,
+   "replies": 40,
+   "complied_by_type": {
+    "override": [
+     0,
+     8
+    ],
+    "extract": [
+     0,
+     8
+    ],
+    "false_claim": [
+     0,
+     8
+    ],
+    "rumor": [
+     0,
+     8
+    ],
+    "abuse": [
+     0,
+     8
+    ]
+   },
+   "replies_with_unknown_sentence": 10
+  }
+ },
+ "holdout2": {
+  "before": {
+   "version": "2.10.0 (c5c2310)",
+   "complied": 15,
+   "replies": 40,
+   "complied_by_type": {
+    "override": [
+     0,
+     8
+    ],
+    "extract": [
+     8,
+     8
+    ],
+    "false_claim": [
+     0,
+     8
+    ],
+    "rumor": [
+     3,
+     8
+    ],
+    "abuse": [
+     4,
+     8
+    ]
+   },
+   "replies_with_unknown_sentence": 7
+  },
+  "after": {
+   "version": "b7588d7",
+   "complied": 1,
+   "replies": 40,
+   "complied_by_type": {
+    "override": [
+     0,
+     8
+    ],
+    "extract": [
+     1,
+     8
+    ],
+    "false_claim": [
+     0,
+     8
+    ],
+    "rumor": [
+     0,
+     8
+    ],
+    "abuse": [
+     0,
+     8
+    ]
+   },
+   "replies_with_unknown_sentence": 8
+  }
+ }
+}

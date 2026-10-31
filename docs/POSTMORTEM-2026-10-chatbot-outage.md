@@ -75,6 +75,7 @@ The repair day had its own incidents. They are listed here because the same less
 | Oct 25 – 29 | The eval gate could not fail: a 15/16 run would still pass, so Railway's "Wait for CI" never blocked a bad deploy. | The step piped the eval into `tee` without `pipefail` (GitHub's default shell for a step without `shell:`), so the step's exit code was `tee`'s. It went red only when the eval crashed before printing its summary. Found in a code review; every past run had in fact passed 16/16. | `shell: bash` on the step (`-eo pipefail`). |
 | Oct 25 – 29 | MCP calls were never stored, so the MCP daily token budget read 0 and MCP's per-caller limits reset on every deploy. | The MCP limits logged `session_id="mcp:<hash>"` into `events.session_id`, a foreign key to `sessions`; every insert failed quietly. The Oct 25 test used the in-memory quotas, not the database. | MCP events now have no session and carry the caller in metadata; the per-caller count filters on it. Verified in the live table after deploy. |
 | Oct 28 – 29 | Faro (and Vercel's analytics) received the page URL, which can carry the visitor's name, company and first question. | The chat page takes those from its query string for deep links. | Every reported URL is cut at `?`. |
+| Oct 30, ~11:35 – 11:48 p.m. | Every model call returned `403 Spend cap breached`; the chat could only apologise. No visitor was chatting at the time. | The $10 monthly spend cap on the Google Cloud project counts every call to the project, and the evals run against the same project as the live bot. A night of benchmark and attack-test runs, on top of the month's development, used it up. Found because an eval run came back as apologies, not by an alert: `/health/llm` reuses a passing check for 10 minutes, and A1 needs repeated failures. | Cap lifted and re-armed at $25 with the owner's OK; recovery took about 2 minutes. The lift and re-arm steps are in `docs/runbooks/spend.md`. Still to do: give the evals their own project and cap. |
 
 ### More lessons
 
@@ -85,4 +86,5 @@ The repair day had its own incidents. They are listed here because the same less
 - Free tiers have quiet failure modes (pausing, retirements, scheduled-job expiry). Each one needs an owner and a check.
 - A gate needs a test that it can fail. A pipeline that has only ever been green may be unable to go red.
 - Test limits against the real database, not only the in-memory fallback. A foreign key can quietly refuse every row.
+- A safety limit shared by tests and production is spent by the tests. Give heavy test runs their own budget.
 
