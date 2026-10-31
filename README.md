@@ -18,13 +18,13 @@ The agent behind [chat.rayhanpatel.com](https://chat.rayhanpatel.com). It answer
 flowchart LR
     accTitle: How a question is answered
     accDescr: A question goes from the chat page through limits and an off-topic check to the answer model, which reads only profile.json, and every sentence of the answer is stamped before the visitor sees it. The same profile.json renders rayhanpatel.com.
-    V(["Visitor asks"]) --> L["1 Limits<br/>bot check, quotas"]
+    V["Visitor asks"] --> L["1 Limits<br/>bot check, quotas"]
     L --> G{"2 About<br/>Rayhan?"}
-    G -->|no| N(["Polite decline"])
-    G -->|yes| A["3 Answer<br/>Gemini 3.5 Flash"]
+    G -->|"no"| N["Polite decline"]
+    G -->|"yes"| A["3 Answer<br/>Gemini 3.5 Flash"]
     P[("profile.json<br/>the only source of facts")] --> A
-    A --> S["4 Stamp each sentence<br/>checked · inferred · unknown"]
-    S --> R(["Answer on screen"])
+    A --> S["4 Stamp each sentence<br/>checked, inferred or unknown"]
+    S --> R["Answer on screen"]
     P -.-> W["rayhanpatel.com"]
 ```
 
