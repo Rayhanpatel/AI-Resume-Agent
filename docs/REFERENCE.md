@@ -14,8 +14,6 @@ The details behind the [README](../README.md): API, configuration, file layout, 
 | `/api/v1/chat` | POST | Session token | Non-streaming chat response |
 | `/api/v1/chat/stream` | POST | Session token | SSE streaming chat response, then the verification stamps |
 | `/api/v1/chat/device-event` | POST | Session token | Counts and timings from the on-device tier (no text) |
-| `/api/v1/admin/analytics` | GET | `X-Admin-Key` | Aggregated usage stats over N days |
-| `/api/v1/admin/sessions` | GET | `X-Admin-Key` | Recent sessions list |
 | `/mcp` | POST | None (rate-limited, own daily token budget) | MCP Streamable HTTP, stateless; tools `get_profile`, `ask`, `fit_report` |
 
 ## Configuration Reference
@@ -33,7 +31,6 @@ All variables loaded via Pydantic `BaseSettings` from `backend/.env`.
 | `GEMINI_THINKING_LEVEL` | No | `low`, `medium` or `high` (default: `low`) |
 | `GEMINI_LOCATION` | No | Vertex location (default: `global`, where Gemini 3.x is served) |
 | `GOOGLE_APPLICATION_CREDENTIALS_JSON` | No | Service account JSON for Vertex AI |
-| `ADMIN_API_KEY` | No | Secret key for `/admin` endpoints |
 | `LANGFUSE_PUBLIC_KEY` | No | Langfuse public key (tracing disabled if absent) |
 | `LANGFUSE_SECRET_KEY` | No | Langfuse secret key |
 | `LANGFUSE_HOST` | No | Langfuse host URL |
@@ -67,7 +64,7 @@ Only `GOOGLE_API_KEY` is required. All other services degrade gracefully when th
 │   ├── mcp_server.py              # MCP tools over the same agent: get_profile, ask, fit_report
 │   ├── api/
 │   │   ├── deps.py, router.py     # Dependency injection, route aggregation
-│   │   └── routes/                # chat.py (chat, stream, device events), session.py, health.py, admin.py
+│   │   └── routes/                # chat.py (chat, stream, device events), session.py, health.py
 │   ├── core/
 │   │   ├── profile.json           # The only source of facts, synced from the rayhanpatel.com repo
 │   │   ├── prompts.py             # System prompt (truth rules, attack rules) and technical context
@@ -196,7 +193,7 @@ Every external service wrapper (`SupabaseService`, `TracingService`) carries an 
 
 ### Input sanitization before type validation
 
-All string fields in Pydantic request models run through `_strip_html()` (a regex that removes all HTML tags) via `@field_validator(mode="before")`. This runs *before* Pydantic's type coercion, so malicious HTML never reaches business logic. The admin auth endpoint uses `secrets.compare_digest()` for constant-time key comparison, preventing timing-based attacks.
+All string fields in Pydantic request models run through `_strip_html()` (a regex that removes all HTML tags) via `@field_validator(mode="before")`. This runs *before* Pydantic's type coercion, so malicious HTML never reaches business logic.
 
 ### LLM-as-a-Judge over rule-based evaluation
 

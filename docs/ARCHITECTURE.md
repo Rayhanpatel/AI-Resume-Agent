@@ -149,7 +149,7 @@ flowchart TB
     end
     subgraph L2["2 · Routes: thin"]
         direction LR
-        r1["/session"] ~~~ r2["/chat<br/>/chat/stream"] ~~~ r3["/mcp"] ~~~ r4["/health<br/>/health/llm"] ~~~ r5["/admin"]
+        r1["/session"] ~~~ r2["/chat<br/>/chat/stream"] ~~~ r3["/mcp"] ~~~ r4["/health<br/>/health/llm"]
     end
     subgraph L3["3 · Guards: refuse with 403 or 429"]
         direction LR
@@ -171,7 +171,7 @@ flowchart TB
     classDef layer fill:#3b82c4,stroke:#1d4f80,color:#ffffff
     classDef guard fill:#b45309,stroke:#78350f,color:#ffffff
     classDef plain fill:#ffffff,stroke:#6b7280,color:#111827
-    class m1,m2,m3,m4,m5,r1,r2,r3,r4,r5,s1,s2,s3,s4,s5,a1,a2,a3,a4,a5,bg layer
+    class m1,m2,m3,m4,m5,r1,r2,r3,r4,s1,s2,s3,s4,s5,a1,a2,a3,a4,a5,bg layer
     class g1,g2,g3,g4 guard
     class req plain
     style L1 fill:none,stroke:#9ca3af,color:#6b7280
@@ -189,7 +189,6 @@ Which route uses which components:
 | `POST /chat/stream`, `/chat` | SessionTokens, RateLimiter, QuotaService | JevIntentGate (sees the previous turn; lets the message through if it fails), AgentService, Verifier + DecisionsGate, SupabaseService, TracingService |
 | `POST /mcp` | MCPLimits | AgentService, Verifier + DecisionsGate, TracingService (tag `mcp`) |
 | `GET /health/llm` | none | Gemini client (cached 10 min), SupabaseService ping |
-| `GET /admin/*` | `X-Admin-Key` | SupabaseService |
 
 ---
 

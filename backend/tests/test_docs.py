@@ -29,7 +29,7 @@ def test_every_route_is_in_the_reference_api_table():
         prefix = re.search(r'APIRouter\(prefix="([^"]+)"', text)
         for path in re.findall(r'@router\.(?:get|post|put|delete|patch)\("([^"]+)"', text):
             routes.add("/api/v1" + (prefix.group(1) if prefix else "") + path)
-    assert len(routes) >= 8, routes
+    assert len(routes) >= 6, routes  # session, chat, chat/stream, device-event, health, health/llm
     missing = sorted(r for r in routes if f"`{r}`" not in REFERENCE)
     assert not missing, f"routes missing from the API table in docs/REFERENCE.md: {missing}"
 

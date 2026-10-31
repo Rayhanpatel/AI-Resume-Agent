@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 
 APOLOGY = ("I apologize, but I'm having trouble responding right now. "
            "Please try again or contact Rayhan directly at rayhanbp@umd.edu.")
-MAX_HISTORY_TURNS = 10  # recent messages kept as real turns; Mem0 covers anything older
+MAX_HISTORY_TURNS = 10  # recent messages kept as real turns; older ones are dropped
 
 
 class AgentService:

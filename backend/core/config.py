@@ -39,9 +39,6 @@ class Settings(BaseSettings):
     supabase_url: Optional[str] = None
     supabase_key: Optional[str] = None
     
-    # Mem0 (optional — memory disabled if absent)
-    mem0_api_key: Optional[str] = None
-    admin_api_key: Optional[str] = None
     
     # Langfuse (Optional)
     langfuse_public_key: Optional[str] = None
