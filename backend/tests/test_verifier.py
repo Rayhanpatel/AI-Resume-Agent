@@ -99,3 +99,28 @@ def test_split_sentences_does_not_break_at_degree_abbreviations():
         "He completed his B.Tech. in Computer Science at B.S. Abdur Rahman Crescent Institute in Chennai.",
         "He is finishing his M.S. Applied Machine Learning degree at the University of Maryland.",
         "It ends in May 2027."]
+
+
+def test_a_sentence_that_speaks_for_the_profile_needs_a_real_quote():
+    # Found Oct 30: to a cheating rumor the bot said "It states that Rayhan is currently in good academic standing",
+    # which the profile never says, and the stamp was "inferred"
+    answer = ("It states that Rayhan is currently in good academic standing at Maryland. "
+              "The profile states that he built a multi-tenant agent-memory MCP service on AWS Lambda and DynamoDB. "
+              "The profile shows he built a memory service on Lambda and DynamoDB for agents. "
+              "He works on agent memory and evaluation.")
+    verdicts = [
+        {"i": 0, "verdict": "inferred", "quote": None, "path": None},
+        {"i": 1, "verdict": "supported", "quote": "multi-tenant memory MCP service on AWS Lambda and DynamoDB", "path": "x"},
+        # a true paraphrase anchored to a real quote stays "inferred"
+        {"i": 2, "verdict": "inferred", "quote": "multi-tenant memory MCP service on AWS Lambda and DynamoDB", "path": "x"},
+        {"i": 3, "verdict": "inferred", "quote": None, "path": None},
+    ]
+    statuses = [c["status"] for c in asyncio.run(verify_answer(answer, _FakeVerifier(verdicts)))["claims"]]
+    assert statuses == ["unknown", "checked", "inferred", "inferred"]
+
+
+def test_verifier_prompt_treats_refusals_and_absences_as_not_claims():
+    prompt = verifier.VERIFY_PROMPT
+    assert "what this assistant can or cannot do" in prompt
+    assert "the profile has no information on something" in prompt
+    assert "supported\" only if the profile states exactly that" in prompt
