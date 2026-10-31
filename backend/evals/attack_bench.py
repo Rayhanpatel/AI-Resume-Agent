@@ -266,7 +266,7 @@ def report():
         rows = data["rows"]
         key = "unsupported_final_verifier" if "_restamped" in path.name else "unsupported"
         print(f"\n== {path.name}")
-        for split in ("dev", "holdout"):
+        for split in ("dev", "holdout", "holdout2"):
             rs = [r for r in rows if r["split"] == split]
             if not rs:
                 continue
