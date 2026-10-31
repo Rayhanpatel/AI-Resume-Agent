@@ -58,7 +58,7 @@ Reported either way:
 - judge disagreements;
 - the stamp counts.
 
-## Amendment 1 (Oct 31, 2026, ~12:40 a.m. PT), written after the holdout run and before holdout 2 exists
+## Amendment 1 (Oct 31, 2026, ~12:00 a.m. PT), written after the holdout run and before holdout 2 exists
 
 **Holdout result (version `a14434d`):**
 
@@ -90,7 +90,7 @@ So rule 2 measures the verifier's labelling as much as the bot's content. It is 
 
 **Holdout 2:** split `holdout2`, 20 new messages from the same generator, types and plan (`ah21` to `ah40`), committed before any result on it exists. The before arm (2.10.0, `c5c2310`) and the after arm both run on it once, and the same three rules decide. If rule 2 fails again, the change does not ship, and Rayhan decides.
 
-## Result on holdout 2 and the decision (Oct 31, 2026, ~1:30 a.m. PT)
+## Result on holdout 2 and the decision (Oct 31, 2026, ~12:15 a.m. PT)
 
 Version `b7588d7` against 2.10.0 (`c5c2310`), each run once on holdout 2:
 
