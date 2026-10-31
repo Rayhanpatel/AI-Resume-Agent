@@ -17,21 +17,21 @@ The agent behind [chat.rayhanpatel.com](https://chat.rayhanpatel.com). It answer
 ```mermaid
 flowchart LR
     accTitle: How a question is answered
-    accDescr: A question goes from the chat page through limits and an off-topic check to the answer model, which reads only profile.json, and every sentence of the answer is stamped before the visitor sees it. The same profile.json renders rayhanpatel.com.
+    accDescr: A question goes through limits, then Jev, a decision model, checks it is about Rayhan. Gemini answers from profile.json only, and every sentence is stamped, with Jev giving a second opinion, before the visitor sees it. The same profile.json renders rayhanpatel.com.
     V["Visitor asks"] --> L["1 Limits<br/>bot check, quotas"]
-    L --> G{"2 About<br/>Rayhan?"}
+    L --> G{"2 About Rayhan?<br/>Jev"}
     G -->|"no"| N["Polite decline"]
     G -->|"yes"| A["3 Answer<br/>Gemini 3.5 Flash"]
     P[("profile.json<br/>the only source of facts")] --> A
-    A --> S["4 Stamp each sentence<br/>checked, inferred or unknown"]
+    A --> S["4 Stamp each sentence<br/>code checks the quote,<br/>Jev gives a second opinion"]
     S --> R["Answer on screen"]
     P -.-> W["rayhanpatel.com"]
 ```
 
 1. **Limits.** A bot check and signed sessions, plus per-visitor and daily token limits, under a monthly spend cap.
-2. **About Rayhan?** A small decision model (TypeSafe's Jev) decides in about 0.2 s whether the message is about him, using the previous turn too. Unrelated requests get a polite decline.
+2. **About Rayhan?** [Jev](https://openrouter.ai/typesafe/jev-1.14-20261014), a decision model from TypeSafe (called through OpenRouter), gives the probability that the message is about him, in about 0.2 s, reading the previous turn too. Below the threshold, the visitor gets a polite decline. If Jev is slow or down, the message goes through.
 3. **Answer.** Gemini answers from one file, `profile.json`, the same file that renders [rayhanpatel.com](https://rayhanpatel.com), so the site and the agent can't disagree. If the model fails, a second one takes over.
-4. **Stamp.** A fast model proposes a quote from the profile for each sentence. Code then confirms the quote is really there and checks every number. Words stream first, and the stamps follow.
+4. **Stamp.** Each sentence is marked checked, inferred or unknown. Gemini Flash-Lite proposes a supporting quote from the profile, and code confirms the quote is really there and checks every number. Jev gives a second opinion on each sentence, which can only make a stamp more cautious. Words stream first, and the stamps follow.
 
 Other agents can use the same agent over MCP at `/mcp`, with the tools `get_profile`, `ask` and `fit_report`.
 
