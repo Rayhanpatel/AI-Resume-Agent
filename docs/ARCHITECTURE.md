@@ -433,7 +433,7 @@ flowchart TB
 
     subgraph gh["GitHub Actions"]
         ci["<b>ci.yml</b><br/>unit tests incl. docs-match-code, frontend build"]
-        eval["<b>eval.yml</b><br/>16-question golden eval vs live model<br/>(keyless Google sign-in)"]
+        eval["<b>eval.yml</b><br/>20-question golden eval vs live model<br/>(keyless Google sign-in)"]
         sched["<b>Schedules</b><br/>A2 real answer every 6 h, uptime daily,<br/>model retirement weekly"]
     end
 
