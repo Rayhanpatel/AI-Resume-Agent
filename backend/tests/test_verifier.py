@@ -124,3 +124,23 @@ def test_verifier_prompt_treats_refusals_and_absences_as_not_claims():
     assert "what this assistant can or cannot do" in prompt
     assert "the profile has no information on something" in prompt
     assert "supported\" only if the profile states exactly that" in prompt
+
+
+def test_a_failed_verifier_call_is_retried_once():
+    class _Flaky:
+        calls = 0
+        async def verdicts(self, sentences):
+            _Flaky.calls += 1
+            if _Flaky.calls == 1:
+                raise ValueError("malformed JSON")
+            return [{"i": 0, "verdict": "not_a_claim"}]
+    result = asyncio.run(verify_answer("You can email Rayhan at rayhanbp@umd.edu to ask.", _Flaky()))
+    assert _Flaky.calls == 2 and result["claims"][0]["status"] == "n/a"
+
+
+def test_the_decision_model_can_keep_a_true_paraphrase_that_speaks_for_the_profile():
+    answer = "The profile records that MedBill was built as a solo project for a hackathon."
+    verdicts = [{"i": 0, "verdict": "inferred", "quote": None, "path": None}]
+    kept = asyncio.run(verify_answer(answer, _FakeVerifier(verdicts), _FakeGate({0: 0.9})))
+    doubted = asyncio.run(verify_answer(answer, _FakeVerifier(verdicts), _FakeGate({0: 0.1})))
+    assert kept["claims"][0]["status"] == "inferred" and doubted["claims"][0]["status"] == "unknown"

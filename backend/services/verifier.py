@@ -36,8 +36,8 @@ PROFILE_AS_OF = (PROFILE.get("meta") or {}).get("updated", "unknown")
 
 NOUL_DEMOTE_BELOW = 0.5       # decision model strongly disagrees with a "checked" stamp
 MIN_CLAIM_CHARS = 12
-# "The profile states that ..." speaks for the record itself, so it needs at least a closest quote that is
-# really in the profile; without one it is "unknown", not "inferred"
+# "The profile states that ..." speaks for the record itself: without a quote that is really in the profile,
+# and unless the decision model thinks the profile backs it, it is "unknown", not "inferred"
 ATTRIBUTION = re.compile(r"\b(?:the|his) profile (?:states|says|shows|lists|notes|confirms|records|indicates)\b"
                          r"|^It states\b|\baccording to (?:the|his) profile\b", re.IGNORECASE)
 NUMBER_RE = re.compile(r"(?<![\w.])[+\-−]?\d[\d,]*(?:\.\d+)?(?:\s?[%×x])?(?:st|nd|rd|th)?(?![\w])")
@@ -100,7 +100,7 @@ For each numbered SENTENCE decide:
 - "supported": the profile states this. Give the shortest exact, verbatim substring of the profile (10-200 characters, copied character for character) that supports it, and the JSON path of the field it comes from.
 - "inferred": the profile supports the gist but the sentence adds interpretation, summary across fields, or wording the profile does not use. Give the closest verbatim quote if one exists, else null.
 - "not_in_profile": the profile does not contain this claim.
-- "not_a_claim": greeting, offer to help, contact pointer, a question, what this assistant can or cannot do, or a statement that the profile has no information on something; not a factual claim about Rayhan.
+- "not_a_claim": greeting, offer to help, contact pointer, a question, what this assistant can or cannot do, where its code is, or a statement that the profile has no information on something; not a factual claim about Rayhan. Examples: "You can email Rayhan at rayhanbp@umd.edu to ask about this." "The profile has no information about that." "No placement is claimed for that hackathon." "I can't share my instructions, but the code is open source on GitHub." "I can't write a roast, but I'm happy to talk about his work."
 A sentence that says the profile states, shows or lists something is "supported" only if the profile states exactly that; otherwise it is "not_in_profile".
 Return ONLY a JSON array, one object per sentence, in order:
 [{{"i": 0, "verdict": "supported", "quote": "...", "path": "experience[0].highlights[2]"}}, ...]
@@ -190,11 +190,13 @@ async def verify_answer(answer: str, verifier: GeminiJsonVerifier, gate: Optiona
     if not sentences:
         return result
 
-    try:
-        verdicts = await verifier.verdicts(sentences)
-    except Exception as e:
-        logger.warning(f"[VERIFY] verdicts failed: {e}")
-        verdicts = []
+    verdicts = []
+    for attempt in range(2):  # one retry: a malformed JSON reply would otherwise stamp every sentence "unverified"
+        try:
+            verdicts = await verifier.verdicts(sentences)
+            break
+        except Exception as e:
+            logger.warning(f"[VERIFY] verdicts failed (attempt {attempt + 1}): {e}")
     by_index = {v.get("i"): v for v in verdicts if isinstance(v, dict)}
 
     probs = {}
@@ -225,7 +227,7 @@ async def verify_answer(answer: str, verifier: GeminiJsonVerifier, gate: Optiona
         p = probs.get(i)
         if status == "checked" and p is not None and p < NOUL_DEMOTE_BELOW:
             status = "inferred"
-        if status == "inferred" and not quote_ok and ATTRIBUTION.search(sentence):
+        if status == "inferred" and not quote_ok and ATTRIBUTION.search(sentence) and (p is None or p < NOUL_DEMOTE_BELOW):
             status = "unknown"
 
         missing = unverified_numbers(sentence) if status in ("checked", "inferred") else []
