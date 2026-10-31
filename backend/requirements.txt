@@ -10,7 +10,7 @@ langfuse==5.0.4
 supabase>=2.27.0,<3.0.0
 httpx[http2]>=0.28.0
 tenacity>=8.2.0
-google-auth>=2.27.0
+google-auth>=2.62.0
 mcp>=2.3.0,<3.0.0
 
 # OpenTelemetry (off unless OTEL_EXPORTER_OTLP_ENDPOINT is set; see core/telemetry.py).
