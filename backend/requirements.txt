@@ -6,7 +6,7 @@ pydantic>=2.10.0,<3.0.0
 pydantic-settings>=2.7.0,<3.0.0
 # Langfuse v4 (observations-first) needs Python SDK >= 4.7 by Nov 16, 2026; v5 is the current major
 # and needs Python 3.11+ (Dockerfile: 3.11) and opentelemetry-sdk >= 1.45 (pinned below).
-langfuse==5.0.4
+langfuse==5.1.0
 supabase>=2.27.0,<3.0.0
 httpx[http2]>=0.28.0
 tenacity>=8.2.0
@@ -15,8 +15,8 @@ mcp>=2.3.0,<3.0.0
 
 # OpenTelemetry (off unless OTEL_EXPORTER_OTLP_ENDPOINT is set; see core/telemetry.py).
 # Core and contrib versions move together: SDK 1.45.x pairs with instrumentation 0.66bx.
-opentelemetry-sdk==1.45.1
-opentelemetry-exporter-otlp-proto-http==1.45.1
-opentelemetry-instrumentation-fastapi==0.66b1
-opentelemetry-instrumentation-httpx==0.66b1
-opentelemetry-instrumentation-logging==0.66b1
+opentelemetry-sdk==1.45.2
+opentelemetry-exporter-otlp-proto-http==1.45.2
+opentelemetry-instrumentation-fastapi==0.66b2
+opentelemetry-instrumentation-httpx==0.66b2
+opentelemetry-instrumentation-logging==0.66b2
