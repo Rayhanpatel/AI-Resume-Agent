@@ -99,7 +99,7 @@ Only `GOOGLE_API_KEY` is required. All other services degrade gracefully when th
 │   │   ├── attack_bench.py        # Attacks on the answer layer (attack_set.jsonl, plan attack_preregistration.md)
 │   │   └── results/               # Every committed run: summaries, raw calls, charts
 │   ├── tests/                     # Unit tests, including checks that the docs match the code
-│   ├── Dockerfile, start.sh, railway.json, requirements.txt, .env.example
+│   ├── Dockerfile, start.sh, requirements.txt, .env.example
 ├── frontend/src/
 │   ├── components/                # ChatInterface, WelcomeForm, VerificationPanel, OnDeviceToggle, QuickQuestions, …
 │   ├── hooks/useChatSession.js    # Session and chat logic
@@ -203,7 +203,7 @@ Traditional metrics (BLEU, ROUGE) measure surface-level text overlap and fail on
 
 | Component | Platform | Config |
 |-----------|----------|--------|
-| Backend | Railway | `Dockerfile` → `python:3.11-slim`, `start.sh` runs uvicorn with `$PORT`, restart on failure (10 retries), health check at `/api/v1/health` |
+| Backend | Railway | `Dockerfile` → `python:3.11-slim`, `start.sh` runs uvicorn with `$PORT`. Set in the Railway service settings, not a file (`railway.json` was removed Nov 1, 2026, since Railway stops reading config files on Dec 1, 2026): start command `sh start.sh`, health check at `/api/v1/health`, restart on failure (10 retries, Railway's default) |
 | Frontend | Vercel | Auto-deploy from `main` branch, custom domain `chat.rayhanpatel.com` |
 | DNS | Cloudflare | DNS only (not proxied); the backend is called directly so long streams avoid proxy timeouts |
 | CI | GitHub Actions | `ci.yml` (backend Python 3.11 imports + pytest, frontend Node 20 build) and `eval.yml` (golden eval) gate the backend deploy (Railway "Wait for CI"); `real-answer.yml`, `uptime.yml` and `model-lifecycle.yml` run on schedules; Dependabot opens grouped update PRs |

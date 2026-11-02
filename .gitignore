@@ -71,7 +71,6 @@ htmlcov/
 !package.json
 !package-lock.json
 !tsconfig.json
-!railway.json
 !backend/core/profile.json
 !frontend/vercel.json
 !frontend/public/profile.json
